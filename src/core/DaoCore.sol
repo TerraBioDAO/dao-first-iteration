@@ -67,7 +67,9 @@ contract DaoCore is IDaoCore, CoreGuard {
             votingContract,
             ProposalStatus.EXISTS
         );
-        emit ProposalSubmitted(slot, initiater, votingContract, proposalId);
+        emit ProposalSubmitted(
+            slot, initiater, votingContract, proposalId
+            );
     }
 
     function processProposal(bytes32 proposalId) external {
@@ -89,11 +91,19 @@ contract DaoCore is IDaoCore, CoreGuard {
         return entries[slot].slot != Slot.EMPTY;
     }
 
-    function isSlotExtension(bytes4 slot) external view returns (bool) {
+    function isSlotExtension(bytes4 slot)
+        external
+        view
+        returns (bool)
+    {
         return entries[slot].isExtension;
     }
 
-    function slotContract(bytes4 slot) external view returns (address) {
+    function slotContract(bytes4 slot)
+        external
+        view
+        returns (address)
+    {
         return entries[slot].contractAddr;
     }
 
@@ -103,7 +113,9 @@ contract DaoCore is IDaoCore, CoreGuard {
         bool value
     ) internal {
         require(account != address(0), "Core: zero address used");
-        require(members[account][role] != value, "Core: role not changing");
+        require(
+            members[account][role] != value, "Core: role not changing"
+        );
 
         if (role == Slot.USER_EXISTS) {
             unchecked {
@@ -125,7 +137,10 @@ contract DaoCore is IDaoCore, CoreGuard {
 
         if (newContractAddr != address(0)) {
             // add entry
-            require(e.isExtension == isExtension, "Core: wrong entry setup");
+            require(
+                e.isExtension == isExtension,
+                "Core: wrong entry setup"
+            );
             e.slot = slot;
             e.contractAddr = newContractAddr;
             e.isExtension = isExtension;
@@ -135,11 +150,8 @@ contract DaoCore is IDaoCore, CoreGuard {
         }
 
         emit SlotEntryChanged(
-            slot,
-            isExtension,
-            e.contractAddr,
-            newContractAddr
-        );
+            slot, isExtension, e.contractAddr, newContractAddr
+            );
     }
 
     function _hasVotingConsensus(bytes32 proposalId)
@@ -148,7 +160,10 @@ contract DaoCore is IDaoCore, CoreGuard {
         returns (bool)
     {
         Proposal memory p = proposals[proposalId];
-        require(p.votingContract == msg.sender, "Core: only voting contract");
+        require(
+            p.votingContract == msg.sender,
+            "Core: only voting contract"
+        );
 
         // check vote result
     }

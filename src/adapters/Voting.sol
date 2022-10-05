@@ -15,9 +15,9 @@ contract Voting is SlotGuard {
         uint64 endTime
     );
 
-    enum VoteType {
-        UNANIMITY
-    }
+    // y/n
+    // consultation / execution
+    enum VoteType {UNANIMITY}
 
     struct Vote {
         uint64 startTime;
@@ -39,7 +39,9 @@ contract Voting is SlotGuard {
 
     constructor(address core) SlotGuard(core, Slot.VOTING) {}
 
-    function openVoteSession(bytes32 proposalId, bytes4 voteConfig) external {
+    function openVoteSession(bytes32 proposalId, bytes4 voteConfig)
+        external
+    {
         // ONLY ADAPTERS
 
         VoteParameter memory vp = voteConfigs[voteConfig];
@@ -58,10 +60,13 @@ contract Voting is SlotGuard {
             proposalId,
             startTime,
             startTime + vp.votingPeriod
-        );
+            );
     }
 
-    function submitVote(bytes32 proposalId, uint256 vote) external onlyMember {
+    function submitVote(bytes32 proposalId, uint256 vote)
+        external
+        onlyMember
+    {
         require(
             votes[proposalId][msg.sender] == 0,
             "Voting: vote already submitted"

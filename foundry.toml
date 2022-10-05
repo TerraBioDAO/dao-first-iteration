@@ -4,4 +4,7 @@ out = 'out'
 libs = ['lib']
 solc = "0.8.16"
 
+[fmt]
+line_length = 70
+
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config

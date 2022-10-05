@@ -14,7 +14,9 @@ contract Onboarding is SlotGuard {
             !IDaoCore(_core).hasRole(msg.sender, Slot.USER_EXISTS),
             "Onboarding: already a member"
         );
-        IDaoCore(_core).changeMemberStatus(msg.sender, Slot.USER_EXISTS, true);
+        IDaoCore(_core).changeMemberStatus(
+            msg.sender, Slot.USER_EXISTS, true
+        );
     }
 
     function quitDao() external {
@@ -22,14 +24,22 @@ contract Onboarding is SlotGuard {
             IDaoCore(_core).hasRole(msg.sender, Slot.USER_EXISTS),
             "Onboarding: not a member"
         );
-        IDaoCore(_core).changeMemberStatus(msg.sender, Slot.USER_EXISTS, false);
+        IDaoCore(_core).changeMemberStatus(
+            msg.sender, Slot.USER_EXISTS, false
+        );
     }
 
-    function setAdminMember(address account, bool isAdmin) external onlyAdmin {
+    function setAdminMember(address account, bool isAdmin)
+        external
+        onlyAdmin
+    {
         require(
-            IDaoCore(_core).hasRole(account, Slot.USER_ADMIN) != isAdmin,
+            IDaoCore(_core).hasRole(account, Slot.USER_ADMIN)
+                != isAdmin,
             "Onboarding: no role changed"
         );
-        IDaoCore(_core).changeMemberStatus(account, Slot.USER_ADMIN, isAdmin);
+        IDaoCore(_core).changeMemberStatus(
+            account, Slot.USER_ADMIN, isAdmin
+        );
     }
 }

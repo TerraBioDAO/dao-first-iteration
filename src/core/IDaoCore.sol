@@ -64,11 +64,19 @@ interface IDaoCore {
 
     function processProposal(bytes32 proposalId) external;
 
-    function hasRole(address account, bytes4 role) external returns (bool);
+    function hasRole(address account, bytes4 role)
+        external
+        returns (bool);
 
     function slotActive(bytes4 slot) external view returns (bool);
 
-    function isSlotExtension(bytes4 slot) external view returns (bool);
+    function isSlotExtension(bytes4 slot)
+        external
+        view
+        returns (bool);
 
-    function slotContract(bytes4 slot) external view returns (address);
+    function slotContract(bytes4 slot)
+        external
+        view
+        returns (address);
 }
