@@ -99,7 +99,7 @@ contract DaoCore is IDaoCore, CoreGuard {
         return entries[slot].isExtension;
     }
 
-    function slotContract(bytes4 slot)
+    function getSlotContractAddress(bytes4 slot)
         external
         view
         returns (address)

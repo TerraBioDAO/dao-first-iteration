@@ -11,7 +11,7 @@ library Slot {
     bytes4 internal constant ONBOARDING =
         bytes4(keccak256("onboarding"));
     bytes4 internal constant VOTING = bytes4(keccak256("voting"));
-    bytes4 internal constant FINANCE = bytes4(keccak256("finance"));
+    bytes4 internal constant FINANCING = bytes4(keccak256("financing"));
 
     // EXTENSIONS
     bytes4 internal constant BANK = bytes4(keccak256("bank"));
