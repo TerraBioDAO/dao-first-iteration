@@ -24,6 +24,14 @@ abstract contract SlotGuard is ISlotEntry {
         _;
     }
 
+    modifier onlyProposer() {
+        require(
+            IDaoCore(_core).hasRole(msg.sender, Slot.USER_PROPOSER),
+            "SlotGuard: not a proposer"
+        );
+        _;
+    }
+
     modifier onlyAdmin() {
         require(
             IDaoCore(_core).hasRole(msg.sender, Slot.USER_ADMIN),
