@@ -8,8 +8,7 @@ library Slot {
 
     // ADAPTERS
     bytes4 internal constant MANAGING = bytes4(keccak256("managing"));
-    bytes4 internal constant ONBOARDING =
-        bytes4(keccak256("onboarding"));
+    bytes4 internal constant ONBOARDING = bytes4(keccak256("onboarding"));
     bytes4 internal constant VOTING = bytes4(keccak256("voting"));
     bytes4 internal constant FINANCING = bytes4(keccak256("financing"));
 
@@ -18,12 +17,9 @@ library Slot {
     bytes4 internal constant AGORA = bytes4(keccak256("agora"));
 
     // ROLES
-    bytes4 internal constant USER_EXISTS =
-        bytes4(keccak256("user-exists"));
-    bytes4 internal constant USER_ADMIN =
-        bytes4(keccak256("user-admin"));
+    bytes4 internal constant USER_EXISTS = bytes4(keccak256("user-exists"));
+    bytes4 internal constant USER_ADMIN = bytes4(keccak256("user-admin"));
 
     // CREDIT
-    bytes4 internal constant CREDIT_VOTE =
-        bytes4(keccak256("credit-vote"));
+    bytes4 internal constant CREDIT_VOTE = bytes4(keccak256("credit-vote"));
 }

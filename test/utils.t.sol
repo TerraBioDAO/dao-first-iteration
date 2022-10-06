@@ -19,7 +19,11 @@ contract Utils_test is Test {
         emit log_uint(score.readYes());
     }
 
-    function _join(uint256 yes, uint256 no) internal pure returns (uint256) {
+    function _join(uint256 yes, uint256 no)
+        internal
+        pure
+        returns (uint256)
+    {
         return (yes << 128) | no;
     }
 
@@ -32,11 +36,11 @@ contract Utils_test is Test {
         no = uint128(score);
     }
 
-    function _incrementScore(
-        uint256 score,
-        uint128 yes,
-        uint128 no
-    ) internal pure returns (uint256) {
+    function _incrementScore(uint256 score, uint128 yes, uint128 no)
+        internal
+        pure
+        returns (uint256)
+    {
         require((yes == 0 || no == 0) && yes != no, "Score: impossible");
         (uint128 _yes, uint128 _no) = _split(score);
         unchecked {

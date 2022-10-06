@@ -18,8 +18,7 @@ contract Bank is CoreGuard, ReentrancyGuard {
     address public immutable terraBioToken;
 
     mapping(address => uint256) public balances;
-    mapping(address => mapping(bytes4 => uint256)) public
-        internalBalances;
+    mapping(address => mapping(bytes4 => uint256)) public internalBalances;
 
     constructor(address core, address terraBioTokenAddr)
         CoreGuard(core, Slot.BANK)
@@ -32,9 +31,7 @@ contract Bank is CoreGuard, ReentrancyGuard {
         onlyAdapter(Slot.ONBOARDING)
     {
         _deposit(account, amount);
-        _changeInternalBalance(
-            account, Slot.CREDIT_VOTE, true, amount
-        );
+        _changeInternalBalance(account, Slot.CREDIT_VOTE, true, amount);
     }
 
     function refundJoinDeposit(address account)
@@ -45,9 +42,7 @@ contract Bank is CoreGuard, ReentrancyGuard {
         uint256 balance = balances[account];
         delete balances[account];
         IERC20(terraBioToken).transfer(account, balance);
-        _changeInternalBalance(
-            account, Slot.CREDIT_VOTE, false, balance
-        );
+        _changeInternalBalance(account, Slot.CREDIT_VOTE, false, balance);
     }
 
     function getBalanceOf(address account, bytes4 unit)
@@ -65,19 +60,15 @@ contract Bank is CoreGuard, ReentrancyGuard {
     function subtractFromBalance(address account, bytes4 unit)
         external
         onlyAdapter(Slot.FINANCING)
-    {
-    }
+    {}
 
     function addToBalance(address account, bytes4 unit)
         external
         onlyAdapter(Slot.FINANCING)
-    {
-    }
+    {}
 
     function _deposit(address account, uint256 amount) internal {
-        IERC20(terraBioToken).transferFrom(
-            account, address(this), amount
-        );
+        IERC20(terraBioToken).transferFrom(account, address(this), amount);
         balances[account] += amount;
     }
 

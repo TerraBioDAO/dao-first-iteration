@@ -32,8 +32,7 @@ contract Managing is SlotGuard {
         // check the contract input
         ISlotEntry entry = ISlotEntry(contractAddr);
         require(
-            entry.slotId() == entrySlot
-                && entry.isExtension() == isExt,
+            entry.slotId() == entrySlot && entry.isExtension() == isExt,
             "Managing: wrong entry setup"
         );
 
@@ -68,8 +67,6 @@ contract Managing is SlotGuard {
         bool isExt,
         address contractAddr
     ) external onlyAdmin {
-        IDaoCore(_core).changeSlotEntry(
-            entrySlot, contractAddr, isExt
-        );
+        IDaoCore(_core).changeSlotEntry(entrySlot, contractAddr, isExt);
     }
 }

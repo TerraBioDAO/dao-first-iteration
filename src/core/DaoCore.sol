@@ -40,11 +40,10 @@ contract DaoCore is IDaoCore, CoreGuard {
         _changeSlotEntry(slot, contractAddr, isExtension);
     }
 
-    function changeMemberStatus(
-        address account,
-        bytes4 role,
-        bool value
-    ) external onlyAdapter(Slot.ONBOARDING) {
+    function changeMemberStatus(address account, bytes4 role, bool value)
+        external
+        onlyAdapter(Slot.ONBOARDING)
+    {
         _changeMemberStatus(account, role, value);
     }
 
@@ -67,9 +66,7 @@ contract DaoCore is IDaoCore, CoreGuard {
             votingContract,
             ProposalStatus.EXISTS
         );
-        emit ProposalSubmitted(
-            slot, initiater, votingContract, proposalId
-            );
+        emit ProposalSubmitted(slot, initiater, votingContract, proposalId);
     }
 
     function processProposal(bytes32 proposalId) external {
@@ -91,11 +88,7 @@ contract DaoCore is IDaoCore, CoreGuard {
         return entries[slot].slot != Slot.EMPTY;
     }
 
-    function isSlotExtension(bytes4 slot)
-        external
-        view
-        returns (bool)
-    {
+    function isSlotExtension(bytes4 slot) external view returns (bool) {
         return entries[slot].isExtension;
     }
 
@@ -107,15 +100,11 @@ contract DaoCore is IDaoCore, CoreGuard {
         return entries[slot].contractAddr;
     }
 
-    function _changeMemberStatus(
-        address account,
-        bytes4 role,
-        bool value
-    ) internal {
+    function _changeMemberStatus(address account, bytes4 role, bool value)
+        internal
+    {
         require(account != address(0), "Core: zero address used");
-        require(
-            members[account][role] != value, "Core: role not changing"
-        );
+        require(members[account][role] != value, "Core: role not changing");
 
         if (role == Slot.USER_EXISTS) {
             unchecked {
@@ -138,8 +127,7 @@ contract DaoCore is IDaoCore, CoreGuard {
         if (newContractAddr != address(0)) {
             // add entry
             require(
-                e.isExtension == isExtension,
-                "Core: wrong entry setup"
+                e.isExtension == isExtension, "Core: wrong entry setup"
             );
             e.slot = slot;
             e.contractAddr = newContractAddr;
@@ -161,8 +149,7 @@ contract DaoCore is IDaoCore, CoreGuard {
     {
         Proposal memory p = proposals[proposalId];
         require(
-            p.votingContract == msg.sender,
-            "Core: only voting contract"
+            p.votingContract == msg.sender, "Core: only voting contract"
         );
 
         // check vote result

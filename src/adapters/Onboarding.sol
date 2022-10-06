@@ -34,8 +34,7 @@ contract Onboarding is SlotGuard {
         onlyAdmin
     {
         require(
-            IDaoCore(_core).hasRole(account, Slot.USER_ADMIN)
-                != isAdmin,
+            IDaoCore(_core).hasRole(account, Slot.USER_ADMIN) != isAdmin,
             "Onboarding: no role changed"
         );
         IDaoCore(_core).changeMemberStatus(

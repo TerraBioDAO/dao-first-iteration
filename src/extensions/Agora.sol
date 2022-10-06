@@ -156,8 +156,7 @@ contract Agora is CoreGuard {
 
         require(votingPeriod > 0, "Agora: below min period");
         require(
-            threshold <= 10000,
-            "Agora: wrong threshold or below min value"
+            threshold <= 10000, "Agora: wrong threshold or below min value"
         );
 
         vote.consensus = consensus;
@@ -185,7 +184,9 @@ contract Agora is CoreGuard {
         uint256 value
     ) internal {
         Proposal memory p = proposals[proposalId];
-        require(p.status == ProposalStatus.ONGOING, "Agora: unknown proposal");
+        require(
+            p.status == ProposalStatus.ONGOING, "Agora: unknown proposal"
+        );
         require(
             p.startTime <= block.timestamp && p.endTime > block.timestamp,
             "Agora: outside voting period"

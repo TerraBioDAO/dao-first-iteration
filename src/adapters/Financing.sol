@@ -27,14 +27,13 @@ contract Financing is SlotGuard {
      * @dev Only members of the DAO can sponsor a financing proposal.
      * @param proposal The Proposal data
      */
-    function submitProposal(
-        Proposal memory proposal
-    ) external onlyMember {
+    function submitProposal(Proposal memory proposal)
+        external
+        onlyMember
+    {
         require(proposal.amount > 0, "invalid requested amount");
         IDaoCore dao = IDaoCore(_core);
-        Bank bank = Bank(
-            dao.getSlotContractAddress(Slot.BANK)
-        );
+        Bank bank = Bank(dao.getSlotContractAddress(Slot.BANK));
         require(bank.isTokenAllowed(proposal.token), "token not allowed");
         require(
             DaoHelper.isNotReservedAddress(proposal.applicant),
@@ -59,34 +58,21 @@ contract Financing is SlotGuard {
      * @param proposalId The proposal id.
      */
     // slither-disable-next-line reentrancy-benign
-    function processProposal(bytes32 proposalId)
-    external
-    onlyCore
-    {
+    function processProposal(bytes32 proposalId) external onlyCore {
         Proposal memory proposal = proposals[bytes28(proposalId << 32)];
 
         Voting voting = Voting(dao.getSlotContractAddress(Slot.VOTING));
         require(address(voting) != address(0), "adapter not found");
 
         require(
-            voting.voteResult(dao, proposalId) ==
-            Voting.VotingState.PASS,
+            voting.voteResult(dao, proposalId) == Voting.VotingState.PASS,
             "proposal needs to pass"
         );
         dao.processProposal(proposalId);
-        Bank bank = Bank(
-            dao.getSlotContractAddress(Slot.BANK)
-        );
+        Bank bank = Bank(dao.getSlotContractAddress(Slot.BANK));
 
-        bank.subtractFromBalance(
-            details.token,
-            details.amount
-        );
-        bank.addToBalance(
-            details.applicant,
-            details.token,
-            details.amount
-        );
+        bank.subtractFromBalance(details.token, details.amount);
+        bank.addToBalance(details.applicant, details.token, details.amount);
 
         delete proposals[bytes28(proposalId << 32)];
     }

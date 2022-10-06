@@ -50,11 +50,8 @@ interface IDaoCore {
         bool isExtension
     ) external;
 
-    function changeMemberStatus(
-        address account,
-        bytes4 role,
-        bool value
-    ) external;
+    function changeMemberStatus(address account, bytes4 role, bool value)
+        external;
 
     function submitProposal(
         bytes32 proposalId,
@@ -70,13 +67,7 @@ interface IDaoCore {
 
     function slotActive(bytes4 slot) external view returns (bool);
 
-    function isSlotExtension(bytes4 slot)
-        external
-        view
-        returns (bool);
+    function isSlotExtension(bytes4 slot) external view returns (bool);
 
-    function slotContract(bytes4 slot)
-        external
-        view
-        returns (address);
+    function slotContract(bytes4 slot) external view returns (address);
 }
