@@ -62,6 +62,18 @@ contract Bank is CoreGuard, ReentrancyGuard {
         }
     }
 
+    function subtractFromBalance(address account, bytes4 unit)
+        external
+        onlyAdapter(Slot.FINANCING)
+    {
+    }
+
+    function addToBalance(address account, bytes4 unit)
+        external
+        onlyAdapter(Slot.FINANCING)
+    {
+    }
+
     function _deposit(address account, uint256 amount) internal {
         IERC20(terraBioToken).transferFrom(
             account, address(this), amount
