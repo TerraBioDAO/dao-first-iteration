@@ -15,6 +15,7 @@ library Slot {
 
     // EXTENSIONS
     bytes4 internal constant BANK = bytes4(keccak256("bank"));
+    bytes4 internal constant AGORA = bytes4(keccak256("agora"));
 
     // ROLES
     bytes4 internal constant USER_EXISTS =
