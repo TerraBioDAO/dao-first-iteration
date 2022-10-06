@@ -3,8 +3,11 @@
 pragma solidity ^0.8.16;
 
 import "../guards/CoreGuard.sol";
+import "../helpers/ScoreUtils.sol";
 
 contract Agora is CoreGuard {
+    using ScoreUtils for uint256;
+
     event VoteParamsChanged(bytes4 indexed voteId, bool indexed added); // add consensus?
 
     event ProposalSubmitted(
@@ -14,12 +17,21 @@ contract Agora is CoreGuard {
         bytes32 proposalId
     );
 
+    event MemberVoted(
+        bytes32 indexed proposalId,
+        address indexed voter,
+        uint256 indexed value,
+        uint256 voteWeight
+    );
+
     enum ProposalStatus {
         UNKNOWN,
         ONGOING,
+        CLOSED,
         SUSPENDED,
         ACCEPTED,
-        REJECTED
+        REJECTED,
+        EXECUTED
     }
     enum Consensus {
         NO_VOTE,
@@ -46,6 +58,7 @@ contract Agora is CoreGuard {
     struct Proposal {
         bytes4 slot;
         bytes28 proposalId; // not useful
+        bool executable;
         uint64 startTime;
         uint64 endTime;
         uint256 score;
@@ -63,6 +76,7 @@ contract Agora is CoreGuard {
     function submitProposal(
         bytes4 slot,
         bytes28 proposalId,
+        bool executable,
         bytes4 voteId,
         uint64 startTime,
         address initiater
@@ -76,6 +90,7 @@ contract Agora is CoreGuard {
         proposals[bytes32(bytes.concat(slot, proposalId))] = Proposal(
             slot,
             proposalId,
+            executable,
             startTime,
             startTime + vote.votingPeriod,
             0,
@@ -137,6 +152,14 @@ contract Agora is CoreGuard {
         return voteParams[voteId];
     }
 
+    /**
+     * @notice Only give the result of the vote, depends on the period, ...
+     */
+    // function getVoteResult(bytes32 proposalId)
+    //     external
+    //     view
+    //     returns (ProposalStatus);
+
     // INTERNAL FUNCTION
 
     function _addVoteParam(
@@ -156,7 +179,8 @@ contract Agora is CoreGuard {
 
         require(votingPeriod > 0, "Agora: below min period");
         require(
-            threshold <= 10000, "Agora: wrong threshold or below min value"
+            threshold <= 10000,
+            "Agora: wrong threshold or below min value"
         );
 
         vote.consensus = consensus;
@@ -184,9 +208,7 @@ contract Agora is CoreGuard {
         uint256 value
     ) internal {
         Proposal memory p = proposals[proposalId];
-        require(
-            p.status == ProposalStatus.ONGOING, "Agora: unknown proposal"
-        );
+        require(p.status == ProposalStatus.ONGOING, "Agora: unknown proposal");
         require(
             p.startTime <= block.timestamp && p.endTime > block.timestamp,
             "Agora: outside voting period"
@@ -195,22 +217,30 @@ contract Agora is CoreGuard {
         require(!votes[proposalId][voter], "Agora: proposal voted");
         votes[proposalId][voter] = true;
 
-        uint256 score = p.score;
-        if (p.params.voteType == VoteType.YES_NO) {
-            require(value <= 1, "Agora: vote value not match");
-            uint128 tempScore = uint128(score >> 128);
-            // score = value == 0 ?
+        if (p.params.consensus == Consensus.MEMBER) {
+            voteWeight = 1;
         }
-        // is y/n? is preference? is percentage
-        // is by token? is by membership?
-    }
+        uint256 score = p.score;
 
-    function _yesNoUtils(uint256 score)
-        internal
-        pure
-        returns (uint128 yes, uint128 no)
-    {
-        yes = uint128(score << 128);
-        no = uint128(score);
+        if (p.params.voteType == VoteType.YES_NO) {
+            // YES / NO vote type
+            require(value <= 1, "Agora: neither (y) nor (n)");
+
+            score = value == 1
+                ? score.yesNoIncrement(voteWeight, 0)
+                : score.yesNoIncrement(0, voteWeight);
+        } else if (p.params.voteType == VoteType.PREFERENCE) {
+            revert("NOT IMPLEMENTED YET");
+        } else {
+            revert("NOT IMPLEMENTED YET");
+        }
+
+        // update score
+        p.score = score;
+
+        // Should implement total vote count?
+
+        proposals[proposalId] = p;
+        emit MemberVoted(proposalId, voter, value, voteWeight);
     }
 }
