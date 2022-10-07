@@ -17,8 +17,16 @@ import "../guards/CoreGuard.sol";
 contract Bank is CoreGuard, ReentrancyGuard {
     address public immutable terraBioToken;
 
-    mapping(address => uint256) public balances;
-    mapping(address => mapping(bytes4 => uint256)) public internalBalances;
+    struct Commitment {
+        uint256 amount;
+        uint256 lockPeriod;
+        uint256 voteWeight;
+    }
+
+    mapping(address => uint256) public balances; // Useless ?
+    mapping(address => mapping(bytes4 => uint256)) public internalBalances; // Useless ?
+    // proposalId => member => Commitment
+    mapping(bytes32 => mapping(address => Commitment)) public commitments;
 
     constructor(address core, address terraBioTokenAddr)
         CoreGuard(core, Slot.BANK)
@@ -52,20 +60,31 @@ contract Bank is CoreGuard, ReentrancyGuard {
     {
         if (unit == Slot.EMPTY) {
             return balances[account];
-        } else {
-            return internalBalances[account][unit];
         }
+
+        return internalBalances[account][unit];
     }
 
-    function subtractFromBalance(address account, bytes4 unit)
-        external
-        onlyAdapter(Slot.FINANCING)
-    {}
+    function executeFinancingProposal(address applicant, uint256 amount)
+    external
+    onlyAdapter(Slot.FINANCING)
+    {
+        require(IERC20(terraBioToken).balanceOf(address(this)) > amount, "Bank: insufficient funds in bank");
 
-    function addToBalance(address account, bytes4 unit)
-        external
-        onlyAdapter(Slot.FINANCING)
-    {}
+        // todo : Flag: Authorize proposal participants to recover their funds
+
+        IERC20(terraBioToken).transferFrom(address(this), applicant, amount);
+    }
+
+    function recoverProposalFunds(bytes32 proposalId)
+    external
+    onlyMember
+    {
+        uint256 balance = commitments[proposalId][msg.sender].amount;
+        require(balance > 0, "Bank: no funds for this proposal");
+
+        IERC20(terraBioToken).transferFrom(address(this), msg.sender, balance);
+    }
 
     function _deposit(address account, uint256 amount) internal {
         IERC20(terraBioToken).transferFrom(account, address(this), amount);
