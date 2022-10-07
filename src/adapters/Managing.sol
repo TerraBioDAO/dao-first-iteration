@@ -43,11 +43,11 @@ contract Managing is SlotGuard {
         bytes28 proposalId = bytes28(keccak256(abi.encode(proposal)));
 
         // store in the core
-        IDaoCore(_core).submitProposal(
-            bytes32(bytes.concat(slotId, proposalId)),
-            msg.sender,
-            votingContract
-        );
+        // IDaoCore(_core).submitProposal(
+        //     bytes32(bytes.concat(slotId, proposalId)),
+        //     msg.sender,
+        //     votingContract
+        // );
     }
 
     function processProposal(bytes32 proposalId) external onlyCore {
