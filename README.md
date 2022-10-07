@@ -1,6 +1,9 @@
 # DAO progress
 
 # Core
+- [ ] Change slot entry
+  - [ ] difference between extension & adapters
+  - [ ] change managing slot with more control?
 
 # Extensions
 ## Agora

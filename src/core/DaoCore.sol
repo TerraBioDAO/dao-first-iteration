@@ -20,28 +20,54 @@ contract DaoCore is IDaoCore, CoreGuard {
     /// @notice keeps track of Extensions and Adapters
     mapping(bytes4 => Entry) public entries;
 
-    constructor(address admin, address managingContractAddr)
+    constructor(address admin, address managing)
         CoreGuard(address(this), Slot.CORE)
     {
         _changeMemberStatus(admin, Slot.USER_EXISTS, true);
         _changeMemberStatus(admin, Slot.USER_ADMIN, true);
-        address managingAddr = managingContractAddr == address(0)
-            ? admin
-            : managingContractAddr;
-        _changeSlotEntry(Slot.MANAGING, managingAddr, false);
+        _addSlotEntry(Slot.MANAGING, managing, false);
     }
 
-    function changeSlotEntry(bytes4 slot, address contractAddr, bool isExt)
+    function changeSlotEntry(bytes4 slot, address contractAddr)
         external
         onlyAdapter(Slot.MANAGING)
     {
-        _changeSlotEntry(slot, contractAddr, isExt);
+        require(slot != Slot.EMPTY, "Core: empty slot");
+        Entry memory e = entries[slot];
+
+        if (contractAddr == address(0)) {
+            _removeSlotEntry(slot);
+        } else {
+            require(
+                ISlotEntry(contractAddr).slotId() == slot,
+                "Core: slot & address not match"
+            );
+
+            if (e.slot == Slot.EMPTY) {
+                e.isExtension = ISlotEntry(contractAddr).isExtension();
+                _addSlotEntry(slot, contractAddr, e.isExtension);
+            } else {
+                // replace => ext is ext!
+                bool isExt = ISlotEntry(contractAddr).isExtension();
+                require(e.isExtension == isExt, "Core: wrong entry setup");
+                e.isExtension = isExt; // for event
+                _addSlotEntry(slot, contractAddr, isExt);
+            }
+        }
+
+        emit SlotEntryChanged(
+            slot,
+            e.isExtension,
+            e.contractAddr,
+            contractAddr
+        );
     }
 
-    function changeMemberStatus(address account, bytes4 role, bool value)
-        external
-        onlyAdapter(Slot.ONBOARDING)
-    {
+    function changeMemberStatus(
+        address account,
+        bytes4 role,
+        bool value
+    ) external onlyAdapter(Slot.ONBOARDING) {
         _changeMemberStatus(account, role, value);
     }
 
@@ -62,18 +88,16 @@ contract DaoCore is IDaoCore, CoreGuard {
         return entries[slot].isExtension;
     }
 
-    function getSlotContractAddr(bytes4 slot)
-        external
-        view
-        returns (address)
-    {
+    function getSlotContractAddr(bytes4 slot) external view returns (address) {
         return entries[slot].contractAddr;
     }
 
     // INTERNAL FUNCTIONS
-    function _changeMemberStatus(address account, bytes4 role, bool value)
-        internal
-    {
+    function _changeMemberStatus(
+        address account,
+        bytes4 role,
+        bool value
+    ) internal {
         require(account != address(0), "Core: zero address used");
         require(members[account][role] != value, "Core: role not changing");
 
@@ -87,27 +111,15 @@ contract DaoCore is IDaoCore, CoreGuard {
         emit MemberStatusChanged(account, role, value);
     }
 
-    function _changeSlotEntry(
+    function _addSlotEntry(
         bytes4 slot,
         address newContractAddr,
         bool isExt
     ) internal {
-        require(slot != Slot.EMPTY, "Core: empty slot");
-        Entry memory e = entries[slot];
+        entries[slot] = Entry(slot, isExt, newContractAddr);
+    }
 
-        if (newContractAddr != address(0)) {
-            // add entry
-            require(e.isExtension == isExt, "Core: wrong entry setup");
-            e.slot = slot;
-            e.contractAddr = newContractAddr;
-            e.isExtension = isExt;
-        } else {
-            // remove entry
-            delete entries[slot];
-        }
-
-        emit SlotEntryChanged(
-            slot, isExtension, e.contractAddr, newContractAddr
-            );
+    function _removeSlotEntry(bytes4 slot) internal {
+        delete entries[slot];
     }
 }
