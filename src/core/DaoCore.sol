@@ -13,13 +13,12 @@ import "../guards/CoreGuard.sol";
 contract DaoCore is IDaoCore, CoreGuard {
     /// @notice The map to track all members of the DAO with their roles or credits
     mapping(address => mapping(bytes4 => bool)) public members;
-    uint256 public membersCount;
+
+    /// @notice counter for existing members
+    uint256 public override membersCount;
 
     /// @notice keeps track of Extensions and Adapters
     mapping(bytes4 => Entry) public entries;
-
-    /// @notice The map that keeps track of all proposasls submitted to the DAO
-    mapping(bytes32 => Proposal) public proposals;
 
     constructor(address admin, address managingContractAddr)
         CoreGuard(address(this), Slot.CORE)
@@ -32,12 +31,11 @@ contract DaoCore is IDaoCore, CoreGuard {
         _changeSlotEntry(Slot.MANAGING, managingAddr, false);
     }
 
-    function changeSlotEntry(
-        bytes4 slot,
-        address contractAddr,
-        bool isExtension
-    ) external onlyAdapter(Slot.MANAGING) {
-        _changeSlotEntry(slot, contractAddr, isExtension);
+    function changeSlotEntry(bytes4 slot, address contractAddr, bool isExt)
+        external
+        onlyAdapter(Slot.MANAGING)
+    {
+        _changeSlotEntry(slot, contractAddr, isExt);
     }
 
     function changeMemberStatus(address account, bytes4 role, bool value)
@@ -47,35 +45,7 @@ contract DaoCore is IDaoCore, CoreGuard {
         _changeMemberStatus(account, role, value);
     }
 
-    function submitProposal(
-        bytes32 proposalId,
-        address initiater,
-        address votingContract
-    ) external onlyAdapter(bytes4(proposalId)) {
-        require(
-            initiater != address(0) && votingContract != address(0),
-            "Core: zero address used"
-        );
-
-        bytes4 slot = bytes4(proposalId);
-
-        proposals[proposalId] = Proposal(
-            slot,
-            bytes28(proposalId << 32),
-            initiater,
-            votingContract,
-            ProposalStatus.EXISTS
-        );
-        emit ProposalSubmitted(slot, initiater, votingContract, proposalId);
-    }
-
-    function processProposal(bytes32 proposalId) external {
-        bool isVoteEnded = _hasVotingConsensus(proposalId);
-
-        address adapterAddr = entries[bytes4(proposalId)].contractAddr;
-        // IAdapters(adapterAddr).processProposal(proposalId); no processing so far
-    }
-
+    // GETTERS
     function hasRole(address account, bytes4 role)
         external
         view
@@ -84,7 +54,7 @@ contract DaoCore is IDaoCore, CoreGuard {
         return members[account][role];
     }
 
-    function slotActive(bytes4 slot) external view returns (bool) {
+    function isSlotActive(bytes4 slot) external view returns (bool) {
         return entries[slot].slot != Slot.EMPTY;
     }
 
@@ -92,7 +62,7 @@ contract DaoCore is IDaoCore, CoreGuard {
         return entries[slot].isExtension;
     }
 
-    function getSlotContractAddress(bytes4 slot)
+    function getSlotContractAddr(bytes4 slot)
         external
         view
         returns (address)
@@ -100,6 +70,7 @@ contract DaoCore is IDaoCore, CoreGuard {
         return entries[slot].contractAddr;
     }
 
+    // INTERNAL FUNCTIONS
     function _changeMemberStatus(address account, bytes4 role, bool value)
         internal
     {
@@ -119,19 +90,17 @@ contract DaoCore is IDaoCore, CoreGuard {
     function _changeSlotEntry(
         bytes4 slot,
         address newContractAddr,
-        bool isExtension
+        bool isExt
     ) internal {
         require(slot != Slot.EMPTY, "Core: empty slot");
         Entry memory e = entries[slot];
 
         if (newContractAddr != address(0)) {
             // add entry
-            require(
-                e.isExtension == isExtension, "Core: wrong entry setup"
-            );
+            require(e.isExtension == isExt, "Core: wrong entry setup");
             e.slot = slot;
             e.contractAddr = newContractAddr;
-            e.isExtension = isExtension;
+            e.isExtension = isExt;
         } else {
             // remove entry
             delete entries[slot];
@@ -140,18 +109,5 @@ contract DaoCore is IDaoCore, CoreGuard {
         emit SlotEntryChanged(
             slot, isExtension, e.contractAddr, newContractAddr
             );
-    }
-
-    function _hasVotingConsensus(bytes32 proposalId)
-        internal
-        view
-        returns (bool)
-    {
-        Proposal memory p = proposals[proposalId];
-        require(
-            p.votingContract == msg.sender, "Core: only voting contract"
-        );
-
-        // check vote result
     }
 }

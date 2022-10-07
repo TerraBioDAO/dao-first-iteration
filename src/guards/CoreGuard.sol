@@ -13,7 +13,7 @@ abstract contract CoreGuard is ISlotEntry {
 
     modifier onlyAdapter(bytes4 slot_) {
         require(
-            IDaoCore(_core).slotContract(slot_) == msg.sender,
+            IDaoCore(_core).getSlotContractAddr(slot_) == msg.sender,
             "CoreGuard: not the right adapter"
         );
         _;

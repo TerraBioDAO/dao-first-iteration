@@ -29,21 +29,17 @@ contract Voting is SlotGuard {
         IBank bank = _getBankContract();
 
         // get vote Weight
-        uint256 voteWeight = bank.newCommitment(
-            proposalId,
-            msg.sender,
-            deposit,
-            lockPeriod
-        );
+        uint256 voteWeight =
+            bank.newCommitment(proposalId, msg.sender, deposit, lockPeriod);
 
         agora.submitVote(proposalId, msg.sender, voteWeight, value);
     }
 
     function _getBankContract() internal view returns (IBank) {
-        return IBank(IDaoCore(_core).slotContract(Slot.BANK));
+        return IBank(IDaoCore(_core).getSlotContractAddr(Slot.BANK));
     }
 
     function _getAgoraContract() internal view returns (IAgora) {
-        return IAgora(IDaoCore(_core).slotContract(Slot.AGORA));
+        return IAgora(IDaoCore(_core).getSlotContractAddr(Slot.AGORA));
     }
 }

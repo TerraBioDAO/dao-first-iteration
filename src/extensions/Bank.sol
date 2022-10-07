@@ -66,24 +66,29 @@ contract Bank is CoreGuard, ReentrancyGuard {
     }
 
     function executeFinancingProposal(address applicant, uint256 amount)
-    external
-    onlyAdapter(Slot.FINANCING)
+        external
+        onlyAdapter(Slot.FINANCING)
     {
-        require(IERC20(terraBioToken).balanceOf(address(this)) > amount, "Bank: insufficient funds in bank");
+        require(
+            IERC20(terraBioToken).balanceOf(address(this)) > amount,
+            "Bank: insufficient funds in bank"
+        );
 
         // todo : Flag: Authorize proposal participants to recover their funds
 
-        IERC20(terraBioToken).transferFrom(address(this), applicant, amount);
+        IERC20(terraBioToken).transferFrom(
+            address(this), applicant, amount
+        );
     }
 
-    function recoverProposalFunds(bytes32 proposalId)
-    external
-    onlyMember
-    {
+    function recoverProposalFunds(bytes32 proposalId) external {
+        // ONLY MEMBER (through Adapters)!
         uint256 balance = commitments[proposalId][msg.sender].amount;
         require(balance > 0, "Bank: no funds for this proposal");
 
-        IERC20(terraBioToken).transferFrom(address(this), msg.sender, balance);
+        IERC20(terraBioToken).transferFrom(
+            address(this), msg.sender, balance
+        );
     }
 
     function _deposit(address account, uint256 amount) internal {
