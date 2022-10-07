@@ -152,14 +152,6 @@ contract Agora is CoreGuard {
         return voteParams[voteId];
     }
 
-    /**
-     * @notice Only give the result of the vote, depends on the period, ...
-     */
-    // function getVoteResult(bytes32 proposalId)
-    //     external
-    //     view
-    //     returns (ProposalStatus);
-
     // INTERNAL FUNCTION
 
     function _addVoteParam(

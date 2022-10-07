@@ -3,7 +3,10 @@
 pragma solidity ^0.8.16;
 
 interface IBank {
-    function joiningDeposit(address account, uint256 amount) external;
-
-    function refundJoinDeposit(address account) external;
+    function newCommitment(
+        bytes32 proposalId,
+        address voter,
+        uint256 deposit,
+        uint256 lockPeriod
+    ) external returns (uint256 voteWeight);
 }
