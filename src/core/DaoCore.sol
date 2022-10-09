@@ -21,35 +21,35 @@ contract DaoCore is IDaoCore, CoreGuard {
     mapping(bytes4 => Entry) public entries;
 
     constructor(address admin, address managingContractAddr)
-        CoreGuard(address(this), Slot.CORE)
+    CoreGuard(address(this), Slot.CORE)
     {
         _changeMemberStatus(admin, Slot.USER_EXISTS, true);
         _changeMemberStatus(admin, Slot.USER_ADMIN, true);
         address managingAddr = managingContractAddr == address(0)
-            ? admin
-            : managingContractAddr;
+        ? admin
+        : managingContractAddr;
         _changeSlotEntry(Slot.MANAGING, managingAddr, false);
     }
 
     function changeSlotEntry(bytes4 slot, address contractAddr, bool isExt)
-        external
-        onlyAdapter(Slot.MANAGING)
+    external
+    onlyAdapter(Slot.MANAGING)
     {
         _changeSlotEntry(slot, contractAddr, isExt);
     }
 
     function changeMemberStatus(address account, bytes4 role, bool value)
-        external
-        onlyAdapter(Slot.ONBOARDING)
+    external
+    onlyAdapter(Slot.ONBOARDING)
     {
         _changeMemberStatus(account, role, value);
     }
 
     // GETTERS
     function hasRole(address account, bytes4 role)
-        external
-        view
-        returns (bool)
+    external
+    view
+    returns (bool)
     {
         return members[account][role];
     }
@@ -63,24 +63,24 @@ contract DaoCore is IDaoCore, CoreGuard {
     }
 
     function getSlotContractAddr(bytes4 slot)
-        external
-        view
-        returns (address)
+    external
+    view
+    returns (address)
     {
         return entries[slot].contractAddr;
     }
 
     // INTERNAL FUNCTIONS
     function _changeMemberStatus(address account, bytes4 role, bool value)
-        internal
+    internal
     {
         require(account != address(0), "Core: zero address used");
         require(members[account][role] != value, "Core: role not changing");
 
         if (role == Slot.USER_EXISTS) {
-            unchecked {
-                value ? ++membersCount : --membersCount;
-            }
+        unchecked {
+            value ? ++membersCount : --membersCount;
+        }
         }
 
         members[account][role] = value;
@@ -93,11 +93,12 @@ contract DaoCore is IDaoCore, CoreGuard {
         bool isExt
     ) internal {
         require(slot != Slot.EMPTY, "Core: empty slot");
-        Entry memory e = entries[slot];
+        Entry storage e = entries[slot];
 
         if (newContractAddr != address(0)) {
             // add entry
-            require(e.isExtension == isExt, "Core: wrong entry setup");
+            //TODO faire un cast avec l'interface ISlotEntry ?? quel changement fait on, adress et ou type ?
+            require(e.contractAddr == address(0) || e.isExtension == isExt, "Core: wrong entry setup");
             e.slot = slot;
             e.contractAddr = newContractAddr;
             e.isExtension = isExt;
@@ -107,7 +108,7 @@ contract DaoCore is IDaoCore, CoreGuard {
         }
 
         emit SlotEntryChanged(
-            slot, isExtension, e.contractAddr, newContractAddr
-            );
+            slot, isExt, e.contractAddr, newContractAddr
+        );
     }
 }
