@@ -64,7 +64,7 @@ interface IAgora {
     ) external;
 
     function getProposal(bytes32 proposalId)
-    external
-    view
-    returns (Proposal memory);
+        external
+        view
+        returns (Proposal memory);
 }

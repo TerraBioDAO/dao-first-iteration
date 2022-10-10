@@ -57,18 +57,14 @@ contract DaoCore is IDaoCore, CoreGuard {
         }
 
         emit SlotEntryChanged(
-            slot,
-            e.isExtension,
-            e.contractAddr,
-            contractAddr
-        );
+            slot, e.isExtension, e.contractAddr, contractAddr
+            );
     }
 
-    function changeMemberStatus(
-        address account,
-        bytes4 role,
-        bool value
-    ) external onlyAdapter(Slot.ONBOARDING) {
+    function changeMemberStatus(address account, bytes4 role, bool value)
+        external
+        onlyAdapter(Slot.ONBOARDING)
+    {
         _changeMemberStatus(account, role, value);
     }
 
@@ -97,16 +93,18 @@ contract DaoCore is IDaoCore, CoreGuard {
         return entries[slot].isExtension;
     }
 
-    function getSlotContractAddr(bytes4 slot) external view returns (address) {
+    function getSlotContractAddr(bytes4 slot)
+        external
+        view
+        returns (address)
+    {
         return entries[slot].contractAddr;
     }
 
     // INTERNAL FUNCTIONS
-    function _changeMemberStatus(
-        address account,
-        bytes4 role,
-        bool value
-    ) internal {
+    function _changeMemberStatus(address account, bytes4 role, bool value)
+        internal
+    {
         require(account != address(0), "Core: zero address used");
         require(members[account][role] != value, "Core: role not changing");
 

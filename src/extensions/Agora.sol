@@ -95,17 +95,17 @@ contract Agora is IAgora, CoreGuard {
 
     // GETTERS
     function getProposal(bytes32 proposalId)
-    external
-    view
-    returns (Proposal memory)
+        external
+        view
+        returns (Proposal memory)
     {
         return proposals[proposalId];
     }
 
     function getVoteParams(bytes4 voteId)
-    external
-    view
-    returns (VoteParam memory)
+        external
+        view
+        returns (VoteParam memory)
     {
         return voteParams[voteId];
     }
@@ -178,8 +178,8 @@ contract Agora is IAgora, CoreGuard {
             require(value <= 1, "Agora: neither (y) nor (n)");
 
             score = value == 1
-            ? score.yesNoIncrement(voteWeight, 0)
-            : score.yesNoIncrement(0, voteWeight);
+                ? score.yesNoIncrement(voteWeight, 0)
+                : score.yesNoIncrement(0, voteWeight);
         } else if (p.params.voteType == VoteType.PREFERENCE) {
             revert("NOT IMPLEMENTED YET");
         } else {
