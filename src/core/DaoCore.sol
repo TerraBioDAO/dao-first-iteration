@@ -17,6 +17,9 @@ contract DaoCore is IDaoCore, CoreGuard {
     /// @notice counter for existing members
     uint256 public override membersCount;
 
+    /// @notice list of existing roles in the DAO
+    bytes4[] public roles;
+
     /// @notice keeps track of Extensions and Adapters
     mapping(bytes4 => Entry) public entries;
 
@@ -68,6 +71,9 @@ contract DaoCore is IDaoCore, CoreGuard {
         bytes4 role,
         bool value
     ) external onlyAdapter(Slot.ONBOARDING) {
+        require(account != address(0), "Core: zero address used");
+
+        //
         _changeMemberStatus(account, role, value);
     }
 
@@ -93,6 +99,33 @@ contract DaoCore is IDaoCore, CoreGuard {
     }
 
     // INTERNAL FUNCTIONS
+    function _newMember(address account, bool isAdmin) internal {
+        require(!members[account][Slot.USER_EXISTS], "Core: already a member");
+        unchecked {
+            ++membersCount;
+        }
+        members[account][Slot.USER_EXISTS] = true;
+
+        if (isAdmin) {
+            members[account][Slot.USER_ADMIN] = true;
+        }
+    }
+
+    function _revokeMember(address account) internal {
+        bytes4[] memory rolesList = roles;
+
+        for (uint256 i; i < rolesList.length; ) {
+            delete members[account][rolesList[i]];
+            unchecked {
+                ++i;
+            }
+        }
+
+        unchecked {
+            --membersCount;
+        }
+    }
+
     function _changeMemberStatus(
         address account,
         bytes4 role,
@@ -100,12 +133,6 @@ contract DaoCore is IDaoCore, CoreGuard {
     ) internal {
         require(account != address(0), "Core: zero address used");
         require(members[account][role] != value, "Core: role not changing");
-
-        if (role == Slot.USER_EXISTS) {
-            unchecked {
-                value ? ++membersCount : --membersCount;
-            }
-        }
 
         members[account][role] = value;
         emit MemberStatusChanged(account, role, value);

@@ -37,6 +37,7 @@ contract DaoCore_test is Test {
         dao = new DaoCore(ADMIN, MANAGING);
     }
 
+    // changeSlotEntry()
     function testAddSlotEntry(bytes4 slot, address addr) public {
         vm.assume(slot != Slot.EMPTY && addr != address(0));
         addr = _newEntry(slot, false);
@@ -87,7 +88,42 @@ contract DaoCore_test is Test {
         assertFalse(dao.isSlotExtension(slot));
     }
 
-    function testCannotReplaceSlotEntry() public {
-        // check when isExt != isExtension
+    function testCannotReplaceSlotEntry(bytes4 slot, address addr) public {
+        vm.assume(
+            slot != Slot.EMPTY && slot != Slot.MANAGING && addr != address(0)
+        );
+        address fixedAddr = _newEntry(slot, false);
+        addr = _newEntry(slot, true);
+
+        vm.startPrank(MANAGING);
+        dao.changeSlotEntry(slot, fixedAddr);
+
+        vm.expectRevert("Core: wrong entry setup");
+        dao.changeSlotEntry(slot, addr);
     }
+
+    event SlotEntryChanged(
+        bytes4 indexed slot,
+        bool indexed isExtension,
+        address oldContractAddr,
+        address newContractAddr
+    );
+
+    function testEmitOnChangeSlotEntry(bytes4 slot, address addr) public {
+        vm.assume(
+            slot != Slot.EMPTY && slot != Slot.MANAGING && addr != address(0)
+        );
+        addr = _newEntry(slot, false);
+
+        vm.prank(MANAGING);
+        vm.expectEmit(true, true, false, true, address(dao));
+        emit SlotEntryChanged(slot, false, address(0), addr);
+        dao.changeSlotEntry(slot, addr);
+    }
+
+    // changeMemberStatus()
+    mapping(bytes4 => bool) public roles;
+    event logA(string a);
+
+    function testChangeMemberStatus() public {}
 }
