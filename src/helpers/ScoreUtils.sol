@@ -3,7 +3,7 @@
 pragma solidity ^0.8.16;
 
 library ScoreUtils {
-    function yesNoIncrement(uint256 score, uint256 yes, uint256 no)
+    function yesNoIncrement(uint256 score, uint128 yes, uint128 no)
         internal
         pure
         returns (uint256)
@@ -12,7 +12,7 @@ library ScoreUtils {
             (yes == 0 || no == 0) && yes != no, "Cannot increment both Y&N"
         );
 
-        (uint256 _yes, uint256 _no) = readYesNoScore(score);
+        (uint128 _yes, uint128 _no) = readYesNoScore(score);
 
         unchecked {
             _yes += yes;
@@ -32,7 +32,7 @@ library ScoreUtils {
     function readYesNoScore(uint256 score)
         internal
         pure
-        returns (uint256 yes, uint256 no)
+        returns (uint128 yes, uint128 no)
     {
         yes = uint128(score >> 128);
         no = uint128(score);

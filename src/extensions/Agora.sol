@@ -61,7 +61,7 @@ contract Agora is CoreGuard {
         bool executable;
         uint64 startTime;
         uint64 endTime;
-        uint256 score;
+        uint256 score; //score contenant le nombre Y et N pour un type VOTE YES NO à faire evoluer ?
         ProposalStatus status;
         VoteParam params;
         address initiater;
@@ -129,7 +129,7 @@ contract Agora is CoreGuard {
     function submitVote(
         bytes32 proposalId,
         address voter,
-        uint256 voteWeight,
+        uint128 voteWeight,
         uint256 value
     ) external onlyAdapter(Slot.VOTING) {
         _submitVote(proposalId, voter, voteWeight, value);
@@ -195,7 +195,7 @@ contract Agora is CoreGuard {
     function _submitVote(
         bytes32 proposalId,
         address voter,
-        uint256 voteWeight,
+        uint128 voteWeight,
         uint256 value
     ) internal {
         Proposal memory p = proposals[proposalId];
