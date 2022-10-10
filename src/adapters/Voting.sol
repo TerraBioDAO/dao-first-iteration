@@ -32,7 +32,9 @@ contract Voting is SlotGuard {
         uint256 voteWeight =
             bank.newCommitment(proposalId, msg.sender, deposit, lockPeriod);
 
-        agora.submitVote(proposalId, msg.sender, voteWeight, value);
+        agora.submitVote(
+            proposalId, msg.sender, uint128(voteWeight), value
+        );
     }
 
     function processProposal(bytes4 slot, bytes28 proposalId)

@@ -47,13 +47,6 @@ interface IAgora {
         address initiater;
     }
 
-    function submitVote(
-        bytes32 proposalId,
-        address voter,
-        uint256 voteWeight,
-        uint256 value
-    ) external;
-
     function submitProposal(
         bytes4 slot,
         bytes28 proposalId,
@@ -63,8 +56,31 @@ interface IAgora {
         address initiater
     ) external;
 
+    function changeVoteParams(
+        bytes4 voteId,
+        Consensus consensus,
+        VoteType voteType,
+        uint64 votingPeriod,
+        uint64 gracePeriod,
+        uint64 threshold,
+        bool adminValidation
+    ) external;
+
+    function submitVote(
+        bytes32 proposalId,
+        address voter,
+        uint128 voteWeight,
+        uint256 value
+    ) external;
+
+    // GETTERS
     function getProposal(bytes32 proposalId)
         external
         view
         returns (Proposal memory);
+
+    function getVoteParams(bytes4 voteId)
+        external
+        view
+        returns (VoteParam memory);
 }
