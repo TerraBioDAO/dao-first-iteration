@@ -5,6 +5,7 @@ pragma solidity ^0.8.16;
 import "../helpers/Slot.sol";
 import "./IDaoCore.sol";
 import "../guards/CoreGuard.sol";
+import "../adapters/IAdapter.sol";
 
 /**
  * @notice Main contract, keep states of the DAO
@@ -69,6 +70,14 @@ contract DaoCore is IDaoCore, CoreGuard {
         bool value
     ) external onlyAdapter(Slot.ONBOARDING) {
         _changeMemberStatus(account, role, value);
+    }
+
+    function processProposal(bytes4 slot, bytes28 proposalId)
+        external
+        onlyAdapter(Slot.VOTING)
+    {
+        IAdapter adapter = IAdapter(this.getSlotContractAddr(slot));
+        adapter.processProposal(bytes32(bytes.concat(slotId, proposalId)));
     }
 
     // GETTERS

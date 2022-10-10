@@ -30,6 +30,8 @@ interface IDaoCore {
         bool value
     ) external;
 
+    function processProposal(bytes4 slot, bytes28 proposalId) external;
+
     function membersCount() external returns (uint256);
 
     function hasRole(address account, bytes4 role) external returns (bool);

@@ -4,8 +4,9 @@ pragma solidity ^0.8.16;
 
 import "../guards/CoreGuard.sol";
 import "../helpers/ScoreUtils.sol";
+import "../extensions/IAgora.sol";
 
-contract Agora is CoreGuard {
+contract Agora is IAgora, CoreGuard {
     using ScoreUtils for uint256;
 
     event VoteParamsChanged(bytes4 indexed voteId, bool indexed added); // add consensus?
@@ -23,49 +24,6 @@ contract Agora is CoreGuard {
         uint256 indexed value,
         uint256 voteWeight
     );
-
-    enum ProposalStatus {
-        UNKNOWN,
-        ONGOING,
-        CLOSED,
-        SUSPENDED,
-        ACCEPTED,
-        REJECTED,
-        EXECUTED
-    }
-    enum Consensus {
-        NO_VOTE,
-        TOKEN, // take vote weigth
-        MEMBER // 1 address = 1 vote
-    }
-
-    enum VoteType {
-        YES_NO, // score = (uint128,uint128) = (y,n)
-        PREFERENCE, // score = (uint8,uint8,uint8, ...) = (1,2,3, ...)
-        PERCENTAGE // score = 0 <-> 10000 = (0% <-> 100,00%)
-    }
-
-    struct VoteParam {
-        Consensus consensus;
-        VoteType voteType;
-        uint64 votingPeriod;
-        uint64 gracePeriod;
-        uint64 threshold;
-        bool adminValidation;
-        uint256 utilisation;
-    }
-
-    struct Proposal {
-        bytes4 slot;
-        bytes28 proposalId; // not useful
-        bool executable;
-        uint64 startTime;
-        uint64 endTime;
-        uint256 score; //score contenant le nombre Y et N pour un type VOTE YES NO à faire evoluer ?
-        ProposalStatus status;
-        VoteParam params;
-        address initiater;
-    }
 
     mapping(bytes32 => Proposal) public proposals;
     mapping(bytes4 => VoteParam) public voteParams;
@@ -137,17 +95,17 @@ contract Agora is CoreGuard {
 
     // GETTERS
     function getProposal(bytes32 proposalId)
-        external
-        view
-        returns (Proposal memory)
+    external
+    view
+    returns (Proposal memory)
     {
         return proposals[proposalId];
     }
 
     function getVoteParams(bytes4 voteId)
-        external
-        view
-        returns (VoteParam memory)
+    external
+    view
+    returns (VoteParam memory)
     {
         return voteParams[voteId];
     }
@@ -220,8 +178,8 @@ contract Agora is CoreGuard {
             require(value <= 1, "Agora: neither (y) nor (n)");
 
             score = value == 1
-                ? score.yesNoIncrement(voteWeight, 0)
-                : score.yesNoIncrement(0, voteWeight);
+            ? score.yesNoIncrement(voteWeight, 0)
+            : score.yesNoIncrement(0, voteWeight);
         } else if (p.params.voteType == VoteType.PREFERENCE) {
             revert("NOT IMPLEMENTED YET");
         } else {

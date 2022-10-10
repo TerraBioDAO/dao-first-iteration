@@ -81,8 +81,11 @@ contract Bank is CoreGuard, ReentrancyGuard {
         );
     }
 
-    function recoverProposalFunds(bytes32 proposalId) external {
-        // ONLY MEMBER (through Adapters)!
+    function recoverProposalFunds(bytes32 proposalId)
+        external
+        onlyAdapter(Slot.FINANCING)
+    {
+        // todo : require msg.sender has flag to recover their funds
         uint256 balance = commitments[proposalId][msg.sender].amount;
         require(balance > 0, "Bank: no funds for this proposal");
 

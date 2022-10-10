@@ -35,6 +35,13 @@ contract Voting is SlotGuard {
         agora.submitVote(proposalId, msg.sender, voteWeight, value);
     }
 
+    function processProposal(bytes4 slot, bytes28 proposalId)
+        external
+        onlyAdmin
+    {
+        IDaoCore(_core).processProposal(slot, proposalId);
+    }
+
     function _getBankContract() internal view returns (IBank) {
         return IBank(IDaoCore(_core).getSlotContractAddr(Slot.BANK));
     }
