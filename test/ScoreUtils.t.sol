@@ -6,8 +6,8 @@ import "forge-std/Test.sol";
 import "../src/helpers/ScoreUtils.sol";
 
 contract ScoreUtilsTest is Test {
-
     using ScoreUtils for uint256;
+
     uint256 score;
 
     function setUp() public {

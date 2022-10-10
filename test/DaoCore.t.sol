@@ -7,7 +7,6 @@ import "../src/extensions/Bank.sol";
 import {MockERC20} from "./MockERC20.sol";
 
 contract DaoCoreTest is Test {
-
     DaoCore public daoCore;
     Bank public bank;
     MockERC20 internal token;
@@ -68,7 +67,10 @@ contract DaoCoreTest is Test {
                 emit SlotEntryChanged(Slot.FINANCING, false, ADAPTER_FINANCING, ADAPTER_FINANCING);*/
         daoCore.changeSlotEntry(Slot.FINANCING, ADAPTER_FINANCING, false);
         assertTrue(daoCore.isSlotActive(Slot.FINANCING));
-        assertEq(daoCore.getSlotContractAddr(Slot.FINANCING), ADAPTER_FINANCING);
+        assertEq(
+            daoCore.getSlotContractAddr(Slot.FINANCING),
+            ADAPTER_FINANCING
+        );
     }
 
     function testChangeSlotEntry_revertIfWrongAdapter() public {
@@ -88,7 +90,6 @@ contract DaoCoreTest is Test {
         assertEq(daoCore.membersCount(), 2);
         daoCore.changeMemberStatus(MEMBER1, Slot.USER_EXISTS, false);
         assertEq(daoCore.membersCount(), 1);
-
     }
 
     function testChangeMemberStatus_revertIfWrongAdapter() public {
@@ -96,6 +97,4 @@ contract DaoCoreTest is Test {
         vm.expectRevert("CoreGuard: not the right adapter");
         daoCore.changeMemberStatus(MEMBER1, Slot.USER_EXISTS, false);
     }
-
-
 }
