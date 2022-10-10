@@ -22,27 +22,21 @@ interface IDaoCore {
         address contractAddr;
     }
 
-    function changeSlotEntry(
-        bytes4 slot,
-        address contractAddr,
-        bool isExtension
-    ) external;
+    function changeSlotEntry(bytes4 slot, address contractAddr) external;
 
-    function changeMemberStatus(address account, bytes4 role, bool value)
-        external;
+    function changeMemberStatus(
+        address account,
+        bytes4 role,
+        bool value
+    ) external;
 
     function membersCount() external returns (uint256);
 
-    function hasRole(address account, bytes4 role)
-        external
-        returns (bool);
+    function hasRole(address account, bytes4 role) external returns (bool);
 
     function isSlotActive(bytes4 slot) external view returns (bool);
 
     function isSlotExtension(bytes4 slot) external view returns (bool);
 
-    function getSlotContractAddr(bytes4 slot)
-        external
-        view
-        returns (address);
+    function getSlotContractAddr(bytes4 slot) external view returns (address);
 }

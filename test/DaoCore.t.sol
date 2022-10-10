@@ -1,100 +1,93 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.16;
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.8.16;
 
 import "forge-std/Test.sol";
-import "../src/core/DaoCore.sol";
-import "../src/extensions/Bank.sol";
-import {MockERC20} from "./MockERC20.sol";
+import "src/core/DaoCore.sol";
 
-contract DaoCoreTest is Test {
-    DaoCore public daoCore;
-    Bank public bank;
-    MockERC20 internal token;
+contract FakeEntry {
+    bytes4 public slotId;
+    bool public isExtension;
 
-    address public OWNER = address(501);
-    address public MEMBER1 = address(502);
-    address public EXTENSION_BANK = address(101);
-    address public ADAPTER_MANAGING = address(201);
-    address public ADAPTER_FINANCING = address(202);
-    address public ADAPTER_ONBOARDING = address(203);
+    constructor(bytes4 slot, bool isExt) {
+        slotId = slot;
+        isExtension = isExt;
+    }
+}
+
+contract DaoCore_test is Test {
+    DaoCore public dao;
+
+    address public constant ADMIN = address(0xAD);
+    address public constant MANAGING = address(500);
+    address public constant ONBOARDING = address(501);
+
+    function _newEntry(bytes4 slot, bool isExt)
+        internal
+        returns (address entry)
+    {
+        entry = address(new FakeEntry(slot, isExt));
+    }
 
     function setUp() public {
-        vm.prank(OWNER);
-        token = new MockERC20();
-        daoCore = new DaoCore(OWNER, ADAPTER_MANAGING);
-        bank = new Bank(address(daoCore), address(token));
-        vm.stopPrank();
-        vm.startPrank(ADAPTER_MANAGING);
-        daoCore.changeSlotEntry(Slot.ONBOARDING, ADAPTER_ONBOARDING, false);
-        daoCore.changeSlotEntry(Slot.BANK, address(bank), true);
-        vm.stopPrank();
+        vm.label(ADMIN, "Admin");
+        vm.label(MANAGING, "Managing");
+        vm.label(ONBOARDING, "Onboarding");
+
+        dao = new DaoCore(ADMIN, MANAGING);
     }
 
-    function testMembersCount() public {
-        vm.prank(MEMBER1);
-        assertEq(daoCore.membersCount(), 1);
+    function testAddSlotEntry(bytes4 slot, address addr) public {
+        vm.assume(slot != Slot.EMPTY && addr != address(0));
+        addr = _newEntry(slot, false);
+        vm.prank(MANAGING);
+        dao.changeSlotEntry(slot, addr);
+
+        assertTrue(dao.isSlotActive(slot));
+        assertEq(dao.getSlotContractAddr(slot), addr);
+        assertFalse(dao.isSlotExtension(slot));
     }
 
-    function testSlotExtension() public {
-        vm.prank(MEMBER1);
-        assertTrue(daoCore.isExtension());
-        assertTrue(daoCore.isSlotExtension(Slot.BANK));
-        assertFalse(daoCore.isSlotExtension(Slot.ONBOARDING));
+    function testCannotAddSlotEntry() public {
+        vm.expectRevert("CoreGuard: not the right adapter");
+        dao.changeSlotEntry(Slot.ONBOARDING, ONBOARDING);
+
+        vm.prank(MANAGING);
+        vm.expectRevert("Core: empty slot");
+        dao.changeSlotEntry(Slot.EMPTY, ONBOARDING);
     }
 
-    function testHasRole() public {
-        vm.startPrank(ADAPTER_MANAGING);
-        assertTrue(daoCore.hasRole(OWNER, Slot.USER_ADMIN));
-        assertTrue(daoCore.hasRole(OWNER, Slot.USER_EXISTS));
-        assertFalse(daoCore.hasRole(ADAPTER_MANAGING, Slot.USER_ADMIN));
-        assertFalse(daoCore.hasRole(ADAPTER_MANAGING, Slot.USER_EXISTS));
-    }
-
-    function testIsSlotActive() public {
-        assertTrue(daoCore.isSlotActive(Slot.MANAGING));
-        assertFalse(daoCore.isSlotActive(Slot.FINANCING));
-    }
-
-    function testGetSlotContractAddr() public {
-        assertEq(daoCore.getSlotContractAddr(Slot.MANAGING), ADAPTER_MANAGING);
-    }
-
-    function testChangeSlotEntry() public {
-        vm.startPrank(ADAPTER_MANAGING);
-        assertFalse(daoCore.isSlotActive(Slot.FINANCING));
-        //TODO comprendre le expect emit !?
-        /*        vm.expectEmit(true, true, false, true);
-                emit SlotEntryChanged(Slot.FINANCING, false, ADAPTER_FINANCING, ADAPTER_FINANCING);*/
-        daoCore.changeSlotEntry(Slot.FINANCING, ADAPTER_FINANCING, false);
-        assertTrue(daoCore.isSlotActive(Slot.FINANCING));
-        assertEq(
-            daoCore.getSlotContractAddr(Slot.FINANCING),
-            ADAPTER_FINANCING
+    function testRemoveSlotEntry(bytes4 slot, address addr) public {
+        vm.assume(
+            slot != Slot.EMPTY && slot != Slot.MANAGING && addr != address(0)
         );
+        addr = _newEntry(slot, false);
+        vm.startPrank(MANAGING);
+        dao.changeSlotEntry(slot, addr);
+        dao.changeSlotEntry(slot, address(0));
+
+        assertFalse(dao.isSlotActive(slot));
+        assertEq(dao.getSlotContractAddr(slot), address(0));
+        assertFalse(dao.isSlotExtension(slot));
     }
 
-    function testChangeSlotEntry_revertIfWrongAdapter() public {
-        vm.startPrank(OWNER);
-        vm.expectRevert("CoreGuard: not the right adapter");
-        daoCore.changeSlotEntry(Slot.FINANCING, ADAPTER_FINANCING, false);
+    function testReplaceSlotEntry(bytes4 slot, address addr) public {
+        vm.assume(
+            slot != Slot.EMPTY && slot != Slot.MANAGING && addr != address(0)
+        );
+        address fixedAddr = _newEntry(slot, false);
+        addr = _newEntry(slot, false);
+
+        vm.startPrank(MANAGING);
+        dao.changeSlotEntry(slot, fixedAddr);
+        dao.changeSlotEntry(slot, addr);
+
+        assertTrue(dao.isSlotActive(slot));
+        assertEq(dao.getSlotContractAddr(slot), addr);
+        assertFalse(dao.isSlotExtension(slot));
     }
 
-    function testChangeMemberStatus() public {
-        vm.startPrank(ADAPTER_ONBOARDING);
-        assertFalse(daoCore.hasRole(MEMBER1, Slot.USER_EXISTS));
-        assertFalse(daoCore.hasRole(MEMBER1, Slot.USER_PROPOSER));
-        daoCore.changeMemberStatus(MEMBER1, Slot.USER_EXISTS, true);
-        assertTrue(daoCore.hasRole(MEMBER1, Slot.USER_EXISTS));
-        daoCore.changeMemberStatus(MEMBER1, Slot.USER_PROPOSER, true);
-        assertTrue(daoCore.hasRole(MEMBER1, Slot.USER_PROPOSER));
-        assertEq(daoCore.membersCount(), 2);
-        daoCore.changeMemberStatus(MEMBER1, Slot.USER_EXISTS, false);
-        assertEq(daoCore.membersCount(), 1);
-    }
-
-    function testChangeMemberStatus_revertIfWrongAdapter() public {
-        vm.startPrank(OWNER);
-        vm.expectRevert("CoreGuard: not the right adapter");
-        daoCore.changeMemberStatus(MEMBER1, Slot.USER_EXISTS, false);
+    function testCannotReplaceSlotEntry() public {
+        // check when isExt != isExtension
     }
 }
