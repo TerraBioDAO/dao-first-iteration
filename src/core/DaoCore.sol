@@ -21,9 +21,7 @@ contract DaoCore is IDaoCore, CoreGuard {
     /// @notice keeps track of Extensions and Adapters
     mapping(bytes4 => Entry) public entries;
 
-    constructor(address admin, address managing)
-        CoreGuard(address(this), Slot.CORE)
-    {
+    constructor(address admin, address managing) CoreGuard(address(this), Slot.CORE) {
         _changeMemberStatus(admin, Slot.USER_EXISTS, true);
         _changeMemberStatus(admin, Slot.USER_ADMIN, true);
         _addSlotEntry(Slot.MANAGING, managing, false);
@@ -39,10 +37,7 @@ contract DaoCore is IDaoCore, CoreGuard {
         if (contractAddr == address(0)) {
             _removeSlotEntry(slot);
         } else {
-            require(
-                ISlotEntry(contractAddr).slotId() == slot,
-                "Core: slot & address not match"
-            );
+            require(ISlotEntry(contractAddr).slotId() == slot, "Core: slot & address not match");
 
             if (e.slot == Slot.EMPTY) {
                 e.isExtension = ISlotEntry(contractAddr).isExtension();
@@ -56,32 +51,19 @@ contract DaoCore is IDaoCore, CoreGuard {
             }
         }
 
-        emit SlotEntryChanged(
-            slot, e.isExtension, e.contractAddr, contractAddr
-            );
+        emit SlotEntryChanged(slot, e.isExtension, e.contractAddr, contractAddr);
     }
 
-    function changeMemberStatus(address account, bytes4 role, bool value)
-        external
-        onlyAdapter(Slot.ONBOARDING)
-    {
+    function changeMemberStatus(
+        address account,
+        bytes4 role,
+        bool value
+    ) external onlyAdapter(Slot.ONBOARDING) {
         _changeMemberStatus(account, role, value);
     }
 
-    function processProposal(bytes4 slot, bytes28 proposalId)
-        external
-        onlyAdapter(Slot.VOTING)
-    {
-        IAdapter adapter = IAdapter(this.getSlotContractAddr(slot));
-        adapter.processProposal(bytes32(bytes.concat(slotId, proposalId)));
-    }
-
     // GETTERS
-    function hasRole(address account, bytes4 role)
-        external
-        view
-        returns (bool)
-    {
+    function hasRole(address account, bytes4 role) external view returns (bool) {
         return members[account][role];
     }
 
@@ -93,18 +75,16 @@ contract DaoCore is IDaoCore, CoreGuard {
         return entries[slot].isExtension;
     }
 
-    function getSlotContractAddr(bytes4 slot)
-        external
-        view
-        returns (address)
-    {
+    function getSlotContractAddr(bytes4 slot) external view returns (address) {
         return entries[slot].contractAddr;
     }
 
     // INTERNAL FUNCTIONS
-    function _changeMemberStatus(address account, bytes4 role, bool value)
-        internal
-    {
+    function _changeMemberStatus(
+        address account,
+        bytes4 role,
+        bool value
+    ) internal {
         require(account != address(0), "Core: zero address used");
         require(members[account][role] != value, "Core: role not changing");
 

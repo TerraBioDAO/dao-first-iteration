@@ -73,14 +73,12 @@ interface IAgora {
         uint256 value
     ) external;
 
-    // GETTERS
-    function getProposal(bytes32 proposalId)
-        external
-        view
-        returns (Proposal memory);
+    function processProposal(bytes4 slot, bytes28 proposalId) external;
 
-    function getVoteParams(bytes4 voteId)
-        external
-        view
-        returns (VoteParam memory);
+    function changeProposalStatus(bytes32 proposalId, ProposalStatus newStatus) external;
+
+    // GETTERS
+    function getProposal(bytes32 proposalId) external view returns (Proposal memory);
+
+    function getVoteParams(bytes4 voteId) external view returns (VoteParam memory);
 }

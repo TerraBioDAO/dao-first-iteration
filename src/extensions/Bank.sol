@@ -29,36 +29,23 @@ contract Bank is CoreGuard, ReentrancyGuard {
     // proposalId => member => Commitment
     mapping(bytes32 => mapping(address => Commitment)) public commitments;
 
-    constructor(address core, address terraBioTokenAddr)
-    CoreGuard(core, Slot.BANK)
-    {
+    constructor(address core, address terraBioTokenAddr) CoreGuard(core, Slot.BANK) {
         terraBioToken = terraBioTokenAddr;
     }
 
-    function joiningDeposit(address account, uint256 amount)
-    external
-    onlyAdapter(Slot.ONBOARDING)
-    {
+    function joiningDeposit(address account, uint256 amount) external onlyAdapter(Slot.ONBOARDING) {
         _deposit(account, amount);
         _changeInternalBalance(account, Slot.CREDIT_VOTE, true, amount);
     }
 
-    function refundJoinDeposit(address account)
-    external
-    nonReentrant
-    onlyAdapter(Slot.ONBOARDING)
-    {
+    function refundJoinDeposit(address account) external nonReentrant onlyAdapter(Slot.ONBOARDING) {
         uint256 balance = balances[account];
         delete balances[account];
         IERC20(terraBioToken).transfer(account, balance);
         _changeInternalBalance(account, Slot.CREDIT_VOTE, false, balance);
     }
 
-    function getBalanceOf(address account, bytes4 unit)
-    external
-    view
-    returns (uint256)
-    {
+    function getBalanceOf(address account, bytes4 unit) external view returns (uint256) {
         if (unit == Slot.EMPTY) {
             return balances[account];
         }
@@ -66,38 +53,36 @@ contract Bank is CoreGuard, ReentrancyGuard {
         return internalBalances[account][unit];
     }
 
-    function executeFinancingProposal(address applicant, uint256 amount, bytes32 proposalId)
-    external
-    onlyAdapter(Slot.FINANCING)
-    {
+    function executeFinancingProposal(
+        address applicant,
+        uint256 amount,
+        bytes32 proposalId
+    ) external onlyAdapter(Slot.FINANCING) {
         require(
             IERC20(terraBioToken).balanceOf(address(this)) > amount,
             "Bank: insufficient funds in bank"
         );
 
-        IAgora agora =
-        IAgora(IDaoCore(_core).getSlotContractAddr(Slot.AGORA));
-        agora.getProposal(proposalId).status = IAgora.ProposalStatus.EXECUTED;
+        IAgora agora = IAgora(IDaoCore(_core).getSlotContractAddr(Slot.AGORA));
+        agora.changeProposalStatus(proposalId, IAgora.ProposalStatus.EXECUTED);
 
-        IERC20(terraBioToken).transferFrom(
-            address(this), applicant, amount
-        );
+        IERC20(terraBioToken).transferFrom(address(this), applicant, amount);
     }
 
     function recoverProposalFunds(bytes32 proposalId, address member)
-    external
-    onlyAdapter(Slot.FINANCING)
+        external
+        onlyAdapter(Slot.FINANCING)
     {
-        IAgora agora =
-        IAgora(IDaoCore(_core).getSlotContractAddr(Slot.AGORA));
-        require(agora.getProposal(proposalId).status == IAgora.ProposalStatus.EXECUTED, "Bank: not executed");
+        IAgora agora = IAgora(IDaoCore(_core).getSlotContractAddr(Slot.AGORA));
+        require(
+            agora.getProposal(proposalId).status == IAgora.ProposalStatus.EXECUTED,
+            "Bank: not executed"
+        );
 
         uint256 balance = commitments[proposalId][member].amount;
         require(balance > 0, "Bank: no funds for this proposal");
 
-        IERC20(terraBioToken).transferFrom(
-            address(this), member, balance
-        );
+        IERC20(terraBioToken).transferFrom(address(this), member, balance);
     }
 
     function _deposit(address account, uint256 amount) internal {

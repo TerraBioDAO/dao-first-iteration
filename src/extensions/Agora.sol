@@ -84,6 +84,20 @@ contract Agora is IAgora, CoreGuard {
         }
     }
 
+    function processProposal(bytes4 slot, bytes28 proposalId) external onlyAdapter(Slot.VOTING) {
+        IDaoCore core = IDaoCore(_core);
+        IAdapter adapter = IAdapter(core.getSlotContractAddr(slot));
+        adapter.processProposal(bytes32(bytes.concat(slotId, proposalId)));
+    }
+
+    function changeProposalStatus(bytes32 proposalId, ProposalStatus newStatus)
+        external
+        onlyAdapter(bytes4(proposalId))
+    {
+        Proposal storage proposal = proposals[proposalId];
+        proposal.status = newStatus;
+    }
+
     function submitVote(
         bytes32 proposalId,
         address voter,
@@ -94,19 +108,11 @@ contract Agora is IAgora, CoreGuard {
     }
 
     // GETTERS
-    function getProposal(bytes32 proposalId)
-        external
-        view
-        returns (Proposal memory)
-    {
+    function getProposal(bytes32 proposalId) external view returns (Proposal memory) {
         return proposals[proposalId];
     }
 
-    function getVoteParams(bytes4 voteId)
-        external
-        view
-        returns (VoteParam memory)
-    {
+    function getVoteParams(bytes4 voteId) external view returns (VoteParam memory) {
         return voteParams[voteId];
     }
 
@@ -122,15 +128,10 @@ contract Agora is IAgora, CoreGuard {
         bool adminValidation
     ) internal {
         VoteParam memory vote = voteParams[voteId];
-        require(
-            vote.consensus == Consensus.NO_VOTE,
-            "Agora: cannot replace params"
-        );
+        require(vote.consensus == Consensus.NO_VOTE, "Agora: cannot replace params");
 
         require(votingPeriod > 0, "Agora: below min period");
-        require(
-            threshold <= 10000, "Agora: wrong threshold or below min value"
-        );
+        require(threshold <= 10000, "Agora: wrong threshold or below min value");
 
         vote.consensus = consensus;
         vote.voteType = voteType;
@@ -157,9 +158,7 @@ contract Agora is IAgora, CoreGuard {
         uint256 value
     ) internal {
         Proposal memory p = proposals[proposalId];
-        require(
-            p.status == ProposalStatus.ONGOING, "Agora: unknown proposal"
-        );
+        require(p.status == ProposalStatus.ONGOING, "Agora: unknown proposal");
         require(
             p.startTime <= block.timestamp && p.endTime > block.timestamp,
             "Agora: outside voting period"

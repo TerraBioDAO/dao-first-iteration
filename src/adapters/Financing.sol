@@ -29,21 +29,17 @@ contract Financing is SlotGuard {
      * @dev Only members of the DAO can create a financing proposal.
      * @param proposal The Proposal data
      */
-    function submitProposal(Proposal memory proposal)
-    external
-    onlyProposer
-    {
+    function submitProposal(Proposal memory proposal) external onlyProposer {
         require(proposal.amount > 0, "invalid requested amount");
 
         bytes28 proposalId = bytes28(keccak256(abi.encode(proposal)));
 
-        IAgora agora =
-        IAgora(IDaoCore(_core).getSlotContractAddr(Slot.AGORA));
+        IAgora agora = IAgora(IDaoCore(_core).getSlotContractAddr(Slot.AGORA));
         agora.submitProposal(
             Slot.FINANCING,
             proposalId,
-            true, // executable ?
-            bytes4(0), // voteId ? VoteType.YES_NO
+            true, // have an action to proceed
+            bytes4(0), // voteParamId
             uint64(block.timestamp + 60),
             msg.sender
         );
@@ -59,13 +55,11 @@ contract Financing is SlotGuard {
         Proposal memory proposal = proposals[bytes28(proposalId << 32)];
         //
         IDaoCore dao = IDaoCore(_core);
-        IAgora agora =
-        IAgora(IDaoCore(_core).getSlotContractAddr(Slot.AGORA));
+        IAgora agora = IAgora(IDaoCore(_core).getSlotContractAddr(Slot.AGORA));
 
         // Check proposal status
         require(
-            agora.getProposal(proposalId).status
-            == IAgora.ProposalStatus.TO_PROCEED,
+            agora.getProposal(proposalId).status == IAgora.ProposalStatus.TO_PROCEED,
             "Financing: not to proceed"
         );
 
