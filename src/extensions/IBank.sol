@@ -10,6 +10,6 @@ interface IBank {
         uint256 lockPeriod
     ) external returns (uint256 voteWeight);
 
-    function executeFinancingProposal(address applicant, uint256 amount)
-        external;
+    function executeFinancingProposal(address applicant, uint256 amount, bytes32 proposalId)
+    external;
 }
