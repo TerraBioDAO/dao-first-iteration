@@ -20,12 +20,10 @@ contract DaoCore_test is Test {
 
     address public constant ADMIN = address(0xAD);
     address public constant MANAGING = address(500);
-    address public constant ONBOARDING = address(501);
+    address public ONBOARDING = address(501);
+    address public constant USER = address(502);
 
-    function _newEntry(bytes4 slot, bool isExt)
-        internal
-        returns (address entry)
-    {
+    function _newEntry(bytes4 slot, bool isExt) internal returns (address entry) {
         entry = address(new FakeEntry(slot, isExt));
     }
 
@@ -59,9 +57,7 @@ contract DaoCore_test is Test {
     }
 
     function testRemoveSlotEntry(bytes4 slot, address addr) public {
-        vm.assume(
-            slot != Slot.EMPTY && slot != Slot.MANAGING && addr != address(0)
-        );
+        vm.assume(slot != Slot.EMPTY && slot != Slot.MANAGING && addr != address(0));
         addr = _newEntry(slot, false);
         vm.startPrank(MANAGING);
         dao.changeSlotEntry(slot, addr);
@@ -73,9 +69,7 @@ contract DaoCore_test is Test {
     }
 
     function testReplaceSlotEntry(bytes4 slot, address addr) public {
-        vm.assume(
-            slot != Slot.EMPTY && slot != Slot.MANAGING && addr != address(0)
-        );
+        vm.assume(slot != Slot.EMPTY && slot != Slot.MANAGING && addr != address(0));
         address fixedAddr = _newEntry(slot, false);
         addr = _newEntry(slot, false);
 
@@ -89,9 +83,7 @@ contract DaoCore_test is Test {
     }
 
     function testCannotReplaceSlotEntry(bytes4 slot, address addr) public {
-        vm.assume(
-            slot != Slot.EMPTY && slot != Slot.MANAGING && addr != address(0)
-        );
+        vm.assume(slot != Slot.EMPTY && slot != Slot.MANAGING && addr != address(0));
         address fixedAddr = _newEntry(slot, false);
         addr = _newEntry(slot, true);
 
@@ -110,9 +102,7 @@ contract DaoCore_test is Test {
     );
 
     function testEmitOnChangeSlotEntry(bytes4 slot, address addr) public {
-        vm.assume(
-            slot != Slot.EMPTY && slot != Slot.MANAGING && addr != address(0)
-        );
+        vm.assume(slot != Slot.EMPTY && slot != Slot.MANAGING && addr != address(0));
         addr = _newEntry(slot, false);
 
         vm.prank(MANAGING);
@@ -122,6 +112,81 @@ contract DaoCore_test is Test {
     }
 
     // changeMemberStatus()
+    function _branchOnboarding() internal {
+        ONBOARDING = _newEntry(Slot.ONBOARDING, false);
+        vm.prank(MANAGING);
+        dao.changeSlotEntry(Slot.ONBOARDING, ONBOARDING);
+    }
 
-    function testChangeMemberStatus() public {}
+    function testChangeMemberStatus(address user) public {
+        vm.assume(user != address(0) && user != ADMIN);
+        _branchOnboarding();
+        vm.prank(ONBOARDING);
+        dao.changeMemberStatus(user, Slot.USER_EXISTS, true);
+
+        assertEq(dao.membersCount(), 2);
+        assertTrue(dao.hasRole(user, Slot.USER_EXISTS));
+    }
+
+    function testCannotChangeMemberStatus() public {
+        vm.expectRevert("CoreGuard: not the right adapter");
+        dao.changeMemberStatus(USER, Slot.USER_EXISTS, true);
+
+        _branchOnboarding();
+        vm.startPrank(ONBOARDING);
+        dao.changeMemberStatus(USER, Slot.USER_EXISTS, true);
+
+        vm.expectRevert("Core: role not changing");
+        dao.changeMemberStatus(USER, Slot.USER_EXISTS, true);
+
+        vm.expectRevert("Core: zero address used");
+        dao.changeMemberStatus(address(0), Slot.USER_EXISTS, true);
+    }
+
+    function testAddNewAdmin() public {
+        _branchOnboarding();
+        vm.prank(ONBOARDING);
+        dao.addNewAdmin(USER);
+
+        assertEq(dao.membersCount(), 2);
+        assertTrue(dao.hasRole(USER, Slot.USER_EXISTS));
+        assertTrue(dao.hasRole(USER, Slot.USER_ADMIN));
+    }
+
+    function testCannotAddNewAdmin() public {
+        vm.expectRevert("CoreGuard: not the right adapter");
+        dao.addNewAdmin(USER);
+
+        _branchOnboarding();
+        vm.startPrank(ONBOARDING);
+        vm.expectRevert("Core: zero address used");
+        dao.addNewAdmin(address(0));
+
+        dao.addNewAdmin(USER);
+        vm.expectRevert("Core: already an admin");
+        dao.addNewAdmin(USER);
+    }
+
+    function testRevokeMember(address user) public {
+        vm.assume(user != address(0) && user != ADMIN);
+        _branchOnboarding();
+
+        vm.startPrank(ONBOARDING);
+        dao.changeMemberStatus(user, Slot.USER_EXISTS, true);
+        dao.changeMemberStatus(user, Slot.USER_PROPOSER, true);
+
+        dao.changeMemberStatus(user, Slot.USER_EXISTS, false);
+
+        assertEq(dao.membersCount(), 1);
+        assertFalse(dao.hasRole(user, Slot.USER_EXISTS));
+        assertFalse(dao.hasRole(user, Slot.USER_PROPOSER));
+    }
+
+    function testGetRoles() public {
+        bytes4[] memory roles = dao.getRolesList();
+
+        assertEq(roles[0], Slot.USER_EXISTS);
+        assertEq(roles[1], Slot.USER_ADMIN);
+        assertEq(roles[2], Slot.USER_PROPOSER);
+    }
 }

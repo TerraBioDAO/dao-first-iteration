@@ -24,6 +24,8 @@ interface IDaoCore {
 
     function changeSlotEntry(bytes4 slot, address contractAddr) external;
 
+    function addNewAdmin(address account) external;
+
     function changeMemberStatus(
         address account,
         bytes4 role,
@@ -33,6 +35,8 @@ interface IDaoCore {
     function membersCount() external returns (uint256);
 
     function hasRole(address account, bytes4 role) external returns (bool);
+
+    function getRolesList() external returns (bytes4[] memory);
 
     function isSlotActive(bytes4 slot) external view returns (bool);
 
