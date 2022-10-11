@@ -7,6 +7,7 @@ import "openzeppelin-contracts/security/ReentrancyGuard.sol";
 
 import "../helpers/Slot.sol";
 import "../guards/CoreGuard.sol";
+import "../extensions/IAgora.sol";
 
 /**
  * @notice Should be the only contract to approve to move tokens
@@ -29,23 +30,23 @@ contract Bank is CoreGuard, ReentrancyGuard {
     mapping(bytes32 => mapping(address => Commitment)) public commitments;
 
     constructor(address core, address terraBioTokenAddr)
-        CoreGuard(core, Slot.BANK)
+    CoreGuard(core, Slot.BANK)
     {
         terraBioToken = terraBioTokenAddr;
     }
 
     function joiningDeposit(address account, uint256 amount)
-        external
-        onlyAdapter(Slot.ONBOARDING)
+    external
+    onlyAdapter(Slot.ONBOARDING)
     {
         _deposit(account, amount);
         _changeInternalBalance(account, Slot.CREDIT_VOTE, true, amount);
     }
 
     function refundJoinDeposit(address account)
-        external
-        nonReentrant
-        onlyAdapter(Slot.ONBOARDING)
+    external
+    nonReentrant
+    onlyAdapter(Slot.ONBOARDING)
     {
         uint256 balance = balances[account];
         delete balances[account];
@@ -54,9 +55,9 @@ contract Bank is CoreGuard, ReentrancyGuard {
     }
 
     function getBalanceOf(address account, bytes4 unit)
-        external
-        view
-        returns (uint256)
+    external
+    view
+    returns (uint256)
     {
         if (unit == Slot.EMPTY) {
             return balances[account];
@@ -65,32 +66,37 @@ contract Bank is CoreGuard, ReentrancyGuard {
         return internalBalances[account][unit];
     }
 
-    function executeFinancingProposal(address applicant, uint256 amount)
-        external
-        onlyAdapter(Slot.FINANCING)
+    function executeFinancingProposal(address applicant, uint256 amount, bytes32 proposalId)
+    external
+    onlyAdapter(Slot.FINANCING)
     {
         require(
             IERC20(terraBioToken).balanceOf(address(this)) > amount,
             "Bank: insufficient funds in bank"
         );
 
-        // todo : Flag: Authorize proposal participants to recover their funds
+        IAgora agora =
+        IAgora(IDaoCore(_core).getSlotContractAddr(Slot.AGORA));
+        agora.getProposal(proposalId).status = IAgora.ProposalStatus.EXECUTED;
 
         IERC20(terraBioToken).transferFrom(
             address(this), applicant, amount
         );
     }
 
-    function recoverProposalFunds(bytes32 proposalId)
-        external
-        onlyAdapter(Slot.FINANCING)
+    function recoverProposalFunds(bytes32 proposalId, address member)
+    external
+    onlyAdapter(Slot.FINANCING)
     {
-        // todo : require msg.sender has flag to recover their funds
-        uint256 balance = commitments[proposalId][msg.sender].amount;
+        IAgora agora =
+        IAgora(IDaoCore(_core).getSlotContractAddr(Slot.AGORA));
+        require(agora.getProposal(proposalId).status == IAgora.ProposalStatus.EXECUTED, "Bank: not executed");
+
+        uint256 balance = commitments[proposalId][member].amount;
         require(balance > 0, "Bank: no funds for this proposal");
 
         IERC20(terraBioToken).transferFrom(
-            address(this), msg.sender, balance
+            address(this), member, balance
         );
     }
 

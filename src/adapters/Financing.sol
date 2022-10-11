@@ -30,15 +30,15 @@ contract Financing is SlotGuard {
      * @param proposal The Proposal data
      */
     function submitProposal(Proposal memory proposal)
-        external
-        onlyProposer
+    external
+    onlyProposer
     {
         require(proposal.amount > 0, "invalid requested amount");
 
         bytes28 proposalId = bytes28(keccak256(abi.encode(proposal)));
 
         IAgora agora =
-            IAgora(IDaoCore(_core).getSlotContractAddr(Slot.AGORA));
+        IAgora(IDaoCore(_core).getSlotContractAddr(Slot.AGORA));
         agora.submitProposal(
             Slot.FINANCING,
             proposalId,
@@ -60,17 +60,17 @@ contract Financing is SlotGuard {
         //
         IDaoCore dao = IDaoCore(_core);
         IAgora agora =
-            IAgora(IDaoCore(_core).getSlotContractAddr(Slot.AGORA));
+        IAgora(IDaoCore(_core).getSlotContractAddr(Slot.AGORA));
 
         // Check proposal status
         require(
             agora.getProposal(proposalId).status
-                == IAgora.ProposalStatus.TO_PROCEED,
+            == IAgora.ProposalStatus.TO_PROCEED,
             "Financing: not to proceed"
         );
 
         IBank bank = IBank(dao.getSlotContractAddr(Slot.BANK));
-        bank.executeFinancingProposal(proposal.applicant, proposal.amount);
+        bank.executeFinancingProposal(proposal.applicant, proposal.amount, proposalId);
 
         delete proposals[bytes28(proposalId << 32)];
     }
