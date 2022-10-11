@@ -51,9 +51,16 @@ contract DaoCore_test is Test {
         vm.expectRevert("CoreGuard: not the right adapter");
         dao.changeSlotEntry(Slot.ONBOARDING, ONBOARDING);
 
-        vm.prank(MANAGING);
+        vm.startPrank(MANAGING);
         vm.expectRevert("Core: empty slot");
         dao.changeSlotEntry(Slot.EMPTY, ONBOARDING);
+
+        vm.expectRevert("Core: inexistant slotId() impl");
+        dao.changeSlotEntry(Slot.ONBOARDING, ONBOARDING);
+
+        ONBOARDING = _newEntry(Slot.FINANCING, false);
+        vm.expectRevert("Core: slot & address not match");
+        dao.changeSlotEntry(Slot.ONBOARDING, ONBOARDING);
     }
 
     function testRemoveSlotEntry(bytes4 slot, address addr) public {

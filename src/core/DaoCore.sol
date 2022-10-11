@@ -42,7 +42,15 @@ contract DaoCore is IDaoCore, CoreGuard {
         if (contractAddr == address(0)) {
             _removeSlotEntry(slot);
         } else {
-            require(ISlotEntry(contractAddr).slotId() == slot, "Core: slot & address not match");
+            // low level call "try/catch" => https://github.com/dragonfly-xyz/useful-solidity-patterns/tree/main/patterns/error-handling#low-level-calls
+            (, bytes memory slotIdData) = address(contractAddr).staticcall(
+                // Encode the call data (function on someContract to call + arguments)
+                abi.encodeCall(ISlotEntry.slotId, ())
+            );
+            if (slotIdData.length != 32) {
+                revert("Core: inexistant slotId() impl");
+            }
+            require(bytes4(slotIdData) == slot, "Core: slot & address not match");
 
             if (e.slot == Slot.EMPTY) {
                 e.isExtension = ISlotEntry(contractAddr).isExtension();
