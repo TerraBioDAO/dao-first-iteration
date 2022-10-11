@@ -122,8 +122,6 @@ contract DaoCore_test is Test {
     }
 
     // changeMemberStatus()
-    mapping(bytes4 => bool) public roles;
-    event logA(string a);
 
     function testChangeMemberStatus() public {}
 }

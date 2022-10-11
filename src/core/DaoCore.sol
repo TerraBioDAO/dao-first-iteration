@@ -26,8 +26,7 @@ contract DaoCore is IDaoCore, CoreGuard {
     constructor(address admin, address managing)
         CoreGuard(address(this), Slot.CORE)
     {
-        _changeMemberStatus(admin, Slot.USER_EXISTS, true);
-        _changeMemberStatus(admin, Slot.USER_ADMIN, true);
+        _addAdmin(admin);
         _addSlotEntry(Slot.MANAGING, managing, false);
     }
 
@@ -72,9 +71,21 @@ contract DaoCore is IDaoCore, CoreGuard {
         bool value
     ) external onlyAdapter(Slot.ONBOARDING) {
         require(account != address(0), "Core: zero address used");
+        if (role == Slot.USER_EXISTS && !value) {
+            _revokeMember(account);
+        } else {
+            _changeMemberStatus(account, role, value);
+        }
+        emit MemberStatusChanged(account, role, value);
+    }
 
-        //
-        _changeMemberStatus(account, role, value);
+    function addNewAdmin(address account)
+        external
+        onlyAdapter(Slot.ONBOARDING)
+    {
+        require(account != address(0), "Core: zero address used");
+        _addAdmin(account);
+        emit MemberStatusChanged(account, Slot.USER_ADMIN, true);
     }
 
     // GETTERS
@@ -99,16 +110,16 @@ contract DaoCore is IDaoCore, CoreGuard {
     }
 
     // INTERNAL FUNCTIONS
-    function _newMember(address account, bool isAdmin) internal {
-        require(!members[account][Slot.USER_EXISTS], "Core: already a member");
-        unchecked {
-            ++membersCount;
-        }
-        members[account][Slot.USER_EXISTS] = true;
 
-        if (isAdmin) {
-            members[account][Slot.USER_ADMIN] = true;
+    function _addAdmin(address account) internal {
+        if (!members[account][Slot.USER_EXISTS]) {
+            unchecked {
+                ++membersCount;
+            }
+            members[account][Slot.USER_EXISTS] = true;
         }
+        require(!members[account][Slot.USER_ADMIN], "Core: already an admin");
+        members[account][Slot.USER_ADMIN] = true;
     }
 
     function _revokeMember(address account) internal {
@@ -120,7 +131,6 @@ contract DaoCore is IDaoCore, CoreGuard {
                 ++i;
             }
         }
-
         unchecked {
             --membersCount;
         }
@@ -131,11 +141,13 @@ contract DaoCore is IDaoCore, CoreGuard {
         bytes4 role,
         bool value
     ) internal {
-        require(account != address(0), "Core: zero address used");
         require(members[account][role] != value, "Core: role not changing");
-
+        if (role == Slot.USER_EXISTS && value) {
+            unchecked {
+                ++membersCount;
+            }
+        }
         members[account][role] = value;
-        emit MemberStatusChanged(account, role, value);
     }
 
     function _addSlotEntry(
