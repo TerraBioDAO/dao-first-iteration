@@ -5,7 +5,8 @@ pragma solidity ^0.8.16;
 import "../helpers/Slot.sol";
 import "../core/IDaoCore.sol";
 import "../guards/SlotGuard.sol";
-import "../extensions/Bank.sol";
+import "../extensions/IBank.sol";
+import "../extensions/IAgora.sol";
 import "../adapters/Voting.sol";
 
 /**
@@ -28,19 +29,20 @@ contract Financing is SlotGuard {
      * @dev Only members of the DAO can create a financing proposal.
      * @param proposal The Proposal data
      */
-    function submitProposal(Proposal memory proposal)
-        external
-        onlyProposer
-    {
+    function submitProposal(Proposal memory proposal) external onlyProposer {
         require(proposal.amount > 0, "invalid requested amount");
 
         bytes28 proposalId = bytes28(keccak256(abi.encode(proposal)));
 
-        // IDaoCore(_core).submitProposal(
-        //     bytes32(bytes.concat(Slot.FINANCING, proposalId)),
-        //     msg.sender,
-        //     IDaoCore(_core).slotContract(Slot.VOTING)
-        // );
+        IAgora agora = IAgora(IDaoCore(_core).getSlotContractAddr(Slot.AGORA));
+        agora.submitProposal(
+            Slot.FINANCING,
+            proposalId,
+            true, // have an action to proceed
+            bytes4(0), // voteParamId
+            uint64(block.timestamp + 60),
+            msg.sender
+        );
     }
 
     /**
@@ -51,20 +53,18 @@ contract Financing is SlotGuard {
      */
     function processProposal(bytes32 proposalId) external onlyCore {
         Proposal memory proposal = proposals[bytes28(proposalId << 32)];
+        //
         IDaoCore dao = IDaoCore(_core);
-        Voting voting = Voting(dao.getSlotContractAddr(Slot.VOTING));
+        IAgora agora = IAgora(IDaoCore(_core).getSlotContractAddr(Slot.AGORA));
 
-        require(address(voting) != address(0), "adapter not found");
         // Check proposal status
-        // require(
-        //     voting.voteResult(dao, proposalId) == Voting.VotingState.PASS, // Agora ?
-        //     "proposal needs to pass"
-        // );
+        require(
+            agora.getProposal(proposalId).status == IAgora.ProposalStatus.TO_PROCEED,
+            "Financing: not to proceed"
+        );
 
-        // dao.processProposal(proposalId);
-        Bank bank = Bank(dao.getSlotContractAddr(Slot.BANK));
-
-        bank.executeFinancingProposal(proposal.applicant, proposal.amount);
+        IBank bank = IBank(dao.getSlotContractAddr(Slot.BANK));
+        bank.executeFinancingProposal(proposal.applicant, proposal.amount, proposalId);
 
         delete proposals[bytes28(proposalId << 32)];
     }

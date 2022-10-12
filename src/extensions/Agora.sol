@@ -4,8 +4,9 @@ pragma solidity ^0.8.16;
 
 import "../guards/CoreGuard.sol";
 import "../helpers/ScoreUtils.sol";
+import "../extensions/IAgora.sol";
 
-contract Agora is CoreGuard {
+contract Agora is IAgora, CoreGuard {
     using ScoreUtils for uint256;
 
     event VoteParamsChanged(bytes4 indexed voteId, bool indexed added); // add consensus?
@@ -23,49 +24,6 @@ contract Agora is CoreGuard {
         uint256 indexed value,
         uint256 voteWeight
     );
-
-    enum ProposalStatus {
-        UNKNOWN,
-        ONGOING,
-        CLOSED,
-        SUSPENDED,
-        ACCEPTED,
-        REJECTED,
-        EXECUTED
-    }
-    enum Consensus {
-        NO_VOTE,
-        TOKEN, // take vote weigth
-        MEMBER // 1 address = 1 vote
-    }
-
-    enum VoteType {
-        YES_NO, // score = (uint128,uint128) = (y,n)
-        PREFERENCE, // score = (uint8,uint8,uint8, ...) = (1,2,3, ...)
-        PERCENTAGE // score = 0 <-> 10000 = (0% <-> 100,00%)
-    }
-
-    struct VoteParam {
-        Consensus consensus;
-        VoteType voteType;
-        uint64 votingPeriod;
-        uint64 gracePeriod;
-        uint64 threshold;
-        bool adminValidation;
-        uint256 utilisation;
-    }
-
-    struct Proposal {
-        bytes4 slot;
-        bytes28 proposalId; // not useful
-        bool executable;
-        uint64 startTime;
-        uint64 endTime;
-        uint256 score; //score contenant le nombre Y et N pour un type VOTE YES NO à faire evoluer ?
-        ProposalStatus status;
-        VoteParam params;
-        address initiater;
-    }
 
     mapping(bytes32 => Proposal) public proposals;
     mapping(bytes4 => VoteParam) public voteParams;
@@ -126,6 +84,20 @@ contract Agora is CoreGuard {
         }
     }
 
+    function processProposal(bytes4 slot, bytes28 proposalId) external onlyAdapter(Slot.VOTING) {
+        IDaoCore core = IDaoCore(_core);
+        IAdapter adapter = IAdapter(core.getSlotContractAddr(slot));
+        adapter.processProposal(bytes32(bytes.concat(slotId, proposalId)));
+    }
+
+    function changeProposalStatus(bytes32 proposalId, ProposalStatus newStatus)
+        external
+        onlyAdapter(bytes4(proposalId))
+    {
+        Proposal storage proposal = proposals[proposalId];
+        proposal.status = newStatus;
+    }
+
     function submitVote(
         bytes32 proposalId,
         address voter,
@@ -136,19 +108,11 @@ contract Agora is CoreGuard {
     }
 
     // GETTERS
-    function getProposal(bytes32 proposalId)
-        external
-        view
-        returns (Proposal memory)
-    {
+    function getProposal(bytes32 proposalId) external view returns (Proposal memory) {
         return proposals[proposalId];
     }
 
-    function getVoteParams(bytes4 voteId)
-        external
-        view
-        returns (VoteParam memory)
-    {
+    function getVoteParams(bytes4 voteId) external view returns (VoteParam memory) {
         return voteParams[voteId];
     }
 
@@ -164,15 +128,10 @@ contract Agora is CoreGuard {
         bool adminValidation
     ) internal {
         VoteParam memory vote = voteParams[voteId];
-        require(
-            vote.consensus == Consensus.NO_VOTE,
-            "Agora: cannot replace params"
-        );
+        require(vote.consensus == Consensus.NO_VOTE, "Agora: cannot replace params");
 
         require(votingPeriod > 0, "Agora: below min period");
-        require(
-            threshold <= 10000, "Agora: wrong threshold or below min value"
-        );
+        require(threshold <= 10000, "Agora: wrong threshold or below min value");
 
         vote.consensus = consensus;
         vote.voteType = voteType;
@@ -199,9 +158,7 @@ contract Agora is CoreGuard {
         uint256 value
     ) internal {
         Proposal memory p = proposals[proposalId];
-        require(
-            p.status == ProposalStatus.ONGOING, "Agora: unknown proposal"
-        );
+        require(p.status == ProposalStatus.ONGOING, "Agora: unknown proposal");
         require(
             p.startTime <= block.timestamp && p.endTime > block.timestamp,
             "Agora: outside voting period"

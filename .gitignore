@@ -13,3 +13,6 @@ out/
 # IDE
 .idea/
 .editorconfig
+
+#node
+node_modules

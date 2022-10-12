@@ -65,6 +65,7 @@ contract DaoCore_test is Test {
 
     function testRemoveSlotEntry(bytes4 slot, address addr) public {
         vm.assume(slot != Slot.EMPTY && slot != Slot.MANAGING && addr != address(0));
+
         addr = _newEntry(slot, false);
         vm.startPrank(MANAGING);
         dao.changeSlotEntry(slot, addr);

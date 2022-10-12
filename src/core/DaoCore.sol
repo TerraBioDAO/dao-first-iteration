@@ -5,6 +5,7 @@ pragma solidity ^0.8.16;
 import "../helpers/Slot.sol";
 import "./IDaoCore.sol";
 import "../guards/CoreGuard.sol";
+import "../adapters/IAdapter.sol";
 
 /**
  * @notice Main contract, keep states of the DAO
