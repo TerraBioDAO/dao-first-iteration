@@ -75,8 +75,6 @@ interface IAgora {
 
     function processProposal(bytes4 slot, bytes28 proposalId) external;
 
-    function changeProposalStatus(bytes32 proposalId, ProposalStatus newStatus) external;
-
     // GETTERS
     function getProposal(bytes32 proposalId) external view returns (Proposal memory);
 

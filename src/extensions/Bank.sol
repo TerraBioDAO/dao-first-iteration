@@ -53,20 +53,17 @@ contract Bank is CoreGuard, ReentrancyGuard {
         return internalBalances[account][unit];
     }
 
-    function executeFinancingProposal(
-        address applicant,
-        uint256 amount,
-        bytes32 proposalId
-    ) external onlyAdapter(Slot.FINANCING) {
+    function executeFinancingProposal(address applicant, uint256 amount)
+        external
+        onlyAdapter(Slot.FINANCING)
+        returns (bool)
+    {
         require(
             IERC20(terraBioToken).balanceOf(address(this)) > amount,
             "Bank: insufficient funds in bank"
         );
 
-        IAgora agora = IAgora(IDaoCore(_core).getSlotContractAddr(Slot.AGORA));
-        agora.changeProposalStatus(proposalId, IAgora.ProposalStatus.EXECUTED);
-
-        IERC20(terraBioToken).transferFrom(address(this), applicant, amount);
+        return IERC20(terraBioToken).transferFrom(address(this), applicant, amount);
     }
 
     function recoverProposalFunds(bytes32 proposalId, address member)
