@@ -23,6 +23,7 @@ contract Managing is SlotGuard {
 
     constructor(address core) SlotGuard(core, Slot.MANAGING) {}
 
+
     function submitProposal(
         bytes4 entrySlot,
         bool isExt,
@@ -60,11 +61,9 @@ contract Managing is SlotGuard {
      * @notice change a slot entry without vote
      * Should add a VETO by others admin
      */
-    function manageSlotEntry(
-        bytes4 entrySlot,
-        bool isExt,
-        address contractAddr
-    ) external onlyAdmin {
+    function manageSlotEntry(bytes4 entrySlot, address contractAddr) external onlyAdmin {
         IDaoCore(_core).changeSlotEntry(entrySlot, contractAddr);
     }
+
+    // Add proposals logics once Agora.sol is ready
 }

@@ -4,6 +4,8 @@
 - [ ] Change slot entry
   - [ ] difference between extension & adapters
   - [ ] change managing slot with more control?
+- [ ] Ajouter des roles
+  - [ ] Quel controle sont fait si le roles n'existe pas ?
 
 # Extensions
 ## Agora

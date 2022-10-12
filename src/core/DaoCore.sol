@@ -14,17 +14,23 @@ import "../adapters/IAdapter.sol";
 contract DaoCore is IDaoCore, CoreGuard {
     /// @notice The map to track all members of the DAO with their roles or credits
     mapping(address => mapping(bytes4 => bool)) public members;
-
     /// @notice counter for existing members
     uint256 public override membersCount;
+
+    /// @notice list of existing roles in the DAO
+    bytes4[] private _roles;
 
     /// @notice keeps track of Extensions and Adapters
     mapping(bytes4 => Entry) public entries;
 
     constructor(address admin, address managing) CoreGuard(address(this), Slot.CORE) {
-        _changeMemberStatus(admin, Slot.USER_EXISTS, true);
-        _changeMemberStatus(admin, Slot.USER_ADMIN, true);
+        _addAdmin(admin);
         _addSlotEntry(Slot.MANAGING, managing, false);
+
+        // push roles
+        _roles.push(Slot.USER_EXISTS);
+        _roles.push(Slot.USER_ADMIN);
+        _roles.push(Slot.USER_PROPOSER);
     }
 
     function changeSlotEntry(bytes4 slot, address contractAddr)
@@ -37,7 +43,15 @@ contract DaoCore is IDaoCore, CoreGuard {
         if (contractAddr == address(0)) {
             _removeSlotEntry(slot);
         } else {
-            require(ISlotEntry(contractAddr).slotId() == slot, "Core: slot & address not match");
+            // low level call "try/catch" => https://github.com/dragonfly-xyz/useful-solidity-patterns/tree/main/patterns/error-handling#low-level-calls
+            (, bytes memory slotIdData) = address(contractAddr).staticcall(
+                // Encode the call data (function on someContract to call + arguments)
+                abi.encodeCall(ISlotEntry.slotId, ())
+            );
+            if (slotIdData.length != 32) {
+                revert("Core: inexistant slotId() impl");
+            }
+            require(bytes4(slotIdData) == slot, "Core: slot & address not match");
 
             if (e.slot == Slot.EMPTY) {
                 e.isExtension = ISlotEntry(contractAddr).isExtension();
@@ -59,12 +73,28 @@ contract DaoCore is IDaoCore, CoreGuard {
         bytes4 role,
         bool value
     ) external onlyAdapter(Slot.ONBOARDING) {
-        _changeMemberStatus(account, role, value);
+        require(account != address(0), "Core: zero address used");
+        if (role == Slot.USER_EXISTS && !value) {
+            _revokeMember(account);
+        } else {
+            _changeMemberStatus(account, role, value);
+        }
+        emit MemberStatusChanged(account, role, value);
+    }
+
+    function addNewAdmin(address account) external onlyAdapter(Slot.ONBOARDING) {
+        require(account != address(0), "Core: zero address used");
+        _addAdmin(account);
+        emit MemberStatusChanged(account, Slot.USER_ADMIN, true);
     }
 
     // GETTERS
     function hasRole(address account, bytes4 role) external view returns (bool) {
         return members[account][role];
+    }
+
+    function getRolesList() external view returns (bytes4[] memory) {
+        return _roles;
     }
 
     function isSlotActive(bytes4 slot) external view returns (bool) {
@@ -80,22 +110,44 @@ contract DaoCore is IDaoCore, CoreGuard {
     }
 
     // INTERNAL FUNCTIONS
+
+    function _addAdmin(address account) internal {
+        if (!members[account][Slot.USER_EXISTS]) {
+            unchecked {
+                ++membersCount;
+            }
+            members[account][Slot.USER_EXISTS] = true;
+        }
+        require(!members[account][Slot.USER_ADMIN], "Core: already an admin");
+        members[account][Slot.USER_ADMIN] = true;
+    }
+
+    function _revokeMember(address account) internal {
+        bytes4[] memory rolesList = _roles;
+
+        for (uint256 i; i < rolesList.length; ) {
+            delete members[account][rolesList[i]];
+            unchecked {
+                ++i;
+            }
+        }
+        unchecked {
+            --membersCount;
+        }
+    }
+
     function _changeMemberStatus(
         address account,
         bytes4 role,
         bool value
     ) internal {
-        require(account != address(0), "Core: zero address used");
         require(members[account][role] != value, "Core: role not changing");
-
-        if (role == Slot.USER_EXISTS) {
+        if (role == Slot.USER_EXISTS && value) {
             unchecked {
-                value ? ++membersCount : --membersCount;
+                ++membersCount;
             }
         }
-
         members[account][role] = value;
-        emit MemberStatusChanged(account, role, value);
     }
 
     function _addSlotEntry(
