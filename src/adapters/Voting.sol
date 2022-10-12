@@ -29,10 +29,13 @@ contract Voting is SlotGuard {
         IBank bank = _getBankContract();
 
         // get vote Weight
-        uint256 voteWeight =
-            bank.newCommitment(proposalId, msg.sender, deposit, lockPeriod);
+        uint256 voteWeight = bank.newCommitment(proposalId, msg.sender, deposit, lockPeriod);
 
-        agora.submitVote(proposalId, msg.sender, voteWeight, value);
+        agora.submitVote(proposalId, msg.sender, uint128(voteWeight), value);
+    }
+
+    function processProposal(bytes4 slot, bytes28 proposalId) external onlyAdmin {
+        _getAgoraContract().processProposal(slot, proposalId);
     }
 
     function _getBankContract() internal view returns (IBank) {

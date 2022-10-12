@@ -5,6 +5,7 @@ pragma solidity ^0.8.16;
 import "../helpers/Slot.sol";
 import "../core/IDaoCore.sol";
 import "./ISlotEntry.sol";
+import "../adapters/IAdapter.sol";
 
 abstract contract CoreGuard is ISlotEntry {
     address internal immutable _core;

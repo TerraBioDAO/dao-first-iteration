@@ -5,6 +5,7 @@ pragma solidity ^0.8.16;
 import "../helpers/Slot.sol";
 import "./IDaoCore.sol";
 import "../guards/CoreGuard.sol";
+import "../adapters/IAdapter.sol";
 
 /**
  * @notice Main contract, keep states of the DAO
@@ -20,9 +21,7 @@ contract DaoCore is IDaoCore, CoreGuard {
     /// @notice keeps track of Extensions and Adapters
     mapping(bytes4 => Entry) public entries;
 
-    constructor(address admin, address managing)
-        CoreGuard(address(this), Slot.CORE)
-    {
+    constructor(address admin, address managing) CoreGuard(address(this), Slot.CORE) {
         _changeMemberStatus(admin, Slot.USER_EXISTS, true);
         _changeMemberStatus(admin, Slot.USER_ADMIN, true);
         _addSlotEntry(Slot.MANAGING, managing, false);
@@ -38,10 +37,7 @@ contract DaoCore is IDaoCore, CoreGuard {
         if (contractAddr == address(0)) {
             _removeSlotEntry(slot);
         } else {
-            require(
-                ISlotEntry(contractAddr).slotId() == slot,
-                "Core: slot & address not match"
-            );
+            require(ISlotEntry(contractAddr).slotId() == slot, "Core: slot & address not match");
 
             if (e.slot == Slot.EMPTY) {
                 e.isExtension = ISlotEntry(contractAddr).isExtension();
@@ -55,12 +51,7 @@ contract DaoCore is IDaoCore, CoreGuard {
             }
         }
 
-        emit SlotEntryChanged(
-            slot,
-            e.isExtension,
-            e.contractAddr,
-            contractAddr
-        );
+        emit SlotEntryChanged(slot, e.isExtension, e.contractAddr, contractAddr);
     }
 
     function changeMemberStatus(
@@ -72,11 +63,7 @@ contract DaoCore is IDaoCore, CoreGuard {
     }
 
     // GETTERS
-    function hasRole(address account, bytes4 role)
-        external
-        view
-        returns (bool)
-    {
+    function hasRole(address account, bytes4 role) external view returns (bool) {
         return members[account][role];
     }
 
