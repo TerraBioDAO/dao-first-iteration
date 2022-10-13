@@ -62,13 +62,13 @@ contract Bank is CoreGuard, ReentrancyGuard {
         returns (bool)
     {
         require(
-            IERC20(terraBioToken).balanceOf(address(this)) > amount,
+            IERC20(terraBioToken).balanceOf(address(this)) >= amount,
             "Bank: insufficient funds in bank"
         );
 
         // todo : adjust vaultsBalance and financingProposalsBalance
 
-        return IERC20(terraBioToken).transferFrom(address(this), applicant, amount);
+        return IERC20(terraBioToken).transfer(applicant, amount);
     }
 
     function recoverProposalFunds(bytes32 proposalId, address member)
