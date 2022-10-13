@@ -140,6 +140,8 @@ contract Agora is IAgora, CoreGuard {
         vote.threshold = threshold;
         vote.adminValidation = adminValidation;
 
+        voteParams[voteId] = vote;
+
         emit VoteParamsChanged(voteId, true);
     }
 
