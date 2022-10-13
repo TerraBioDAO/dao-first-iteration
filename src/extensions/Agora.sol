@@ -98,9 +98,11 @@ contract Agora is IAgora, CoreGuard {
 
         IDaoCore core = IDaoCore(_core);
         IAdapter adapter = IAdapter(core.getSlotContractAddr(slot));
-        bool result = adapter.processProposal(bytes32(bytes.concat(slotId, proposalId)));
+        require(adapter != address(0), "Agora: adapter not found");
 
-        if (!result) {
+        bool success = adapter.processProposal(bytes32(bytes.concat(slotId, proposalId)));
+
+        if (!success) {
             revert();
         }
 

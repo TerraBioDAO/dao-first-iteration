@@ -24,10 +24,13 @@ contract Bank is CoreGuard, ReentrancyGuard {
         uint256 voteWeight;
     }
 
-    mapping(address => uint256) public balances; // Useless ?
-    mapping(address => mapping(bytes4 => uint256)) public internalBalances; // Useless ?
+    mapping(address => uint256) public balances;
+    mapping(address => mapping(bytes4 => uint256)) public internalBalances;
     // proposalId => member => Commitment
     mapping(bytes32 => mapping(address => Commitment)) public commitments;
+
+    //mapping(bytes4 => uint256) public vaultsBalance;
+    //mapping(bytes32 => uint256) public financingProposalsBalance;
 
     constructor(address core, address terraBioTokenAddr) CoreGuard(core, Slot.BANK) {
         terraBioToken = terraBioTokenAddr;
@@ -62,6 +65,8 @@ contract Bank is CoreGuard, ReentrancyGuard {
             IERC20(terraBioToken).balanceOf(address(this)) > amount,
             "Bank: insufficient funds in bank"
         );
+
+        // todo : adjust vaultsBalance and financingProposalsBalance
 
         return IERC20(terraBioToken).transferFrom(address(this), applicant, amount);
     }
