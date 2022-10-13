@@ -63,15 +63,4 @@ contract Financing is SlotGuard {
 
         return bank.executeFinancingProposal(proposal.applicant, proposal.amount);
     }
-
-    function sendProposalFunds(bytes32 proposalId) external onlyAdmin {
-        Proposal memory proposal = proposals[bytes28(proposalId << 32)];
-
-        IDaoCore dao = IDaoCore(_core);
-        IBank bank = IBank(dao.getSlotContractAddr(Slot.BANK));
-
-        delete proposals[bytes28(proposalId << 32)];
-
-        return bank.executeFinancingProposal(proposal.applicant, proposal.amount);
-    }
 }
