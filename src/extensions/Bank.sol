@@ -24,10 +24,13 @@ contract Bank is CoreGuard, ReentrancyGuard {
         uint256 voteWeight;
     }
 
-    mapping(address => uint256) public balances; // Useless ?
-    mapping(address => mapping(bytes4 => uint256)) public internalBalances; // Useless ?
+    mapping(address => uint256) public balances;
+    mapping(address => mapping(bytes4 => uint256)) public internalBalances;
     // proposalId => member => Commitment
     mapping(bytes32 => mapping(address => Commitment)) public commitments;
+
+    //mapping(bytes4 => uint256) public vaultsBalance;
+    //mapping(bytes32 => uint256) public financingProposalsBalance;
 
     constructor(address core, address terraBioTokenAddr) CoreGuard(core, Slot.BANK) {
         terraBioToken = terraBioTokenAddr;
@@ -53,20 +56,19 @@ contract Bank is CoreGuard, ReentrancyGuard {
         return internalBalances[account][unit];
     }
 
-    function executeFinancingProposal(
-        address applicant,
-        uint256 amount,
-        bytes32 proposalId
-    ) external onlyAdapter(Slot.FINANCING) {
+    function executeFinancingProposal(address applicant, uint256 amount)
+        external
+        onlyAdapter(Slot.FINANCING)
+        returns (bool)
+    {
         require(
-            IERC20(terraBioToken).balanceOf(address(this)) > amount,
+            IERC20(terraBioToken).balanceOf(address(this)) >= amount,
             "Bank: insufficient funds in bank"
         );
 
-        IAgora agora = IAgora(IDaoCore(_core).getSlotContractAddr(Slot.AGORA));
-        agora.changeProposalStatus(proposalId, IAgora.ProposalStatus.EXECUTED);
+        // todo : adjust vaultsBalance and financingProposalsBalance
 
-        IERC20(terraBioToken).transferFrom(address(this), applicant, amount);
+        return IERC20(terraBioToken).transfer(applicant, amount);
     }
 
     function recoverProposalFunds(bytes32 proposalId, address member)

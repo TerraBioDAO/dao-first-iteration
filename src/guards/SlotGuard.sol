@@ -16,11 +16,17 @@ abstract contract SlotGuard is ISlotEntry {
         _;
     }
 
-    modifier onlyMember() {
+    modifier onlyExtension(bytes4 slot) {
+        IDaoCore core = IDaoCore(_core);
         require(
-            IDaoCore(_core).hasRole(msg.sender, Slot.USER_EXISTS),
-            "SlotGuard: not a member"
+            core.isSlotExtension(slot) && core.getSlotContractAddr(slot) == msg.sender,
+            "SlotGuard: not the right extension"
         );
+        _;
+    }
+
+    modifier onlyMember() {
+        require(IDaoCore(_core).hasRole(msg.sender, Slot.USER_EXISTS), "SlotGuard: not a member");
         _;
     }
 
@@ -33,10 +39,7 @@ abstract contract SlotGuard is ISlotEntry {
     }
 
     modifier onlyAdmin() {
-        require(
-            IDaoCore(_core).hasRole(msg.sender, Slot.USER_ADMIN),
-            "SlotGuard: not an admin"
-        );
+        require(IDaoCore(_core).hasRole(msg.sender, Slot.USER_ADMIN), "SlotGuard: not an admin");
         _;
     }
 

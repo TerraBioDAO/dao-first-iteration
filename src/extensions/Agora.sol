@@ -18,6 +18,8 @@ contract Agora is IAgora, CoreGuard {
         bytes32 proposalId
     );
 
+    event ProposalExecuted(bytes4 indexed slot, bytes28 indexed proposalId);
+
     event MemberVoted(
         bytes32 indexed proposalId,
         address indexed voter,
@@ -84,18 +86,27 @@ contract Agora is IAgora, CoreGuard {
         }
     }
 
+    // Can be called by any member from VOTING adapter
     function processProposal(bytes4 slot, bytes28 proposalId) external onlyAdapter(Slot.VOTING) {
+        Proposal storage proposal = proposals[bytes32(bytes.concat(slotId, proposalId))];
+        require(
+            proposal.executable && proposal.status == IAgora.ProposalStatus.TO_PROCEED,
+            "Agora: can't proceed"
+        );
+
+        proposal.status = IAgora.ProposalStatus.EXECUTED;
+
         IDaoCore core = IDaoCore(_core);
         IAdapter adapter = IAdapter(core.getSlotContractAddr(slot));
-        adapter.processProposal(bytes32(bytes.concat(slotId, proposalId)));
-    }
+        require(address(adapter) != address(0), "Agora: adapter not found");
 
-    function changeProposalStatus(bytes32 proposalId, ProposalStatus newStatus)
-        external
-        onlyAdapter(bytes4(proposalId))
-    {
-        Proposal storage proposal = proposals[proposalId];
-        proposal.status = newStatus;
+        bool success = adapter.processProposal(bytes32(bytes.concat(slotId, proposalId)));
+
+        if (!success) {
+            revert();
+        }
+
+        emit ProposalExecuted(slot, bytes28(proposalId << 32));
     }
 
     function submitVote(
