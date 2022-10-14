@@ -32,6 +32,7 @@ contract Bank_test is BaseDaoTest {
     }
 
     // newCommitment()
+
     enum LockPeriod {
         P1,
         P7,
