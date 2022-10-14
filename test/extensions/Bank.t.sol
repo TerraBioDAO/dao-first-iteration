@@ -4,9 +4,6 @@ pragma solidity ^0.8.16;
 
 import "forge-std/Test.sol";
 import "src/core/DaoCore.sol";
-import "src/core/IDaoCore.sol";
-import "src/extensions/Agora.sol";
-import "src/extensions/IAgora.sol";
 import "src/extensions/Bank.sol";
 import "src/adapters/Voting.sol";
 import "src/guards/CoreGuard.sol";
@@ -23,7 +20,7 @@ contract MockTBIO is ERC20, Ownable {
 }
 
 contract MockDaoCore {
-    function getSlotContractAddr(bytes4 slot) external view returns (address) {
+    function getSlotContractAddr(bytes4 slot) external pure returns (address) {
         return slot == Slot.FINANCING ? address(uint160(uint32(Slot.FINANCING))) : address(0);
     }
 }
@@ -39,29 +36,56 @@ contract Bank_test is Test {
     address public constant APPLICANT = address(0x0f);
     address public constant NOT_RIGHT_ADAPTER = address(0x0e);
 
+    bytes32 public constant PROPOSAL = keccak256(abi.encode("a proposal"));
+
     function setUp() public {
         tbio = new MockTBIO();
         core = new MockDaoCore();
         bank = new Bank(address(core), address(tbio));
     }
 
+    function testSetFinancingProposalData() public {
+        // SETUP
+        uint256 amount = 10**20;
+        /////////////
+
+        assertEq(bank.vaultsBalance(Slot.TREASURY), 0);
+        assertEq(bank.financingProposalsBalance(PROPOSAL), 0);
+
+        vm.prank(NOT_RIGHT_ADAPTER);
+        vm.expectRevert("CoreGuard: not the right adapter");
+        bank.executeFinancingProposal(PROPOSAL, APPLICANT, amount);
+
+        vm.prank(FINANCING);
+        bank.setFinancingProposalData(PROPOSAL, amount);
+        assertEq(bank.vaultsBalance(Slot.TREASURY), amount);
+        assertEq(bank.financingProposalsBalance(PROPOSAL), amount);
+
+        vm.stopPrank();
+    }
+
     function testExecuteFinancingProposal() public {
+        // SETUP
         uint256 amount = 10**20;
         tbio.mint(address(bank), amount);
+
+        vm.prank(FINANCING);
+        bank.setFinancingProposalData(PROPOSAL, amount);
+        /////////////////////
 
         assertEq(tbio.balanceOf(address(bank)), amount);
         assertEq(tbio.balanceOf(APPLICANT), 0);
 
         vm.prank(NOT_RIGHT_ADAPTER);
         vm.expectRevert("CoreGuard: not the right adapter");
-        bank.executeFinancingProposal(APPLICANT, amount);
+        bank.executeFinancingProposal(PROPOSAL, APPLICANT, amount);
 
         vm.prank(FINANCING);
         vm.expectRevert("Bank: insufficient funds in bank");
-        bank.executeFinancingProposal(APPLICANT, amount + 10);
+        bank.executeFinancingProposal(PROPOSAL, APPLICANT, amount + 10);
 
         vm.prank(FINANCING);
-        bank.executeFinancingProposal(APPLICANT, amount);
+        bank.executeFinancingProposal(PROPOSAL, APPLICANT, amount);
 
         assertEq(tbio.balanceOf(address(bank)), 0);
         assertEq(tbio.balanceOf(APPLICANT), amount);

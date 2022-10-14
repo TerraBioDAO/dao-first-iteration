@@ -37,6 +37,13 @@ contract Financing is SlotGuard {
         proposals[proposalId] = proposal;
 
         IAgora agora = IAgora(IDaoCore(_core).getSlotContractAddr(Slot.AGORA));
+        IBank bank = IBank(IDaoCore(_core).getSlotContractAddr(Slot.BANK));
+
+        bank.setFinancingProposalData(
+            bytes32(bytes.concat(Slot.FINANCING, proposalId)),
+            proposal.amount
+        );
+
         agora.submitProposal(
             Slot.FINANCING,
             proposalId,
@@ -61,6 +68,6 @@ contract Financing is SlotGuard {
 
         delete proposals[bytes28(proposalId << 32)];
 
-        return bank.executeFinancingProposal(proposal.applicant, proposal.amount);
+        return bank.executeFinancingProposal(proposalId, proposal.applicant, proposal.amount);
     }
 }

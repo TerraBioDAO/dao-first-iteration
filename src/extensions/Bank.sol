@@ -62,8 +62,8 @@ contract Bank is CoreGuard, ReentrancyGuard {
 
     mapping(address => mapping(bytes4 => uint256)) public internalBalances;
 
-    //mapping(bytes4 => uint256) public vaultsBalance;
-    //mapping(bytes32 => uint256) public financingProposalsBalance;
+    mapping(bytes4 => uint256) public vaultsBalance;
+    mapping(bytes32 => uint256) public financingProposalsBalance;
 
     constructor(address core, address terraBioTokenAddr) CoreGuard(core, Slot.BANK) {
         terraBioToken = terraBioTokenAddr;
@@ -144,17 +144,27 @@ contract Bank is CoreGuard, ReentrancyGuard {
         _withdrawTransfer(user, amount);
     }
 
-    function executeFinancingProposal(address applicant, uint256 amount)
+    function setFinancingProposalData(bytes32 proposalId, uint256 amount)
         external
         onlyAdapter(Slot.FINANCING)
-        returns (bool)
     {
+        // Move TBio from another Vault ?
+        vaultsBalance[Slot.TREASURY] += amount;
+        financingProposalsBalance[proposalId] += amount;
+    }
+
+    function executeFinancingProposal(
+        bytes32 proposalId,
+        address applicant,
+        uint256 amount
+    ) external onlyAdapter(Slot.FINANCING) returns (bool) {
         require(
             IERC20(terraBioToken).balanceOf(address(this)) >= amount,
             "Bank: insufficient funds in bank"
         );
 
-        // todo : adjust vaultsBalance and financingProposalsBalance
+        vaultsBalance[Slot.TREASURY] -= amount;
+        delete financingProposalsBalance[proposalId];
 
         return IERC20(terraBioToken).transfer(applicant, amount);
     }
