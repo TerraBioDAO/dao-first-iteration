@@ -18,10 +18,12 @@ library Slot {
 
     // ROLES
     bytes4 internal constant USER_EXISTS = bytes4(keccak256("user-exists"));
-    bytes4 internal constant USER_PROPOSER =
-        bytes4(keccak256("user-proposer"));
+    bytes4 internal constant USER_PROPOSER = bytes4(keccak256("user-proposer"));
     bytes4 internal constant USER_ADMIN = bytes4(keccak256("user-admin"));
 
     // CREDIT
     bytes4 internal constant CREDIT_VOTE = bytes4(keccak256("credit-vote"));
+
+    // VAULTS
+    bytes4 internal constant TREASURY = bytes4(keccak256("treasury"));
 }
