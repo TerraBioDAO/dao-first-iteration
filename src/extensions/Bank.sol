@@ -74,7 +74,7 @@ contract Bank is CoreGuard, ReentrancyGuard {
         MAX_TIMESTAMP = maxTimestamp;
     }
 
-    function userAdvanceDeposit(address user, uint128 amount)
+    function advancedDeposit(address user, uint128 amount)
         external
         onlyAdapter(ISlotEntry(msg.sender).slotId())
     {
@@ -119,6 +119,7 @@ contract Bank is CoreGuard, ReentrancyGuard {
 
         voteWeight = _calculVoteWeight(lockPeriod, lockedAmount);
 
+        // storage writing
         _users[user].commitmentsList.add(proposalId);
         _users[user].commitments[proposalId] = Commitment(
             lockedAmount,
@@ -201,6 +202,10 @@ contract Bank is CoreGuard, ReentrancyGuard {
                 availableBalance += c.lockedAmount;
                 lockedBalance -= c.lockedAmount;
             }
+
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -209,6 +214,10 @@ contract Bank is CoreGuard, ReentrancyGuard {
         bytes32[] memory commitmentsList = new bytes32[](length);
         for (uint256 i; i < length; ) {
             commitmentsList[i] = _users[user].commitmentsList.at(i);
+
+            unchecked {
+                ++i;
+            }
         }
 
         return commitmentsList;
@@ -333,15 +342,15 @@ contract Bank is CoreGuard, ReentrancyGuard {
         if (lockPeriod == DAY) {
             return lockAmount / 10;
         } else if (lockPeriod == 7 * DAY) {
-            return lockPeriod;
+            return lockAmount;
         } else if (lockPeriod == 15 * DAY) {
-            return lockPeriod * 2;
+            return lockAmount * 2;
         } else if (lockPeriod == 30 * DAY) {
-            return lockPeriod * 4;
+            return lockAmount * 4;
         } else if (lockPeriod == 120 * DAY) {
-            return lockPeriod * 25;
+            return lockAmount * 25;
         } else if (lockPeriod == 365 * DAY) {
-            return lockPeriod * 50;
+            return lockAmount * 50;
         } else {
             revert("Bank: incorrect lock period");
         }
