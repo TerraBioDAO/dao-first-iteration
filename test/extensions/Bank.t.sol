@@ -122,9 +122,9 @@ contract Bank_test is BaseDaoTest {
         }
     }
 
-    function testNewCommitment(uint256 tokenAmount, uint8 lp) public {
-        vm.assume(tokenAmount > 0 && tokenAmount <= 50_000 && lp < 6);
-        LockPeriod lp = LockPeriod(lp);
+    function testNewCommitment(uint256 tokenAmount, uint8 enumLP) public {
+        vm.assume(tokenAmount > 0 && tokenAmount <= 50_000 && enumLP < 6);
+        LockPeriod lp = LockPeriod(enumLP);
         vm.warp(1000);
 
         _mintTBIO(USER, tokenAmount * TOKEN);

@@ -67,11 +67,7 @@ contract Bank is CoreGuard, ReentrancyGuard {
 
     constructor(address core, address terraBioTokenAddr) CoreGuard(core, Slot.BANK) {
         terraBioToken = terraBioTokenAddr;
-        uint32 maxTimestamp;
-        unchecked {
-            --maxTimestamp;
-        }
-        MAX_TIMESTAMP = maxTimestamp;
+        MAX_TIMESTAMP = type(uint32).max;
     }
 
     function advancedDeposit(address user, uint128 amount)
@@ -298,10 +294,7 @@ contract Bank is CoreGuard, ReentrancyGuard {
         returns (Account memory)
     {
         uint256 timestamp = block.timestamp;
-        uint32 nextRetrievalDate;
-        unchecked {
-            --nextRetrievalDate; // set maximal value
-        }
+        uint32 nextRetrievalDate = MAX_TIMESTAMP;
 
         // check the commitments list
 
