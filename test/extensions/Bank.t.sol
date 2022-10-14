@@ -49,7 +49,7 @@ contract Bank_test is Test {
         uint256 amount = 10**20;
         /////////////
 
-        assertEq(bank.vaultsBalance(Vault.TREASURY), 0);
+        assertEq(bank.vaultsBalance(Slot.TREASURY), 0);
         assertEq(bank.financingProposalsBalance(PROPOSAL), 0);
 
         vm.prank(NOT_RIGHT_ADAPTER);
@@ -58,7 +58,7 @@ contract Bank_test is Test {
 
         vm.prank(FINANCING);
         bank.setFinancingProposalData(PROPOSAL, amount);
-        assertEq(bank.vaultsBalance(Vault.TREASURY), amount);
+        assertEq(bank.vaultsBalance(Slot.TREASURY), amount);
         assertEq(bank.financingProposalsBalance(PROPOSAL), amount);
 
         vm.stopPrank();
