@@ -18,9 +18,10 @@ import "../extensions/IAgora.sol";
 
 contract Bank is CoreGuard, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.Bytes32Set;
-    address public immutable terraBioToken;
 
+    address public immutable terraBioToken;
     uint64 internal constant DAY = 86400;
+    uint32 internal immutable MAX_TIMESTAMP;
 
     event NewCommitment(
         bytes32 indexed proposalId,
@@ -29,6 +30,7 @@ contract Bank is CoreGuard, ReentrancyGuard {
         uint256 lockedAmount
     );
     event Deposit(address indexed account, uint256 amount);
+    event Withdrawn(address indexed account, uint256 amount);
 
     struct User {
         Account account;
@@ -65,13 +67,19 @@ contract Bank is CoreGuard, ReentrancyGuard {
 
     constructor(address core, address terraBioTokenAddr) CoreGuard(core, Slot.BANK) {
         terraBioToken = terraBioTokenAddr;
+        uint32 maxTimestamp;
+        unchecked {
+            --maxTimestamp;
+        }
+        MAX_TIMESTAMP = maxTimestamp;
     }
 
-    function userAdvanceDeposit(address account, uint256 amount)
+    function userAdvanceDeposit(address user, uint128 amount)
         external
         onlyAdapter(ISlotEntry(msg.sender).slotId())
     {
-        // transfert from
+        _users[user].account.availableBalance += amount;
+        _depositTransfer(user, amount);
     }
 
     function newCommitment(
@@ -123,6 +131,19 @@ contract Bank is CoreGuard, ReentrancyGuard {
         emit NewCommitment(proposalId, user, lockPeriod, lockedAmount);
     }
 
+    function withdrawAmount(address user, uint128 amount) external onlyAdapter(Slot.VOTING) {
+        Account memory a = _users[user].account;
+
+        if (block.timestamp >= a.nextRetrieval) {
+            a = _updateUserAccount(a, user);
+        }
+
+        require(a.availableBalance <= amount, "Bank: insuffisant available balance");
+        a.availableBalance -= amount;
+        _users[user].account = a;
+        _withdrawTransfer(user, amount);
+    }
+
     function executeFinancingProposal(address applicant, uint256 amount)
         external
         onlyAdapter(Slot.FINANCING)
@@ -154,11 +175,88 @@ contract Bank is CoreGuard, ReentrancyGuard {
         IERC20(terraBioToken).transferFrom(address(this), member, balance);
     }
 
+    function getBalances(address user)
+        external
+        view
+        returns (uint128 availableBalance, uint128 lockedBalance)
+    {
+        Account memory a = _users[user].account;
+        availableBalance = a.availableBalance;
+        lockedBalance = a.lockedBalance;
+
+        uint256 timestamp = block.timestamp;
+        for (uint256 i; i < _users[user].commitmentsList.length(); ) {
+            Commitment memory c = _users[user].commitments[_users[user].commitmentsList.at(i)];
+            if (timestamp >= c.retrievalDate) {
+                availableBalance += c.lockedAmount;
+                lockedBalance -= c.lockedAmount;
+            }
+        }
+    }
+
+    function getCommitmentsList(address user) external view returns (bytes32[] memory) {
+        uint256 length = _users[user].commitmentsList.length();
+        bytes32[] memory commitmentsList = new bytes32[](length);
+        for (uint256 i; i < length; ) {
+            commitmentsList[i] = _users[user].commitmentsList.at(i);
+        }
+
+        return commitmentsList;
+    }
+
+    function getCommitment(address user, bytes32 proposalId)
+        external
+        view
+        returns (
+            uint96,
+            uint96,
+            uint32,
+            uint32
+        )
+    {
+        Commitment memory c = _users[user].commitments[proposalId];
+        require(c.lockedAmount > 0, "Bank: inexistant commitment");
+        return (c.lockedAmount, c.voteWeight, c.lockPeriod, c.retrievalDate);
+    }
+
+    function getNextRetrievalDate(address user) external view returns (uint32 nextRetrievalDate) {
+        nextRetrievalDate = _users[user].account.nextRetrieval;
+
+        if (block.timestamp >= nextRetrievalDate) {
+            nextRetrievalDate = MAX_TIMESTAMP;
+            uint256 timestamp = block.timestamp;
+            for (uint256 i; i < _users[user].commitmentsList.length(); ) {
+                Commitment memory c = _users[user].commitments[_users[user].commitmentsList.at(i)];
+
+                if (c.retrievalDate > timestamp) {
+                    if (c.retrievalDate < nextRetrievalDate) {
+                        nextRetrievalDate = c.retrievalDate;
+                    }
+                }
+
+                unchecked {
+                    ++i;
+                }
+            }
+
+            // return 0 if no more commitments
+            if (nextRetrievalDate == MAX_TIMESTAMP) {
+                delete nextRetrievalDate;
+            }
+        }
+    }
+
+    // INTERNAL FONCTION
     function _depositTransfer(address account, uint256 amount) internal {
         if (amount > 0) {
             IERC20(terraBioToken).transferFrom(account, address(this), amount);
             emit Deposit(account, amount);
         }
+    }
+
+    function _withdrawTransfer(address account, uint256 amount) internal {
+        IERC20(terraBioToken).transfer(account, amount);
+        emit Withdrawn(account, amount);
     }
 
     function _changeInternalBalance(
@@ -188,6 +286,7 @@ contract Bank is CoreGuard, ReentrancyGuard {
 
         // check the commitments list
 
+        // read each time? => _users[user].commitmentsList.length();
         for (uint256 i; i < _users[user].commitmentsList.length(); ) {
             bytes32 proposalId = _users[user].commitmentsList.at(i);
             Commitment memory c = _users[user].commitments[proposalId];
