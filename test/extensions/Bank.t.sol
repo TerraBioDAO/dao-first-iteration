@@ -4,9 +4,6 @@ pragma solidity ^0.8.16;
 
 import "forge-std/Test.sol";
 import "src/core/DaoCore.sol";
-import "src/core/IDaoCore.sol";
-import "src/extensions/Agora.sol";
-import "src/extensions/IAgora.sol";
 import "src/extensions/Bank.sol";
 import "src/adapters/Voting.sol";
 import "src/guards/CoreGuard.sol";
@@ -23,7 +20,7 @@ contract MockTBIO is ERC20, Ownable {
 }
 
 contract MockDaoCore {
-    function getSlotContractAddr(bytes4 slot) external view returns (address) {
+    function getSlotContractAddr(bytes4 slot) external pure returns (address) {
         return slot == Slot.FINANCING ? address(uint160(uint32(Slot.FINANCING))) : address(0);
     }
 }

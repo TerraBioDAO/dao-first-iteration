@@ -6,7 +6,6 @@ import "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-contracts/security/ReentrancyGuard.sol";
 
 import "../helpers/Slot.sol";
-import "../helpers/Vault.sol";
 import "../guards/CoreGuard.sol";
 import "../extensions/IAgora.sol";
 
@@ -62,7 +61,7 @@ contract Bank is CoreGuard, ReentrancyGuard {
         onlyAdapter(Slot.FINANCING)
     {
         // Move TBio from another Vault ?
-        vaultsBalance[Vault.TREASURY] += amount;
+        vaultsBalance[Slot.TREASURY] += amount;
         financingProposalsBalance[proposalId] += amount;
     }
 
@@ -76,7 +75,7 @@ contract Bank is CoreGuard, ReentrancyGuard {
             "Bank: insufficient funds in bank"
         );
 
-        vaultsBalance[Vault.TREASURY] -= amount;
+        vaultsBalance[Slot.TREASURY] -= amount;
         delete financingProposalsBalance[proposalId];
 
         return IERC20(terraBioToken).transfer(applicant, amount);
