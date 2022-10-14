@@ -28,53 +28,53 @@ contract Bank_test is BaseDaoTest {
         FINANCING = _branchMock(Slot.FINANCING, false);
     }
 
-    function testSetFinancingProposalData() public {
-        // SETUP
-        uint256 amount = 10**20;
-        /////////////
+    // function testSetFinancingProposalData() public {
+    //     // SETUP
+    //     uint256 amount = 10**20;
+    //     /////////////
 
-        assertEq(bank.vaultsBalance(Slot.TREASURY), 0);
-        assertEq(bank.financingProposalsBalance(PROPOSAL), 0);
+    //     assertEq(bank.vaultsBalance(Slot.TREASURY), 0);
+    //     assertEq(bank.financingProposalsBalance(PROPOSAL), 0);
 
-        vm.prank(NOT_RIGHT_ADAPTER);
-        vm.expectRevert("CoreGuard: not the right adapter");
-        bank.executeFinancingProposal(PROPOSAL, APPLICANT, amount);
+    //     vm.prank(NOT_RIGHT_ADAPTER);
+    //     vm.expectRevert("CoreGuard: not the right adapter");
+    //     bank.executeFinancingProposal(PROPOSAL, APPLICANT, amount);
 
-        vm.prank(FINANCING);
-        bank.setFinancingProposalData(PROPOSAL, amount);
-        assertEq(bank.vaultsBalance(Slot.TREASURY), amount);
-        assertEq(bank.financingProposalsBalance(PROPOSAL), amount);
+    //     vm.prank(FINANCING);
+    //     bank.setFinancingProposalData(PROPOSAL, amount);
+    //     assertEq(bank.vaultsBalance(Slot.TREASURY), amount);
+    //     assertEq(bank.financingProposalsBalance(PROPOSAL), amount);
 
-        vm.stopPrank();
-    }
+    //     vm.stopPrank();
+    // }
 
-    function testExecuteFinancingProposal() public {
-        // SETUP
-        uint256 amount = 10**20;
-        tbio.mint(address(bank), amount);
+    // function testExecuteFinancingProposal() public {
+    //     // SETUP
+    //     uint256 amount = 10**20;
+    //     tbio.mint(address(bank), amount);
 
-        vm.prank(FINANCING);
-        bank.setFinancingProposalData(PROPOSAL, amount);
-        /////////////////////
+    //     vm.prank(FINANCING);
+    //     bank.setFinancingProposalData(PROPOSAL, amount);
+    //     /////////////////////
 
-        assertEq(tbio.balanceOf(address(bank)), amount);
-        assertEq(tbio.balanceOf(APPLICANT), 0);
+    //     assertEq(tbio.balanceOf(address(bank)), amount);
+    //     assertEq(tbio.balanceOf(APPLICANT), 0);
 
-        vm.prank(NOT_RIGHT_ADAPTER);
-        vm.expectRevert("CoreGuard: not the right adapter");
-        bank.executeFinancingProposal(PROPOSAL, APPLICANT, amount);
+    //     vm.prank(NOT_RIGHT_ADAPTER);
+    //     vm.expectRevert("CoreGuard: not the right adapter");
+    //     bank.executeFinancingProposal(PROPOSAL, APPLICANT, amount);
 
-        vm.prank(FINANCING);
-        vm.expectRevert("Bank: insufficient funds in bank");
-        bank.executeFinancingProposal(PROPOSAL, APPLICANT, amount + 10);
+    //     vm.prank(FINANCING);
+    //     vm.expectRevert("Bank: insufficient funds in bank");
+    //     bank.executeFinancingProposal(PROPOSAL, APPLICANT, amount + 10);
 
-        vm.prank(FINANCING);
-        bank.executeFinancingProposal(PROPOSAL, APPLICANT, amount);
+    //     vm.prank(FINANCING);
+    //     bank.executeFinancingProposal(PROPOSAL, APPLICANT, amount);
 
-        assertEq(tbio.balanceOf(address(bank)), 0);
-        assertEq(tbio.balanceOf(APPLICANT), amount);
-        vm.stopPrank();
-    }
+    //     assertEq(tbio.balanceOf(address(bank)), 0);
+    //     assertEq(tbio.balanceOf(APPLICANT), amount);
+    //     vm.stopPrank();
+    // }
 
     // newCommitment()
     enum LockPeriod {
