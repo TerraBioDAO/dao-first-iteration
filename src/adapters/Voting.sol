@@ -55,10 +55,15 @@ contract Voting is SlotGuard {
         bytes32 proposalId,
         uint256 value,
         uint256 deposit,
-        uint256 lockPeriod
+        uint256 lockPeriod,
+        uint256 advanceDeposit
     ) external onlyMember {
         // get vote Weight
         uint256 voteWeight = _getBank().newCommitment(proposalId, msg.sender, deposit, lockPeriod);
+
+        if (advanceDeposit > 0) {
+            // bank.advanceDeposit
+        }
 
         _getAgora().submitVote(proposalId, msg.sender, uint128(voteWeight), value);
     }

@@ -1,56 +1,32 @@
-# DAO progress
-
-# Core
-- [ ] Change slot entry
-  - [ ] difference between extension & adapters
-  - [ ] change managing slot with more control?
-- [ ] Ajouter des roles
-  - [ ] Quel controle sont fait si le roles n'existe pas ?
-
-# Extensions
-## Agora
-- [ ] Vote type
-  - [x] Yes/No
-  - [ ] Preference
-  - [ ] Percentage
-- [ ] Dynamical proposal status?
-- [ ] total vote count?
-- [ ] Batch functions
-### States
-`(bytes32 => Proposal) proposals;`  
-`(bytes4 => VoteParam) voteParams;`  
-`(bytes32 => mapping(address => bool)) votes;`  
-### Entry points
-- **submitProposal**  
-Access: All adapters  
-
-- **changeVoteParams**  
-Access: `Voting.sol`
-
-- **submitVote**  
-Access: `Voting.sol`
+# TerraBio DAO
 
 
+## Workflows
 
-## Bank
-- [ ] Commitments
-  - [ ] manage user balance/ proposal
-  - [ ] use user's available balance
-- [ ] Vault management
-- [ ] Batch functions
+Le *workflows* permet de voir le coverage des tests, les tests permettent d'écrire le *workflows*.
 
-# Adapters
-## Voting
+`Contrat.fonction(paramêtres)`
 
-### Managing
-### Onboarding
-### Financing
+1. **Personnage** fait `Action`
+    - changements d'état de la DAO (Core ou extensions)
+    - ...
+    - ...
 
----
-## Utils
-### Abstract
-#### CoreGuard
-#### SlotGuard
-### Library
-#### Slot
-#### ScoreUtils 
+### Entrée dans la DAO
+
+1. **User** appelle `Onboarding.joinDao()`
+    - User obtient le status de **Membre** (Core)
+    - Le nombre total de membres augmente
+
+### Déploiement de la DAO
+
+1. **Deployer** déploie `DaoCore(adminAddr)`
+2. **Deployer ou Admin** deploie les `extensions & adapters`
+3. **Admin** appelle `DaoCore.changeSlotEntry(slot, contractAddr)`
+    - association d'un contrat à un slot extensions ou adaptateurs (Core)
+4. **Admin** appelle `DaoCore.changeSlotEntry(Slot.MANAGING, managingAddr)`
+    - redonne la gestion des slots au contrat `Managing`
+5. La DAO peut être utilisée
+
+Ajout de membres durant le déploiement ?  
+Possibilité de *batcher* l'ajout de slot et de membres ?
