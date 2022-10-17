@@ -15,8 +15,6 @@ abstract contract BaseTest is Test {
     mapping(address => uint256) writesLengths;
     mapping(address => uint256) readsLengths;
 
-    function setUp() public virtual {}
-
     struct Key {
         string keyType;
         bytes32 keyValue;
