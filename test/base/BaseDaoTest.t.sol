@@ -7,7 +7,7 @@ import "./BaseDaoTest.sol";
 contract BaseDaoTest_test is BaseDaoTest {
     address public BANK;
 
-    function setUp() public {
+    function setUp() public override {
         _deployDao(address(501));
         BANK = _branchMock(Slot.BANK, true);
     }

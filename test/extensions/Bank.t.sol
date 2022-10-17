@@ -3,80 +3,20 @@
 pragma solidity ^0.8.16;
 
 import "test/base/BaseDaoTest.sol";
-import "src/extensions/Bank.sol";
 
 contract Bank_test is BaseDaoTest {
-    Bank public bank;
-
     address public constant USER = address(502);
     // bytes32[5] public PROPOSAL =
 
     address public VOTING;
     address public FINANCING;
 
-    address public constant APPLICANT = address(0x0f);
-    address public constant NOT_RIGHT_ADAPTER = address(0x0e);
-
-    bytes32 public constant PROPOSAL = keccak256(abi.encode("a proposal"));
-
-    function setUp() public {
-        _deployDao(address(501));
-        _deployTBIO();
-        bank = new Bank(address(dao), address(tbio));
-        _branch(Slot.BANK, address(bank));
+    function setUp() public override {
+        super.setUp();
         VOTING = _branchMock(Slot.VOTING, false);
         FINANCING = _branchMock(Slot.FINANCING, false);
     }
 
-    function testSetFinancingProposalData() public {
-        // SETUP
-        uint256 amount = 10**20;
-        /////////////
-
-        assertEq(bank.vaultsBalance(Slot.TREASURY), 0);
-        assertEq(bank.financingProposalsBalance(PROPOSAL), 0);
-
-        vm.prank(NOT_RIGHT_ADAPTER);
-        vm.expectRevert("CoreGuard: not the right adapter");
-        bank.executeFinancingProposal(PROPOSAL, APPLICANT, amount);
-
-        vm.prank(FINANCING);
-        bank.setFinancingProposalData(PROPOSAL, amount);
-        assertEq(bank.vaultsBalance(Slot.TREASURY), amount);
-        assertEq(bank.financingProposalsBalance(PROPOSAL), amount);
-
-        vm.stopPrank();
-    }
-
-    function testExecuteFinancingProposal() public {
-        // SETUP
-        uint256 amount = 10**20;
-        tbio.mint(address(bank), amount);
-
-        vm.prank(FINANCING);
-        bank.setFinancingProposalData(PROPOSAL, amount);
-        /////////////////////
-
-        assertEq(tbio.balanceOf(address(bank)), amount);
-        assertEq(tbio.balanceOf(APPLICANT), 0);
-
-        vm.prank(NOT_RIGHT_ADAPTER);
-        vm.expectRevert("CoreGuard: not the right adapter");
-        bank.executeFinancingProposal(PROPOSAL, APPLICANT, amount);
-
-        vm.prank(FINANCING);
-        vm.expectRevert("Bank: insufficient funds in bank");
-        bank.executeFinancingProposal(PROPOSAL, APPLICANT, amount + 10);
-
-        vm.prank(FINANCING);
-        bank.executeFinancingProposal(PROPOSAL, APPLICANT, amount);
-
-        assertEq(tbio.balanceOf(address(bank)), 0);
-        assertEq(tbio.balanceOf(APPLICANT), amount);
-        vm.stopPrank();
-    }
-
-    // newCommitment()
     enum LockPeriod {
         P1,
         P7,

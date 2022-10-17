@@ -159,11 +159,27 @@ contract Bank is CoreGuard, ReentrancyGuard {
             IERC20(terraBioToken).balanceOf(address(this)) >= amount,
             "Bank: insufficient funds in bank"
         );
+        require(
+            financingProposalsBalance[proposalId] == amount,
+            "Bank: bad financing proposals balance"
+        );
 
         vaultsBalance[Slot.TREASURY] -= amount;
-        delete financingProposalsBalance[proposalId];
+        financingProposalsBalance[proposalId] -= amount;
 
-        return IERC20(terraBioToken).transfer(applicant, amount);
+        bool success = IERC20(terraBioToken).transfer(applicant, amount);
+        require(success, "Bank: transfer failed");
+
+        return success;
+        /*
+        // see : https://github.com/Uniswap/v3-core/blob/main/contracts/libraries/TransferHelper.sol
+        // Make differential test
+        (bool success, bytes memory data) =
+            IERC20(terraBioToken).call(abi.encodeWithSelector(IERC20.transfer.selector, to, value));
+        require(success && (data.length == 0 || abi.decode(data, (bool))), 'Bank: transfer failed');
+
+        return success;
+        */
     }
 
     function recoverProposalFunds(bytes32 proposalId, address member)
