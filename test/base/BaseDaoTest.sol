@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 import "src/helpers/Slot.sol";
 import "src/core/DaoCore.sol";
 import "src/core/IDaoCore.sol";
+import "test/base/BaseTest.sol";
 
 contract FakeEntry {
     bytes4 public slotId;
@@ -26,7 +27,7 @@ contract TBIOToken is ERC20 {
     }
 }
 
-abstract contract BaseDaoTest is Test {
+abstract contract BaseDaoTest is BaseTest {
     DaoCore public dao;
     TBIOToken public tbio;
 
@@ -35,7 +36,7 @@ abstract contract BaseDaoTest is Test {
     uint256 public constant TOKEN = 10**18;
     uint32 public constant DAY = 86400;
 
-    function setUp() public virtual {}
+    function setUp() public virtual override {}
 
     function _deployDao(address admin) internal {
         ADMIN = admin;

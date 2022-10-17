@@ -8,8 +8,7 @@ import "forge-std/Test.sol";
 import "src/helpers/Slot.sol";
 import "src/core/DaoCore.sol";
 import "src/core/IDaoCore.sol";
-import "src/extensions/Bank.sol";
-import "test/base/ERC20_reverts.sol";
+import "test/reverts/ERC20_reverts.sol";
 
 abstract contract BaseTest is Test {
     using stdStorage for StdStorage;
