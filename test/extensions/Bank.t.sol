@@ -3,11 +3,8 @@
 pragma solidity ^0.8.16;
 
 import "test/base/BaseDaoTest.sol";
-import "src/extensions/Bank.sol";
 
 contract Bank_test is BaseDaoTest {
-    Bank public bank;
-
     address public constant USER = address(502);
     // bytes32[5] public PROPOSAL =
 
