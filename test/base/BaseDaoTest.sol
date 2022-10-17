@@ -6,6 +6,8 @@ import "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import "forge-std/Test.sol";
 import "src/helpers/Slot.sol";
 import "src/core/DaoCore.sol";
+import "src/core/IDaoCore.sol";
+import "test/base/BaseTest.sol";
 
 contract FakeEntry {
     bytes4 public slotId;
@@ -25,20 +27,16 @@ contract TBIOToken is ERC20 {
     }
 }
 
-// non implémenté mais peut être utile
-contract MockDaoCore {
-    function getSlotContractAddr(bytes4 slot) external pure returns (address) {
-        return slot == Slot.FINANCING ? address(uint160(uint32(Slot.FINANCING))) : address(0);
-    }
-}
-
-abstract contract BaseDaoTest is Test {
+abstract contract BaseDaoTest is BaseTest {
     DaoCore public dao;
     TBIOToken public tbio;
+
     address public ADMIN;
     address public constant ZERO = address(0);
     uint256 public constant TOKEN = 10**18;
     uint32 public constant DAY = 86400;
+
+    function setUp() public virtual override {}
 
     function _deployDao(address admin) internal {
         ADMIN = admin;
