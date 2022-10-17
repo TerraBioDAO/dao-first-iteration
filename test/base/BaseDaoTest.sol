@@ -3,13 +3,10 @@
 pragma solidity ^0.8.16;
 
 import "openzeppelin-contracts/token/ERC20/ERC20.sol";
-import "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import "forge-std/Test.sol";
 import "src/helpers/Slot.sol";
 import "src/core/DaoCore.sol";
 import "src/core/IDaoCore.sol";
-import "src/extensions/Bank.sol";
-import "test/base/ERC20_reverts.sol";
 
 contract FakeEntry {
     bytes4 public slotId;
@@ -32,18 +29,13 @@ contract TBIOToken is ERC20 {
 abstract contract BaseDaoTest is Test {
     DaoCore public dao;
     TBIOToken public tbio;
-    Bank public bank;
+
     address public ADMIN;
     address public constant ZERO = address(0);
     uint256 public constant TOKEN = 10**18;
     uint32 public constant DAY = 86400;
 
-    function setUp() public virtual {
-        _deployDao(address(501));
-        _deployTBIO();
-        bank = new Bank(address(dao), address(tbio));
-        _branch(Slot.BANK, address(bank));
-    }
+    function setUp() public virtual {}
 
     function _deployDao(address admin) internal {
         ADMIN = admin;

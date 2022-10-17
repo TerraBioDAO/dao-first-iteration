@@ -3,8 +3,11 @@
 pragma solidity ^0.8.16;
 
 import "test/base/BaseDaoTest.sol";
+import "src/extensions/Bank.sol";
 
 contract Bank_test is BaseDaoTest {
+    Bank public bank;
+
     address public constant USER = address(502);
     // bytes32[5] public PROPOSAL =
 
@@ -12,7 +15,10 @@ contract Bank_test is BaseDaoTest {
     address public FINANCING;
 
     function setUp() public override {
-        super.setUp();
+        _deployDao(address(501));
+        _deployTBIO();
+        bank = new Bank(address(dao), address(tbio));
+        _branch(Slot.BANK, address(bank));
         VOTING = _branchMock(Slot.VOTING, false);
         FINANCING = _branchMock(Slot.FINANCING, false);
     }
