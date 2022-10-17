@@ -3,6 +3,7 @@
 pragma solidity ^0.8.16;
 
 import "test/base/BaseTest.sol";
+import "src/extensions/Bank.sol";
 
 contract Bank_financing_test is BaseTest {
     using stdStorage for StdStorage;
@@ -22,7 +23,7 @@ contract Bank_financing_test is BaseTest {
 
     function setUp() public override {
         super.setUp();
-        token = ERC20_REVERTS(TOKEN_ADDRESS);
+        token = ERC20_reverts(TOKEN_ADDRESS);
         core = IDaoCore(CORE);
         bank = new Bank(address(core), address(token));
 
@@ -50,14 +51,14 @@ contract Bank_financing_test is BaseTest {
         assertEq(bank.vaultsBalance(Slot.TREASURY), amount);
         assertEq(bank.financingProposalsBalance(PROPOSAL), amount);
 
-        (uint256 slot, bytes32 value) = retrieveSlotAndValue(
+        /*(uint256 slot, bytes32 value) = retrieveSlotAndValue(
             address(bank),
             "vaultsBalance(bytes4)",
             BaseTest.Key("bytes4", bytes32(Slot.TREASURY))
         );
         console.log("vaultsBalance(Slot.TREASURY)");
         console.log(slot);
-        console.logBytes32(value);
+        console.logBytes32(value);*/
 
         vm.stopPrank();
         vm.clearMockedCalls();

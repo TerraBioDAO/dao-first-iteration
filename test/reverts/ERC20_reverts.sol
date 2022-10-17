@@ -4,7 +4,7 @@ pragma solidity ^0.8.16;
 
 import "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
-contract ERC20_REVERTS is IERC20 {
+contract ERC20_reverts is IERC20 {
     function totalSupply() external pure returns (uint256) {
         revert();
     }
