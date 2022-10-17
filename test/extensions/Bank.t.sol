@@ -11,70 +11,25 @@ contract Bank_test is BaseDaoTest {
     address public constant USER = address(502);
     // bytes32[5] public PROPOSAL =
 
+    address public BANK;
     address public VOTING;
     address public FINANCING;
 
     address public constant APPLICANT = address(0x0f);
     address public constant NOT_RIGHT_ADAPTER = address(0x0e);
 
+    bytes4 public constant VAULT_TREASURY = bytes4(keccak256(bytes("vault-treasury")));
     bytes32 public constant PROPOSAL = keccak256(abi.encode("a proposal"));
 
     function setUp() public {
         _deployDao(address(501));
         _deployTBIO();
         bank = new Bank(address(dao), address(tbio));
-        _branch(Slot.BANK, address(bank));
+        BANK = address(bank);
+        _branch(Slot.BANK, BANK);
         VOTING = _branchMock(Slot.VOTING, false);
         FINANCING = _branchMock(Slot.FINANCING, false);
     }
-
-    // function testSetFinancingProposalData() public {
-    //     // SETUP
-    //     uint256 amount = 10**20;
-    //     /////////////
-
-    //     assertEq(bank.vaultsBalance(Slot.TREASURY), 0);
-    //     assertEq(bank.financingProposalsBalance(PROPOSAL), 0);
-
-    //     vm.prank(NOT_RIGHT_ADAPTER);
-    //     vm.expectRevert("CoreGuard: not the right adapter");
-    //     bank.executeFinancingProposal(PROPOSAL, APPLICANT, amount);
-
-    //     vm.prank(FINANCING);
-    //     bank.setFinancingProposalData(PROPOSAL, amount);
-    //     assertEq(bank.vaultsBalance(Slot.TREASURY), amount);
-    //     assertEq(bank.financingProposalsBalance(PROPOSAL), amount);
-
-    //     vm.stopPrank();
-    // }
-
-    // function testExecuteFinancingProposal() public {
-    //     // SETUP
-    //     uint256 amount = 10**20;
-    //     tbio.mint(address(bank), amount);
-
-    //     vm.prank(FINANCING);
-    //     bank.setFinancingProposalData(PROPOSAL, amount);
-    //     /////////////////////
-
-    //     assertEq(tbio.balanceOf(address(bank)), amount);
-    //     assertEq(tbio.balanceOf(APPLICANT), 0);
-
-    //     vm.prank(NOT_RIGHT_ADAPTER);
-    //     vm.expectRevert("CoreGuard: not the right adapter");
-    //     bank.executeFinancingProposal(PROPOSAL, APPLICANT, amount);
-
-    //     vm.prank(FINANCING);
-    //     vm.expectRevert("Bank: insufficient funds in bank");
-    //     bank.executeFinancingProposal(PROPOSAL, APPLICANT, amount + 10);
-
-    //     vm.prank(FINANCING);
-    //     bank.executeFinancingProposal(PROPOSAL, APPLICANT, amount);
-
-    //     assertEq(tbio.balanceOf(address(bank)), 0);
-    //     assertEq(tbio.balanceOf(APPLICANT), amount);
-    //     vm.stopPrank();
-    // }
 
     // newCommitment()
     enum LockPeriod {
@@ -129,10 +84,12 @@ contract Bank_test is BaseDaoTest {
 
         _mintTBIO(USER, tokenAmount * TOKEN);
         vm.prank(USER);
-        tbio.approve(address(bank), tokenAmount * TOKEN);
+        tbio.approve(BANK, tokenAmount * TOKEN);
 
         vm.prank(VOTING);
         bank.newCommitment(USER, bytes32("0x01"), uint96(tokenAmount * TOKEN), _lpToUint(lp), 0);
+
+        assertEq(tbio.balanceOf(BANK), tokenAmount * TOKEN);
 
         (uint96 lockedAmount, uint96 voteWeight, uint32 lockPeriod, uint32 retrievalDate) = bank
             .getCommitment(USER, bytes32("0x01"));
@@ -159,7 +116,7 @@ contract Bank_test is BaseDaoTest {
         bank.newCommitment(USER, bytes32("0x01"), uint96(50 * TOKEN), 7 * DAY, 0);
 
         vm.prank(USER);
-        tbio.approve(address(bank), 50 * TOKEN);
+        tbio.approve(BANK, 50 * TOKEN);
         vm.prank(VOTING);
         vm.expectRevert("ERC20: transfer amount exceeds balance");
         bank.newCommitment(USER, bytes32("0x01"), uint96(50 * TOKEN), 7 * DAY, 0);
@@ -211,7 +168,7 @@ contract Bank_test is BaseDaoTest {
     function testAdancedDeposit() public {
         _mintTBIO(USER, 50 * TOKEN);
         vm.prank(USER);
-        tbio.approve(address(bank), 50 * TOKEN);
+        tbio.approve(BANK, 50 * TOKEN);
 
         vm.prank(VOTING);
         bank.advancedDeposit(USER, uint128(50 * TOKEN));
@@ -229,5 +186,154 @@ contract Bank_test is BaseDaoTest {
         vm.prank(fakeEntry);
         vm.expectRevert("CoreGuard: not the right adapter");
         bank.advancedDeposit(USER, uint128(50 * TOKEN));
+    }
+
+    // createVault()
+    function _createVault(address[] memory a) internal {
+        vm.prank(FINANCING);
+        bank.createVault(VAULT_TREASURY, a);
+    }
+
+    function testCreateVault() public {
+        address[] memory a = new address[](2);
+        a[0] = address(0);
+        a[1] = address(tbio);
+        _createVault(a);
+
+        assertTrue(bank.isVaultExist(VAULT_TREASURY));
+        address[] memory addr = bank.getVaultTokenList(VAULT_TREASURY);
+        assertEq(addr.length, 2);
+        assertEq(addr[0], address(0));
+        assertEq(addr[1], address(tbio));
+    }
+
+    function testCannotCreateVault() public {
+        address[] memory a = new address[](4);
+        a[0] = address(0);
+        a[1] = address(tbio);
+        _createVault(a);
+
+        a[0] = address(0);
+        a[1] = address(1);
+        a[2] = address(2);
+        a[3] = address(3);
+
+        vm.expectRevert("Bank: vault already exist");
+        vm.prank(FINANCING);
+        bank.createVault(VAULT_TREASURY, a);
+    }
+
+    function testDepositVault(uint256 tokenAmount) public {
+        vm.assume(tokenAmount > 0 && tokenAmount < type(uint128).max);
+        _mintTBIO(USER, tokenAmount);
+        vm.prank(USER);
+        tbio.approve(BANK, tokenAmount);
+
+        address[] memory a = new address[](2);
+        a[0] = address(0);
+        a[1] = address(tbio);
+        _createVault(a);
+
+        vm.prank(FINANCING);
+        bank.vaultDeposit(VAULT_TREASURY, address(tbio), USER, uint128(tokenAmount));
+
+        assertEq(tbio.balanceOf(USER), 0);
+        assertEq(tbio.balanceOf(BANK), tokenAmount);
+        (uint128 availableBalance, ) = bank.getVaultBalances(VAULT_TREASURY, address(tbio));
+        assertEq(uint256(availableBalance), tokenAmount);
+    }
+
+    function testCannotDepositVault() public {
+        uint128 tokenAmount = uint128(50 * TOKEN);
+        _mintTBIO(USER, tokenAmount);
+        vm.prank(USER);
+        tbio.approve(BANK, tokenAmount);
+
+        vm.prank(FINANCING);
+        vm.expectRevert("Bank: inexistant vaultId");
+        bank.vaultDeposit(VAULT_TREASURY, address(tbio), USER, uint128(tokenAmount));
+
+        address[] memory a = new address[](2);
+        a[0] = address(0);
+        a[1] = address(5);
+        _createVault(a);
+
+        vm.prank(FINANCING);
+        vm.expectRevert("Bank: unregistred token");
+        bank.vaultDeposit(VAULT_TREASURY, address(tbio), USER, uint128(tokenAmount));
+    }
+
+    // newFinancingProposal()
+    function testNewFinancingProposal(uint128 amount) public {
+        vm.assume(amount > 0 && amount < type(uint128).max);
+        _mintTBIO(USER, amount);
+        vm.prank(USER);
+        tbio.approve(BANK, amount);
+
+        address[] memory a = new address[](2);
+        a[0] = address(0);
+        a[1] = address(tbio);
+        _createVault(a);
+
+        vm.prank(FINANCING);
+        bank.vaultDeposit(VAULT_TREASURY, address(tbio), USER, amount);
+
+        vm.prank(FINANCING);
+        bank.newFincancingProposal(VAULT_TREASURY, address(tbio), amount);
+
+        (uint128 availableBalance, uint128 committedBalance) = bank.getVaultBalances(
+            VAULT_TREASURY,
+            address(tbio)
+        );
+
+        assertEq(availableBalance, 0);
+        assertEq(committedBalance, amount);
+    }
+
+    function testCannotNewFinancingProposal(uint128 amount) public {
+        vm.assume(amount > 0 && amount < type(uint128).max);
+        _mintTBIO(USER, amount);
+        vm.prank(USER);
+        tbio.approve(BANK, amount);
+
+        address[] memory a = new address[](2);
+        a[0] = address(0);
+        a[1] = address(tbio);
+        _createVault(a);
+
+        vm.startPrank(FINANCING);
+        vm.expectRevert("Bank: inexistant vaultId");
+        bank.newFincancingProposal(bytes4("0x01"), address(tbio), amount);
+
+        vm.expectRevert("Bank: not enough in the vault");
+        bank.newFincancingProposal(VAULT_TREASURY, address(tbio), amount);
+    }
+
+    function testExecuteFinancingProposal(uint128 amount) public {
+        vm.assume(amount > 0 && amount < type(uint128).max);
+        _mintTBIO(USER, amount);
+        vm.prank(USER);
+        tbio.approve(BANK, amount);
+
+        address[] memory a = new address[](2);
+        a[0] = address(0);
+        a[1] = address(tbio);
+        _createVault(a);
+
+        vm.startPrank(FINANCING);
+        bank.vaultDeposit(VAULT_TREASURY, address(tbio), USER, amount);
+
+        bank.newFincancingProposal(VAULT_TREASURY, address(tbio), amount);
+
+        address destination = address(5);
+        bank.executeFinancingProposal(VAULT_TREASURY, address(tbio), destination, amount);
+
+        assertEq(tbio.balanceOf(destination), amount);
+        (uint128 availableBalance, uint128 committedBalance) = bank.getVaultBalances(
+            VAULT_TREASURY,
+            address(tbio)
+        );
+        assertEq(availableBalance, 0);
+        assertEq(committedBalance, 0);
     }
 }
