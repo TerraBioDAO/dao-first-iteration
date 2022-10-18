@@ -21,7 +21,7 @@ contract Bank_financing_test is BaseTest {
     bytes32 public constant PROPOSAL = keccak256(abi.encode("a proposal"));
     bytes32 public constant ANOTHER_PROPOSAL = keccak256(abi.encode("another proposal"));
 
-    function setUp() public {
+    function setUp() public override {
         token = ERC20_reverts(TOKEN_ADDRESS);
         core = IDaoCore(CORE);
         bank = new Bank(address(core), address(token));

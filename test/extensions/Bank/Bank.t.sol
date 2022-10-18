@@ -31,8 +31,6 @@ contract Bank_test is BaseDaoTest {
         FINANCING = _branchMock(Slot.FINANCING, false);
     }
 
-    // newCommitment()
-
     enum LockPeriod {
         P1,
         P7,
@@ -91,7 +89,7 @@ contract Bank_test is BaseDaoTest {
         bank.newCommitment(USER, bytes32("0x01"), uint96(tokenAmount * TOKEN), _lpToUint(lp), 0);
 
         assertEq(tbio.balanceOf(BANK), tokenAmount * TOKEN);
-
+        
         (uint96 lockedAmount, uint96 voteWeight, uint32 lockPeriod, uint32 retrievalDate) = bank
             .getCommitment(USER, bytes32("0x01"));
         assertEq(lockedAmount, tokenAmount * TOKEN, "lock amount");
@@ -118,6 +116,7 @@ contract Bank_test is BaseDaoTest {
 
         vm.prank(USER);
         tbio.approve(BANK, 50 * TOKEN);
+
         vm.prank(VOTING);
         vm.expectRevert("ERC20: transfer amount exceeds balance");
         bank.newCommitment(USER, bytes32("0x01"), uint96(50 * TOKEN), 7 * DAY, 0);

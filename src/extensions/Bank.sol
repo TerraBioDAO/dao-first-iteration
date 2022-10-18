@@ -199,6 +199,10 @@ contract Bank is CoreGuard, ReentrancyGuard {
             _vaults[vaultId].balance[tokenAddr].availableBalance >= amount,
             "Bank: not enough in the vault"
         );
+        require(
+            financingProposalsBalance[proposalId] == amount,
+            "Bank: bad financing proposals balance"
+        );
 
         _vaults[vaultId].balance[tokenAddr].availableBalance -= amount;
         _vaults[vaultId].balance[tokenAddr].commitedBalance += amount;
