@@ -33,7 +33,7 @@ abstract contract BaseDaoTest is BaseTest {
 
     address public ADMIN;
     address public constant ZERO = address(0);
-    uint256 public constant TOKEN = 10**18;
+    uint256 public constant TOKEN = 10**18; // e18 can be use also
     uint32 public constant DAY = 86400;
 
     function _deployDao(address admin) internal {

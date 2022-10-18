@@ -21,34 +21,16 @@ contract Voting is SlotGuard {
     function addNewVoteParams(
         string memory name,
         IAgora.Consensus consensus,
-        IAgora.VoteType voteType,
-        uint64 votingPeriod,
-        uint64 gracePeriod,
-        uint64 threshold,
-        bool adminValidation
+        uint32 votingPeriod,
+        uint32 gracePeriod,
+        uint32 threshold
     ) external onlyAdmin {
         bytes4 voteId = bytes4(keccak256(bytes(name)));
-        _getAgora().changeVoteParams(
-            voteId,
-            consensus,
-            voteType,
-            votingPeriod,
-            gracePeriod,
-            threshold,
-            adminValidation
-        );
+        _getAgora().changeVoteParams(voteId, consensus, votingPeriod, gracePeriod, threshold);
     }
 
     function removeVoteParams(bytes4 voteId) external onlyAdmin {
-        _getAgora().changeVoteParams(
-            voteId,
-            IAgora.Consensus.NO_VOTE,
-            IAgora.VoteType.YES_NO,
-            0,
-            0,
-            0,
-            false
-        );
+        _getAgora().changeVoteParams(voteId, IAgora.Consensus.NO_VOTE, 0, 0, 0);
     }
 
     function submitVote(
@@ -68,8 +50,9 @@ contract Voting is SlotGuard {
         _getAgora().submitVote(proposalId, msg.sender, uint128(voteWeight), value);
     }
 
-    function processProposal(bytes4 slot, bytes28 proposalId) external onlyAdmin {
-        _getAgora().processProposal(slot, proposalId);
+    function finalizeProposal(bytes4 slot, bytes28 proposalId) external onlyMember {
+        bytes32 proposalId = bytes32(bytes.concat(slot, proposalId));
+        _getAgora().finalizeProposal(proposalId, msg.sender);
     }
 
     function _getBank() internal view returns (IBank) {
