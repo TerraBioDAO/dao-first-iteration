@@ -13,57 +13,57 @@ interface IAgora {
         TO_PROCEED,
         EXECUTED
     }
+
     enum Consensus {
         NO_VOTE,
         TOKEN, // take vote weigth
         MEMBER // 1 address = 1 vote
     }
 
-    enum VoteType {
-        YES_NO, // score = (uint128,uint128) = (y,n)
-        PREFERENCE, // score = (uint8,uint8,uint8, ...) = (1,2,3, ...)
-        PERCENTAGE // score = 0 <-> 10000 = (0% <-> 100,00%)
+    struct Score {
+        uint128 nbYes;
+        uint128 nbNo;
+        uint128 nbNota; // none of the above
+        // see: https://blog.tally.xyz/understanding-governor-bravo-69b06f1875da
+        uint128 memberVoted;
     }
 
     struct VoteParam {
         Consensus consensus;
-        VoteType voteType;
-        uint64 votingPeriod;
-        uint64 gracePeriod;
+        uint32 votingPeriod;
+        uint32 gracePeriod;
         uint64 threshold;
-        bool adminValidation;
-        uint256 utilisation;
+        uint256 utilisation; // to fit
     }
 
     struct Proposal {
-        bytes4 slot;
-        bytes28 proposalId; // not useful
+        bool active;
+        bool adminValidation;
         bool executable;
-        uint64 startTime;
-        uint64 endTime;
-        uint256 score; //score contenant le nombre Y et N pour un type VOTE YES NO à faire evoluer ?
-        ProposalStatus status;
-        VoteParam params;
+        bool proceeded; // ended or executed
+        uint32 startTime;
+        uint32 endTime;
         address initiater;
+        Score score;
+        VoteParam params;
     }
 
     function submitProposal(
         bytes4 slot,
         bytes28 proposalId,
+        bool adminValidation,
         bool executable,
         bytes4 voteId,
-        uint64 startTime,
+        uint32 startTime,
         address initiater
     ) external;
 
     function changeVoteParams(
         bytes4 voteId,
         Consensus consensus,
-        VoteType voteType,
-        uint64 votingPeriod,
-        uint64 gracePeriod,
-        uint64 threshold,
-        bool adminValidation
+        uint32 votingPeriod,
+        uint32 gracePeriod,
+        uint64 threshold
     ) external;
 
     function submitVote(
