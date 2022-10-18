@@ -82,8 +82,8 @@ contract Bank is CoreGuard, ReentrancyGuard {
 
     mapping(address => mapping(bytes4 => uint256)) public internalBalances;
 
-    mapping(bytes4 => uint256) public vaultsBalance;
-    mapping(bytes32 => uint256) public financingProposalsBalance;
+    //mapping(bytes4 => uint256) public vaultsBalance;
+    //mapping(bytes32 => uint256) public financingProposalsBalance;
 
     constructor(address core, address terraBioTokenAddr) CoreGuard(core, Slot.BANK) {
         terraBioToken = terraBioTokenAddr;
@@ -199,10 +199,10 @@ contract Bank is CoreGuard, ReentrancyGuard {
             _vaults[vaultId].balance[tokenAddr].availableBalance >= amount,
             "Bank: not enough in the vault"
         );
-        require(
+        /*require(
             financingProposalsBalance[proposalId] == amount,
             "Bank: bad financing proposals balance"
-        );
+        );*/
 
         _vaults[vaultId].balance[tokenAddr].availableBalance -= amount;
         _vaults[vaultId].balance[tokenAddr].commitedBalance += amount;

@@ -21,7 +21,7 @@ contract Bank_test is BaseDaoTest {
     bytes4 public constant VAULT_TREASURY = bytes4(keccak256(bytes("vault-treasury")));
     bytes32 public constant PROPOSAL = keccak256(abi.encode("a proposal"));
 
-    function setUp() public {
+    function setUp() public override {
         _deployDao(address(501));
         _deployTBIO();
         bank = new Bank(address(dao), address(tbio));
@@ -89,7 +89,7 @@ contract Bank_test is BaseDaoTest {
         bank.newCommitment(USER, bytes32("0x01"), uint96(tokenAmount * TOKEN), _lpToUint(lp), 0);
 
         assertEq(tbio.balanceOf(BANK), tokenAmount * TOKEN);
-        
+
         (uint96 lockedAmount, uint96 voteWeight, uint32 lockPeriod, uint32 retrievalDate) = bank
             .getCommitment(USER, bytes32("0x01"));
         assertEq(lockedAmount, tokenAmount * TOKEN, "lock amount");
