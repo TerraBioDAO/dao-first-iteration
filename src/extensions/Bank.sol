@@ -18,6 +18,7 @@ import "../extensions/IAgora.sol";
 
 contract Bank is CoreGuard, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.Bytes32Set;
+    using EnumerableSet for EnumerableSet.AddressSet;
 
     address public immutable terraBioToken;
     uint64 internal constant DAY = 86400;
@@ -31,6 +32,13 @@ contract Bank is CoreGuard, ReentrancyGuard {
     );
     event Deposit(address indexed account, uint256 amount);
     event Withdrawn(address indexed account, uint256 amount);
+
+    event VaultDeposit(
+        bytes4 indexed vaultId,
+        address indexed tokenAddr,
+        address indexed from,
+        uint128 amount
+    );
 
     struct User {
         Account account;
@@ -58,12 +66,24 @@ contract Bank is CoreGuard, ReentrancyGuard {
         uint32 retrievalDate;
     }
 
+    struct Vault {
+        bool isExist;
+        EnumerableSet.AddressSet tokenList;
+        mapping(address => Balance) balance;
+    }
+
+    struct Balance {
+        uint128 availableBalance;
+        uint128 commitedBalance;
+    }
+
     mapping(address => User) private _users;
+    mapping(bytes4 => Vault) private _vaults;
 
     mapping(address => mapping(bytes4 => uint256)) public internalBalances;
 
-    mapping(bytes4 => uint256) public vaultsBalance;
-    mapping(bytes32 => uint256) public financingProposalsBalance;
+    //mapping(bytes4 => uint256) public vaultsBalance;
+    //mapping(bytes32 => uint256) public financingProposalsBalance;
 
     constructor(address core, address terraBioTokenAddr) CoreGuard(core, Slot.BANK) {
         terraBioToken = terraBioTokenAddr;
@@ -141,62 +161,73 @@ contract Bank is CoreGuard, ReentrancyGuard {
         _withdrawTransfer(user, amount);
     }
 
-    function setFinancingProposalData(bytes32 proposalId, uint256 amount)
+    function vaultDeposit(
+        bytes4 vaultId,
+        address tokenAddr,
+        address tokenOwner,
+        uint128 amount
+    ) external onlyAdapter(Slot.FINANCING) {
+        require(_vaults[vaultId].isExist, "Bank: inexistant vaultId");
+        require(_vaults[vaultId].tokenList.contains(tokenAddr), "Bank: unregistred token");
+
+        IERC20(tokenAddr).transferFrom(tokenOwner, address(this), amount);
+        _vaults[vaultId].balance[tokenAddr].availableBalance += amount;
+        emit VaultDeposit(vaultId, tokenAddr, tokenOwner, amount);
+    }
+
+    function createVault(bytes4 vaultId, address[] memory tokenList)
         external
         onlyAdapter(Slot.FINANCING)
     {
-        // Move TBio from another Vault ?
-        vaultsBalance[Slot.TREASURY] += amount;
-        financingProposalsBalance[proposalId] += amount;
+        require(!_vaults[vaultId].isExist, "Bank: vault already exist");
+        for (uint256 i; i < tokenList.length; ) {
+            _vaults[vaultId].tokenList.add(tokenList[i]);
+            unchecked {
+                ++i;
+            }
+        }
+        _vaults[vaultId].isExist = true;
+    }
+
+    function newFincancingProposal(
+        bytes4 vaultId,
+        address tokenAddr,
+        uint128 amount
+    ) external onlyAdapter(Slot.FINANCING) {
+        require(_vaults[vaultId].isExist, "Bank: inexistant vaultId");
+        require(
+            _vaults[vaultId].balance[tokenAddr].availableBalance >= amount,
+            "Bank: not enough in the vault"
+        );
+        /*require(
+            financingProposalsBalance[proposalId] == amount,
+            "Bank: bad financing proposals balance"
+        );*/
+
+        _vaults[vaultId].balance[tokenAddr].availableBalance -= amount;
+        _vaults[vaultId].balance[tokenAddr].commitedBalance += amount;
+
+        // emit something
+        // need to track movemnts by proposalID?
+        // no need to track destinationAddr ?
     }
 
     function executeFinancingProposal(
-        bytes32 proposalId,
-        address applicant,
-        uint256 amount
-    ) external onlyAdapter(Slot.FINANCING) returns (bool) {
-        require(
-            IERC20(terraBioToken).balanceOf(address(this)) >= amount,
-            "Bank: insufficient funds in bank"
-        );
-        require(
-            financingProposalsBalance[proposalId] == amount,
-            "Bank: bad financing proposals balance"
-        );
+        bytes4 vaultId,
+        address tokenAddr,
+        address destinationAddr,
+        uint128 amount
+    ) external nonReentrant onlyAdapter(Slot.FINANCING) returns (bool) {
+        _vaults[vaultId].balance[tokenAddr].commitedBalance -= amount;
 
-        vaultsBalance[Slot.TREASURY] -= amount;
-        financingProposalsBalance[proposalId] -= amount;
+        // important nonReentrant here as we don't track proposalId and balance associated
+        IERC20(tokenAddr).transfer(destinationAddr, amount);
 
-        bool success = IERC20(terraBioToken).transfer(applicant, amount);
-        require(success, "Bank: transfer failed");
-
-        return success;
-        /*
-        // see : https://github.com/Uniswap/v3-core/blob/main/contracts/libraries/TransferHelper.sol
-        // Make differential test
-        (bool success, bytes memory data) =
-            IERC20(terraBioToken).call(abi.encodeWithSelector(IERC20.transfer.selector, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))), 'Bank: transfer failed');
-
-        return success;
-        */
+        // emit something
+        return true;
     }
 
-    function recoverProposalFunds(bytes32 proposalId, address member)
-        external
-        onlyAdapter(Slot.FINANCING)
-    {
-        IAgora agora = IAgora(IDaoCore(_core).getSlotContractAddr(Slot.AGORA));
-        require(
-            agora.getProposal(proposalId).status == IAgora.ProposalStatus.EXECUTED,
-            "Bank: not executed"
-        );
-
-        uint256 balance = _users[member].commitments[proposalId].lockedAmount;
-        require(balance > 0, "Bank: no funds for this proposal");
-
-        IERC20(terraBioToken).transferFrom(address(this), member, balance);
-    }
+    // GETTERS
 
     function getBalances(address user)
         external
@@ -275,6 +306,31 @@ contract Bank is CoreGuard, ReentrancyGuard {
                 delete nextRetrievalDate;
             }
         }
+    }
+
+    function getVaultBalances(bytes4 vaultId, address tokenAddr)
+        external
+        view
+        returns (uint128, uint128)
+    {
+        Balance memory b = _vaults[vaultId].balance[tokenAddr];
+        return (b.availableBalance, b.commitedBalance);
+    }
+
+    function getVaultTokenList(bytes4 vaultId) external view returns (address[] memory) {
+        uint256 length = _vaults[vaultId].tokenList.length();
+        address[] memory tokenList = new address[](length);
+        for (uint256 i; i < length; ) {
+            tokenList[i] = _vaults[vaultId].tokenList.at(i);
+            unchecked {
+                ++i;
+            }
+        }
+        return tokenList;
+    }
+
+    function isVaultExist(bytes4 vaultId) external view returns (bool) {
+        return _vaults[vaultId].isExist;
     }
 
     // INTERNAL FONCTION
