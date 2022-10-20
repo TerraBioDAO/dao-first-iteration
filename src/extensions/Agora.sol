@@ -3,61 +3,50 @@
 pragma solidity ^0.8.16;
 
 import "../guards/CoreGuard.sol";
-import "../helpers/ScoreUtils.sol";
 import "../extensions/IAgora.sol";
 
 contract Agora is IAgora, CoreGuard {
-    using ScoreUtils for uint256;
+    uint256 public immutable ADMIN_VALIDATION_PERIOD;
 
-    event VoteParamsChanged(bytes4 indexed voteId, bool indexed added); // add consensus?
+    mapping(bytes32 => Proposal) private _proposals;
+    mapping(bytes4 => VoteParam) private _voteParams;
+    mapping(bytes32 => mapping(address => bool)) private _votes;
 
-    event ProposalSubmitted(
-        bytes4 indexed slot,
-        address indexed from,
-        bytes4 indexed voteParam,
-        bytes32 proposalId
-    );
-
-    event ProposalExecuted(bytes4 indexed slot, bytes28 indexed proposalId);
-
-    event MemberVoted(
-        bytes32 indexed proposalId,
-        address indexed voter,
-        uint256 indexed value,
-        uint256 voteWeight
-    );
-
-    mapping(bytes32 => Proposal) public proposals;
-    mapping(bytes4 => VoteParam) public voteParams;
-    mapping(bytes32 => mapping(address => bool)) public votes;
-
-    constructor(address core) CoreGuard(core, Slot.AGORA) {}
+    constructor(address core) CoreGuard(core, Slot.AGORA) {
+        ADMIN_VALIDATION_PERIOD = 7 * 86400; // 7 days
+    }
 
     function submitProposal(
         bytes4 slot,
         bytes28 proposalId,
+        bool adminApproved,
         bool executable,
         bytes4 voteId,
-        uint64 startTime,
+        uint32 minStartTime,
         address initiater
     ) external onlyAdapter(slot) {
-        VoteParam memory vote = voteParams[voteId];
+        bytes32 proposalId = bytes32(bytes.concat(slot, proposalId));
+        Proposal memory p = _proposals[proposalId];
+        require(!p.active, "Agora: proposal already exist");
+
+        VoteParam memory vote = _voteParams[voteId];
         require(vote.votingPeriod > 0, "Agora: unknown vote params");
 
-        if (startTime == 0) startTime = uint64(block.timestamp);
-        require(startTime >= block.timestamp, "Agora: wrong starting time");
+        uint32 timestamp = uint32(block.timestamp);
 
-        proposals[bytes32(bytes.concat(slot, proposalId))] = Proposal(
-            slot,
-            proposalId,
-            executable,
-            startTime,
-            startTime + vote.votingPeriod,
-            0,
-            ProposalStatus.ONGOING,
-            vote,
-            initiater
-        );
+        if (minStartTime == 0) minStartTime = timestamp;
+        require(minStartTime >= timestamp, "Agora: wrong starting time");
+
+        p.active = true;
+        p.adminApproved = adminApproved;
+        p.createdAt = timestamp;
+        p.executable = executable;
+        p.minStartTime = minStartTime;
+        p.initiater = initiater;
+        p.voteId = voteId;
+
+        _proposals[proposalId] = p;
+        ++_voteParams[voteId].utilisation;
 
         emit ProposalSubmitted(slot, initiater, voteId, proposalId);
     }
@@ -65,48 +54,44 @@ contract Agora is IAgora, CoreGuard {
     function changeVoteParams(
         bytes4 voteId,
         Consensus consensus,
-        VoteType voteType,
-        uint64 votingPeriod,
-        uint64 gracePeriod,
-        uint64 threshold,
-        bool adminValidation
+        uint32 votingPeriod,
+        uint32 gracePeriod,
+        uint32 threshold
     ) external onlyAdapter(Slot.VOTING) {
         if (consensus == Consensus.NO_VOTE) {
             _removeVoteParam(voteId);
         } else {
-            _addVoteParam(
-                voteId,
-                consensus,
-                voteType,
-                votingPeriod,
-                gracePeriod,
-                threshold,
-                adminValidation
-            );
+            _addVoteParam(voteId, consensus, votingPeriod, gracePeriod, threshold);
         }
     }
 
     // Can be called by any member from VOTING adapter
-    function processProposal(bytes4 slot, bytes28 proposalId) external onlyAdapter(Slot.VOTING) {
-        Proposal storage proposal = proposals[bytes32(bytes.concat(slotId, proposalId))];
+    function finalizeProposal(bytes32 proposalId, address finalizer)
+        external
+        onlyAdapter(Slot.VOTING)
+    {
         require(
-            proposal.executable && proposal.status == IAgora.ProposalStatus.TO_PROCEED,
-            "Agora: can't proceed"
+            getProposalStatus(proposalId) == ProposalStatus.TO_FINALIZE,
+            "Agora: cannot be finalized"
         );
 
-        proposal.status = IAgora.ProposalStatus.EXECUTED;
+        Proposal memory p = _proposals[proposalId];
+        VoteResult result = _calculVoteResult(p.score, _voteParams[p.voteId].threshold);
 
-        IDaoCore core = IDaoCore(_core);
-        IAdapter adapter = IAdapter(core.getSlotContractAddr(slot));
-        require(address(adapter) != address(0), "Agora: adapter not found");
+        if (result == VoteResult.ACCEPTED && p.executable) {
+            address adapter = IDaoCore(_core).getSlotContractAddr(bytes4(proposalId));
+            // This should not be possible, block slot entry when proposals ongoing
+            require(adapter != address(0), "Agora: adapter not found");
 
-        bool success = adapter.processProposal(bytes32(bytes.concat(slotId, proposalId)));
-
-        if (!success) {
-            revert();
+            IAdapter(adapter).finalizeProposal(bytes28(proposalId << 32));
+            // error should be handled here
         }
+        p.proceeded = true;
 
-        emit ProposalExecuted(slot, bytes28(proposalId << 32));
+        // reward for finalizer
+
+        _proposals[proposalId] = p;
+        emit ProposalFinalized(proposalId, result, finalizer);
     }
 
     function submitVote(
@@ -119,12 +104,66 @@ contract Agora is IAgora, CoreGuard {
     }
 
     // GETTERS
+    function getProposalStatus(bytes32 proposalId) public view returns (ProposalStatus) {
+        Proposal memory p = _proposals[proposalId];
+        VoteParam memory vp = _voteParams[p.voteId];
+        uint256 timestamp = block.timestamp;
+
+        // pps exist?
+        if (!p.active) {
+            return ProposalStatus.UNKNOWN;
+        }
+
+        // is validated?
+        if (timestamp < p.createdAt + ADMIN_VALIDATION_PERIOD) {
+            if (!p.adminApproved) {
+                return ProposalStatus.VALIDATION;
+            }
+        }
+
+        // has started
+        if (timestamp < p.minStartTime) {
+            return ProposalStatus.STANDBY;
+        }
+
+        // is suspended
+        if (p.suspended) {
+            return ProposalStatus.SUSPENDED;
+        }
+
+        // is in voting period
+        if (timestamp < p.minStartTime + p.shiftedTime + vp.votingPeriod) {
+            return ProposalStatus.ONGOING;
+        }
+
+        // is in grace period
+        if (timestamp < p.minStartTime + p.shiftedTime + vp.votingPeriod + vp.gracePeriod) {
+            return ProposalStatus.CLOSED;
+        }
+
+        // is finalized
+        if (!p.proceeded) {
+            return ProposalStatus.TO_FINALIZE;
+        } else {
+            return ProposalStatus.ARCHIVED;
+        }
+    }
+
+    function getVoteResult(bytes32 proposalId) external view returns (VoteResult) {
+        Proposal memory p = _proposals[proposalId];
+        return _calculVoteResult(p.score, _voteParams[p.voteId].threshold);
+    }
+
     function getProposal(bytes32 proposalId) external view returns (Proposal memory) {
-        return proposals[proposalId];
+        return _proposals[proposalId];
     }
 
     function getVoteParams(bytes4 voteId) external view returns (VoteParam memory) {
-        return voteParams[voteId];
+        return _voteParams[voteId];
+    }
+
+    function getVotes(bytes32 proposalId, address voter) external view returns (bool) {
+        return _votes[proposalId][voter];
     }
 
     // INTERNAL FUNCTION
@@ -132,35 +171,31 @@ contract Agora is IAgora, CoreGuard {
     function _addVoteParam(
         bytes4 voteId,
         Consensus consensus,
-        VoteType voteType,
-        uint64 votingPeriod,
-        uint64 gracePeriod,
-        uint64 threshold,
-        bool adminValidation
+        uint32 votingPeriod,
+        uint32 gracePeriod,
+        uint32 threshold
     ) internal {
-        VoteParam memory vote = voteParams[voteId];
+        VoteParam memory vote = _voteParams[voteId];
         require(vote.consensus == Consensus.NO_VOTE, "Agora: cannot replace params");
 
         require(votingPeriod > 0, "Agora: below min period");
         require(threshold <= 10000, "Agora: wrong threshold or below min value");
 
         vote.consensus = consensus;
-        vote.voteType = voteType;
         vote.votingPeriod = votingPeriod;
         vote.gracePeriod = gracePeriod;
         vote.threshold = threshold;
-        vote.adminValidation = adminValidation;
 
-        voteParams[voteId] = vote;
+        _voteParams[voteId] = vote;
 
         emit VoteParamsChanged(voteId, true);
     }
 
     function _removeVoteParam(bytes4 voteId) internal {
-        uint256 utilisation = voteParams[voteId].utilisation;
+        uint256 utilisation = _voteParams[voteId].utilisation;
         require(utilisation == 0, "Agora: parameters still used");
 
-        delete voteParams[voteId];
+        delete _voteParams[voteId];
         emit VoteParamsChanged(voteId, false);
     }
 
@@ -170,40 +205,46 @@ contract Agora is IAgora, CoreGuard {
         uint128 voteWeight,
         uint256 value
     ) internal {
-        Proposal memory p = proposals[proposalId];
-        require(p.status == ProposalStatus.ONGOING, "Agora: unknown proposal");
         require(
-            p.startTime <= block.timestamp && p.endTime > block.timestamp,
+            getProposalStatus(proposalId) == ProposalStatus.ONGOING,
             "Agora: outside voting period"
         );
 
-        require(!votes[proposalId][voter], "Agora: proposal voted");
-        votes[proposalId][voter] = true;
+        require(!_votes[proposalId][voter], "Agora: proposal voted");
+        _votes[proposalId][voter] = true;
 
-        if (p.params.consensus == Consensus.MEMBER) {
+        Proposal memory p = _proposals[proposalId];
+
+        if (_voteParams[p.voteId].consensus == Consensus.MEMBER) {
             voteWeight = 1;
         }
-        uint256 score = p.score;
 
-        if (p.params.voteType == VoteType.YES_NO) {
-            // YES / NO vote type
-            require(value <= 1, "Agora: neither (y) nor (n)");
-
-            score = value == 1
-                ? score.yesNoIncrement(voteWeight, 0)
-                : score.yesNoIncrement(0, voteWeight);
-        } else if (p.params.voteType == VoteType.PREFERENCE) {
-            revert("NOT IMPLEMENTED YET");
+        require(value <= 2, "Agora: neither (y), (n), (nota)");
+        ++p.score.memberVoted;
+        if (value == 0) {
+            p.score.nbYes += voteWeight;
+        } else if (value == 1) {
+            p.score.nbNo += voteWeight;
         } else {
-            revert("NOT IMPLEMENTED YET");
+            p.score.nbNota += voteWeight;
         }
 
-        // update score
-        p.score = score;
-
-        // Should implement total vote count?
-
-        proposals[proposalId] = p;
+        _proposals[proposalId] = p;
         emit MemberVoted(proposalId, voter, value, voteWeight);
+    }
+
+    function _calculVoteResult(Score memory score, uint32 threshold)
+        internal
+        pure
+        returns (VoteResult)
+    {
+        // how to integrate NOTA vote, should it be?
+        uint256 totalVote = score.nbYes + score.nbYes;
+
+        if (totalVote != 0 && (score.nbYes * 10000) / totalVote >= threshold) {
+            return VoteResult.ACCEPTED;
+        } else {
+            return VoteResult.REJECTED;
+        }
     }
 }

@@ -44,14 +44,10 @@ contract Financing is SlotGuard {
             proposal.amount
         );
 
-        agora.submitProposal(
-            Slot.FINANCING,
-            proposalId,
-            true, // have an action to proceed
-            bytes4(0), // voteParamId
-            uint64(block.timestamp + 60),
-            msg.sender
-        );
+        // startime = 0 => startime = timestamp
+        // voteID in args
+        // admin validation depends on sender role
+        agora.submitProposal(Slot.FINANCING, proposalId, true, true, bytes4(0), 0, msg.sender);
     }
 
     /**

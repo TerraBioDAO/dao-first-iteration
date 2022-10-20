@@ -3,5 +3,6 @@
 pragma solidity ^0.8.16;
 
 interface IAdapter {
-    function processProposal(bytes32 proposalId) external returns (bool);
+    // ADD AGORA descision !
+    function finalizeProposal(bytes28 proposalId) external returns (bool);
 }

@@ -3,67 +3,95 @@
 pragma solidity ^0.8.16;
 
 interface IAgora {
+    event VoteParamsChanged(bytes4 indexed voteId, bool indexed added); // add consensus?
+
+    event ProposalSubmitted(
+        bytes4 indexed slot,
+        address indexed from,
+        bytes4 indexed voteParam,
+        bytes32 proposalId
+    );
+
+    event ProposalFinalized(
+        bytes32 indexed proposalId,
+        VoteResult indexed result,
+        address indexed finalizer
+    );
+
+    event MemberVoted(
+        bytes32 indexed proposalId,
+        address indexed voter,
+        uint256 indexed value,
+        uint256 voteWeight
+    );
     enum ProposalStatus {
         UNKNOWN,
+        VALIDATION,
+        STANDBY,
         ONGOING,
         CLOSED,
         SUSPENDED,
-        ACCEPTED,
-        REJECTED,
-        TO_PROCEED,
-        EXECUTED
+        TO_FINALIZE,
+        ARCHIVED // until last lock period
     }
+
     enum Consensus {
         NO_VOTE,
         TOKEN, // take vote weigth
         MEMBER // 1 address = 1 vote
     }
 
-    enum VoteType {
-        YES_NO, // score = (uint128,uint128) = (y,n)
-        PREFERENCE, // score = (uint8,uint8,uint8, ...) = (1,2,3, ...)
-        PERCENTAGE // score = 0 <-> 10000 = (0% <-> 100,00%)
+    enum VoteResult {
+        ACCEPTED,
+        REJECTED
+    }
+
+    struct Score {
+        uint128 nbYes;
+        uint128 nbNo;
+        uint128 nbNota; // none of the above
+        // see: https://blog.tally.xyz/understanding-governor-bravo-69b06f1875da
+        uint128 memberVoted;
     }
 
     struct VoteParam {
         Consensus consensus;
-        VoteType voteType;
-        uint64 votingPeriod;
-        uint64 gracePeriod;
-        uint64 threshold;
-        bool adminValidation;
-        uint256 utilisation;
+        uint32 votingPeriod;
+        uint32 gracePeriod;
+        uint32 threshold; // 0 to 10000
+        uint256 utilisation; // to fit
     }
 
     struct Proposal {
-        bytes4 slot;
-        bytes28 proposalId; // not useful
+        bool active;
+        bool adminApproved;
+        bool suspended;
         bool executable;
-        uint64 startTime;
-        uint64 endTime;
-        uint256 score; //score contenant le nombre Y et N pour un type VOTE YES NO à faire evoluer ?
-        ProposalStatus status;
-        VoteParam params;
+        bool proceeded; // ended or executed
+        uint32 createdAt;
+        uint32 minStartTime;
+        uint32 shiftedTime;
+        bytes4 voteId;
         address initiater;
+        Score score;
     }
 
     function submitProposal(
         bytes4 slot,
         bytes28 proposalId,
+        bool adminValidation,
         bool executable,
         bytes4 voteId,
-        uint64 startTime,
+        uint32 startTime,
         address initiater
     ) external;
 
     function changeVoteParams(
         bytes4 voteId,
         Consensus consensus,
-        VoteType voteType,
-        uint64 votingPeriod,
-        uint64 gracePeriod,
-        uint64 threshold,
-        bool adminValidation
+        uint32 votingPeriod,
+        uint32 gracePeriod,
+        uint32 threshold
     ) external;
 
     function submitVote(
@@ -73,7 +101,7 @@ interface IAgora {
         uint256 value
     ) external;
 
-    function processProposal(bytes4 slot, bytes28 proposalId) external;
+    function finalizeProposal(bytes32 proposalId, address finalizer) external;
 
     // GETTERS
     function getProposal(bytes32 proposalId) external view returns (Proposal memory);
