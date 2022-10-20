@@ -2,14 +2,14 @@
 
 pragma solidity ^0.8.16;
 
-import "../helpers/Slot.sol";
-import "../core/IDaoCore.sol";
-import "./ISlotEntry.sol";
+import "openzeppelin-contracts/utils/Counters.sol";
 
-abstract contract SlotGuard is ISlotEntry {
-    address internal immutable _core;
-    bytes4 public immutable override slotId;
-    bool public immutable override isExtension;
+import "./SlotEntry.sol";
+import "../interfaces/IAdapter.sol";
+import "../interfaces/IDaoCore.sol";
+
+abstract contract Adapter is SlotEntry, IAdapter {
+    constructor(address core, bytes4 slot) SlotEntry(core, slot, false) {}
 
     modifier onlyCore() {
         require(msg.sender == _core, "SlotGuard: not the core");
@@ -20,7 +20,7 @@ abstract contract SlotGuard is ISlotEntry {
         IDaoCore core = IDaoCore(_core);
         require(
             core.isSlotExtension(slot) && core.getSlotContractAddr(slot) == msg.sender,
-            "SlotGuard: not the right extension"
+            "SlotGuard: wrong extension"
         );
         _;
     }
@@ -43,11 +43,7 @@ abstract contract SlotGuard is ISlotEntry {
         _;
     }
 
-    constructor(address core, bytes4 slot) {
-        require(slot != Slot.EMPTY, "SlotGuard: empty slot");
-        require(core != address(0), "SlotGuard: zero core address");
-        _core = core;
-        slotId = slot;
-        isExtension = false;
+    function eraseAdapter() external override onlyCore {
+        selfdestruct(payable(_core));
     }
 }

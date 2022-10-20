@@ -122,7 +122,7 @@ contract Bank_test is BaseDaoTest {
         bank.newCommitment(USER, bytes32("0x01"), uint96(50e18), 7 * DAY, 0);
 
         _mintTBIO(USER, 50e18);
-        vm.expectRevert("CoreGuard: not the right adapter");
+        vm.expectRevert("Cores: not the right adapter");
         bank.newCommitment(USER, bytes32("0x01"), uint96(50e18), 7 * DAY, 0);
 
         vm.prank(VOTING);
@@ -184,7 +184,7 @@ contract Bank_test is BaseDaoTest {
         // with an unregistred adapter
         address fakeEntry = _newEntry(Slot.ONBOARDING, false);
         vm.prank(fakeEntry);
-        vm.expectRevert("CoreGuard: not the right adapter");
+        vm.expectRevert("Cores: not the right adapter");
         bank.advancedDeposit(USER, uint128(50e18));
     }
 

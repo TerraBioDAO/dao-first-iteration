@@ -34,7 +34,7 @@ contract DaoCore_test is BaseDaoTest {
 
     function testCannotAddSlotEntry() public {
         ONBOARDING = address(600);
-        vm.expectRevert("CoreGuard: not the right adapter");
+        vm.expectRevert("Cores: not the right adapter");
         dao.changeSlotEntry(Slot.ONBOARDING, ONBOARDING);
 
         vm.startPrank(MANAGING);
@@ -123,7 +123,7 @@ contract DaoCore_test is BaseDaoTest {
     }
 
     function testCannotChangeMemberStatus() public {
-        vm.expectRevert("CoreGuard: not the right adapter");
+        vm.expectRevert("Cores: not the right adapter");
         dao.changeMemberStatus(USER, Slot.USER_EXISTS, true);
 
         _branchOnboarding();
@@ -148,7 +148,7 @@ contract DaoCore_test is BaseDaoTest {
     }
 
     function testCannotAddNewAdmin() public {
-        vm.expectRevert("CoreGuard: not the right adapter");
+        vm.expectRevert("Cores: not the right adapter");
         dao.addNewAdmin(USER);
 
         _branchOnboarding();

@@ -2,12 +2,10 @@
 
 pragma solidity ^0.8.16;
 
-import "../helpers/Slot.sol";
-import "../core/IDaoCore.sol";
-import "../guards/SlotGuard.sol";
+import "../abstracts/Adapter.sol";
 
-contract Onboarding is SlotGuard {
-    constructor(address core) SlotGuard(core, Slot.ONBOARDING) {}
+contract Onboarding is Adapter {
+    constructor(address core) Adapter(core, Slot.ONBOARDING) {}
 
     function joinDao() external {
         IDaoCore(_core).changeMemberStatus(msg.sender, Slot.USER_EXISTS, true);

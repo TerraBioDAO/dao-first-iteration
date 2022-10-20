@@ -7,9 +7,7 @@ import "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-contracts/utils/Strings.sol";
 import "openzeppelin-contracts/utils/StorageSlot.sol";
 import "forge-std/Test.sol";
-import "src/helpers/Slot.sol";
-import "src/core/DaoCore.sol";
-import "src/core/IDaoCore.sol";
+
 import "test/reverts/ERC20_reverts.sol";
 
 abstract contract BaseTest is Test {

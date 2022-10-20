@@ -2,16 +2,14 @@
 
 pragma solidity ^0.8.16;
 
-import "../helpers/Slot.sol";
-import "../core/IDaoCore.sol";
-import "../guards/SlotGuard.sol";
+import "../abstracts/ProposerAdapter.sol";
 
 /**
  * @notice MOST important contract in the DAO, as it allow to add/remove adapters & extensions
  * if this contract deprecaced this fonction the DAO cannot evolve anymore
  */
 
-contract Managing is SlotGuard {
+contract Managing is ProposerAdapter {
     struct Proposal {
         bytes4 slot;
         bool isExtension;
@@ -21,8 +19,7 @@ contract Managing is SlotGuard {
 
     mapping(bytes28 => Proposal) public proposals;
 
-    constructor(address core) SlotGuard(core, Slot.MANAGING) {}
-
+    constructor(address core) Adapter(core, Slot.MANAGING) {}
 
     function submitProposal(
         bytes4 entrySlot,
@@ -39,8 +36,7 @@ contract Managing is SlotGuard {
 
         // check votingContract
 
-        Proposal memory proposal =
-            Proposal(entrySlot, isExt, contractAddr, votingContract);
+        Proposal memory proposal = Proposal(entrySlot, isExt, contractAddr, votingContract);
         bytes28 proposalId = bytes28(keccak256(abi.encode(proposal)));
 
         // store in the core

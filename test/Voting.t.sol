@@ -5,7 +5,7 @@ pragma solidity ^0.8.16;
 import "forge-std/Test.sol";
 import "test/base/BaseDaoTest.sol";
 import "src/extensions/Agora.sol";
-import "src/extensions/IAgora.sol";
+import "src/interfaces/IAgora.sol";
 import "src/adapters/Voting.sol";
 
 contract Voting_test is BaseDaoTest {
@@ -17,7 +17,6 @@ contract Voting_test is BaseDaoTest {
     bytes4 public constant VOTE_STANDARD = bytes4(keccak256("standard"));
 
     function setUp() public {
-
         _deployDao(address(501));
 
         agora = new Agora(address(dao));

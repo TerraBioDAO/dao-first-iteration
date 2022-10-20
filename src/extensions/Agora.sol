@@ -2,17 +2,18 @@
 
 pragma solidity ^0.8.16;
 
-import "../guards/CoreGuard.sol";
-import "../extensions/IAgora.sol";
+import "../abstracts/CoreExtension.sol";
+import "../interfaces/IAgora.sol";
+import "../interfaces/IProposerAdapter.sol";
 
-contract Agora is IAgora, CoreGuard {
+contract Agora is CoreExtension, IAgora {
     uint256 public immutable ADMIN_VALIDATION_PERIOD;
 
     mapping(bytes32 => Proposal) private _proposals;
     mapping(bytes4 => VoteParam) private _voteParams;
     mapping(bytes32 => mapping(address => bool)) private _votes;
 
-    constructor(address core) CoreGuard(core, Slot.AGORA) {
+    constructor(address core) CoreExtension(core, Slot.AGORA) {
         ADMIN_VALIDATION_PERIOD = 7 * 86400; // 7 days
     }
 
@@ -83,7 +84,7 @@ contract Agora is IAgora, CoreGuard {
             // This should not be possible, block slot entry when proposals ongoing
             require(adapter != address(0), "Agora: adapter not found");
 
-            IAdapter(adapter).finalizeProposal(bytes28(proposalId << 32));
+            IProposerAdapter(adapter).finalizeProposal(proposalId);
             // error should be handled here
         }
         p.proceeded = true;

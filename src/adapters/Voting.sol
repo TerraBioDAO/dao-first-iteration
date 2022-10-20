@@ -2,13 +2,11 @@
 
 pragma solidity ^0.8.16;
 
-import "../helpers/Slot.sol";
-import "../core/IDaoCore.sol";
-import "../guards/SlotGuard.sol";
-import "../extensions/IBank.sol";
-import "../extensions/IAgora.sol";
+import "../abstracts/ProposerAdapter.sol";
+import "../interfaces/IBank.sol";
+import "../interfaces/IAgora.sol";
 
-contract Voting is SlotGuard {
+contract Voting is ProposerAdapter {
     struct Consultation {
         string title;
         string description;
@@ -16,7 +14,7 @@ contract Voting is SlotGuard {
 
     mapping(bytes28 => Consultation) public proposals;
 
-    constructor(address core) SlotGuard(core, Slot.VOTING) {}
+    constructor(address core) Adapter(core, Slot.VOTING) {}
 
     function addNewVoteParams(
         string memory name,
@@ -36,12 +34,18 @@ contract Voting is SlotGuard {
     function submitVote(
         bytes32 proposalId,
         uint256 value,
-        uint256 deposit,
-        uint256 lockPeriod,
-        uint256 advanceDeposit
+        uint96 deposit,
+        uint32 lockPeriod,
+        uint96 advanceDeposit
     ) external onlyMember {
         // get vote Weight
-        uint256 voteWeight = _getBank().newCommitment(proposalId, msg.sender, deposit, lockPeriod);
+        uint96 voteWeight = _getBank().newCommitment(
+            msg.sender,
+            proposalId,
+            deposit,
+            lockPeriod,
+            advanceDeposit
+        );
 
         if (advanceDeposit > 0) {
             // bank.advanceDeposit
