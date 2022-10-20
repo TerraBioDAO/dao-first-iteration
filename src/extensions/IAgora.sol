@@ -64,16 +64,16 @@ interface IAgora {
 
     struct Proposal {
         bool active;
-        bool adminApproval;
+        bool adminApproved;
         bool suspended;
         bool executable;
         bool proceeded; // ended or executed
         uint32 createdAt;
         uint32 minStartTime;
         uint32 shiftedTime;
+        bytes4 voteId;
         address initiater;
         Score score;
-        VoteParam params;
     }
 
     function submitProposal(

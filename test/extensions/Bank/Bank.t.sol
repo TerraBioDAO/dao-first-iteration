@@ -77,23 +77,23 @@ contract Bank_test is BaseDaoTest {
     }
 
     function testNewCommitment(uint256 tokenAmount, uint8 enumLP) public {
-        vm.assume(tokenAmount > 0 && tokenAmount <= 50_000 && enumLP < 6);
+        vm.assume(tokenAmount > 0 && tokenAmount <= 50_000e18 && enumLP < 6);
         LockPeriod lp = LockPeriod(enumLP);
         vm.warp(1000);
 
-        _mintTBIO(USER, tokenAmount * TOKEN);
+        _mintTBIO(USER, tokenAmount);
         vm.prank(USER);
-        tbio.approve(BANK, tokenAmount * TOKEN);
+        tbio.approve(BANK, tokenAmount);
 
         vm.prank(VOTING);
-        bank.newCommitment(USER, bytes32("0x01"), uint96(tokenAmount * TOKEN), _lpToUint(lp), 0);
+        bank.newCommitment(USER, bytes32("0x01"), uint96(tokenAmount), _lpToUint(lp), 0);
 
-        assertEq(tbio.balanceOf(BANK), tokenAmount * TOKEN);
+        assertEq(tbio.balanceOf(BANK), tokenAmount);
 
         (uint96 lockedAmount, uint96 voteWeight, uint32 lockPeriod, uint32 retrievalDate) = bank
             .getCommitment(USER, bytes32("0x01"));
-        assertEq(lockedAmount, tokenAmount * TOKEN, "lock amount");
-        assertEq(voteWeight, _lpMultiplier(lp, uint96(tokenAmount * TOKEN)), "vote weight");
+        assertEq(lockedAmount, tokenAmount, "lock amount");
+        assertEq(voteWeight, _lpMultiplier(lp, uint96(tokenAmount)), "vote weight");
         assertEq(lockPeriod, _lpToUint(lp), "lock period");
         assertEq(retrievalDate, 1000 + _lpToUint(lp), "retrieval date");
 
@@ -102,7 +102,7 @@ contract Bank_test is BaseDaoTest {
 
         (uint128 availableBalance, uint128 lockedBalance) = bank.getBalances(USER);
         assertEq(availableBalance, 0);
-        assertEq(lockedBalance, tokenAmount * TOKEN);
+        assertEq(lockedBalance, tokenAmount);
 
         assertEq(bank.getNextRetrievalDate(USER), 1000 + _lpToUint(lp));
     }
@@ -112,25 +112,25 @@ contract Bank_test is BaseDaoTest {
 
         vm.prank(VOTING);
         vm.expectRevert("ERC20: insufficient allowance");
-        bank.newCommitment(USER, bytes32("0x01"), uint96(50 * TOKEN), 7 * DAY, 0);
+        bank.newCommitment(USER, bytes32("0x01"), uint96(50e18), 7 * DAY, 0);
 
         vm.prank(USER);
-        tbio.approve(BANK, 50 * TOKEN);
+        tbio.approve(BANK, 50e18);
 
         vm.prank(VOTING);
         vm.expectRevert("ERC20: transfer amount exceeds balance");
-        bank.newCommitment(USER, bytes32("0x01"), uint96(50 * TOKEN), 7 * DAY, 0);
+        bank.newCommitment(USER, bytes32("0x01"), uint96(50e18), 7 * DAY, 0);
 
-        _mintTBIO(USER, 50 * TOKEN);
+        _mintTBIO(USER, 50e18);
         vm.expectRevert("CoreGuard: not the right adapter");
-        bank.newCommitment(USER, bytes32("0x01"), uint96(50 * TOKEN), 7 * DAY, 0);
+        bank.newCommitment(USER, bytes32("0x01"), uint96(50e18), 7 * DAY, 0);
 
         vm.prank(VOTING);
-        bank.newCommitment(USER, bytes32("0x01"), uint96(50 * TOKEN), 7 * DAY, 0);
+        bank.newCommitment(USER, bytes32("0x01"), uint96(50e18), 7 * DAY, 0);
 
         vm.prank(VOTING);
         vm.expectRevert("Bank: already committed");
-        bank.newCommitment(USER, bytes32("0x01"), uint96(50 * TOKEN), 7 * DAY, 0);
+        bank.newCommitment(USER, bytes32("0x01"), uint96(50e18), 7 * DAY, 0);
     }
 
     function testMultipleNewCommitment() public {
@@ -166,26 +166,26 @@ contract Bank_test is BaseDaoTest {
 
     // adancedDeposit()
     function testAdancedDeposit() public {
-        _mintTBIO(USER, 50 * TOKEN);
+        _mintTBIO(USER, 50e18);
         vm.prank(USER);
-        tbio.approve(BANK, 50 * TOKEN);
+        tbio.approve(BANK, 50e18);
 
         vm.prank(VOTING);
-        bank.advancedDeposit(USER, uint128(50 * TOKEN));
+        bank.advancedDeposit(USER, uint128(50e18));
 
         (uint128 availableBalance, ) = bank.getBalances(USER);
-        assertEq(availableBalance, uint128(50 * TOKEN));
+        assertEq(availableBalance, uint128(50e18));
     }
 
     function testCannotAdancedDeposit() public {
         vm.expectRevert(); // without message (wrong call)
-        bank.advancedDeposit(USER, uint128(50 * TOKEN));
+        bank.advancedDeposit(USER, uint128(50e18));
 
         // with an unregistred adapter
         address fakeEntry = _newEntry(Slot.ONBOARDING, false);
         vm.prank(fakeEntry);
         vm.expectRevert("CoreGuard: not the right adapter");
-        bank.advancedDeposit(USER, uint128(50 * TOKEN));
+        bank.advancedDeposit(USER, uint128(50e18));
     }
 
     // createVault()
@@ -244,7 +244,7 @@ contract Bank_test is BaseDaoTest {
     }
 
     function testCannotDepositVault() public {
-        uint128 tokenAmount = uint128(50 * TOKEN);
+        uint128 tokenAmount = uint128(50e18);
         _mintTBIO(USER, tokenAmount);
         vm.prank(USER);
         tbio.approve(BANK, tokenAmount);
