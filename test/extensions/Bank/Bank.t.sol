@@ -21,7 +21,7 @@ contract Bank_test is BaseDaoTest {
     bytes4 public constant VAULT_TREASURY = bytes4(keccak256(bytes("vault-treasury")));
     bytes32 public constant PROPOSAL = keccak256(abi.encode("a proposal"));
 
-    function setUp() public override {
+    function setUp() public  {
         _deployDao(address(501));
         _deployTBIO();
         bank = new Bank(address(dao), address(tbio));

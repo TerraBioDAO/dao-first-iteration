@@ -30,7 +30,7 @@ contract Managing_test is Test {
     }
 
     function setUp() public {
-        dao = new DaoCore(ADMIN, ADMIN);
+        dao = new DaoCore(ADMIN);
         managing = new Managing(address(dao));
 
         vm.prank(ADMIN);

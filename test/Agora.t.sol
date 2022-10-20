@@ -31,7 +31,7 @@ contract Agora_test is Test {
     }
 
     function setUp() public {
-        dao = new DaoCore(ADMIN, ADMIN);
+        dao = new DaoCore(ADMIN);
         agora = new Agora(address(dao));
         VOTING = _newEntry(Slot.VOTING, false);
 

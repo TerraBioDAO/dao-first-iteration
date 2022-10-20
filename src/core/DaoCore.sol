@@ -23,9 +23,10 @@ contract DaoCore is IDaoCore, CoreGuard {
     /// @notice keeps track of Extensions and Adapters
     mapping(bytes4 => Entry) public entries;
 
-    constructor(address admin, address managing) CoreGuard(address(this), Slot.CORE) {
+    constructor(address admin) CoreGuard(address(this), Slot.CORE) {
         _addAdmin(admin);
-        _addSlotEntry(Slot.MANAGING, managing, false);
+        _addSlotEntry(Slot.MANAGING, admin, false);
+        _addSlotEntry(Slot.ONBOARDING, admin, false);
 
         // push roles
         _roles.push(Slot.USER_EXISTS);

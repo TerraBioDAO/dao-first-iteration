@@ -4,35 +4,20 @@ pragma solidity ^0.8.16;
 
 import "forge-std/Test.sol";
 import "src/core/DaoCore.sol";
+import "test/base/BaseDaoTest.sol";
 
-contract FakeEntry {
-    bytes4 public slotId;
-    bool public isExtension;
-
-    constructor(bytes4 slot, bool isExt) {
-        slotId = slot;
-        isExtension = isExt;
-    }
-}
-
-contract DaoCore_test is Test {
-    DaoCore public dao;
-
-    address public constant ADMIN = address(0xAD);
-    address public constant MANAGING = address(500);
-    address public ONBOARDING = address(501);
+contract DaoCore_test is BaseDaoTest {
+    address public MANAGING;
+    address public ONBOARDING;
     address public constant USER = address(502);
-
-    function _newEntry(bytes4 slot, bool isExt) internal returns (address entry) {
-        entry = address(new FakeEntry(slot, isExt));
-    }
 
     function setUp() public {
         vm.label(ADMIN, "Admin");
         vm.label(MANAGING, "Managing");
         vm.label(ONBOARDING, "Onboarding");
 
-        dao = new DaoCore(ADMIN, MANAGING);
+        _deployDao(address(501));
+        MANAGING = _branchMock(Slot.MANAGING, false);
     }
 
     // changeSlotEntry()
@@ -48,6 +33,7 @@ contract DaoCore_test is Test {
     }
 
     function testCannotAddSlotEntry() public {
+        ONBOARDING = address(600);
         vm.expectRevert("CoreGuard: not the right adapter");
         dao.changeSlotEntry(Slot.ONBOARDING, ONBOARDING);
 

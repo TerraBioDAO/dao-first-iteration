@@ -36,11 +36,9 @@ abstract contract BaseDaoTest is BaseTest {
     uint256 public constant TOKEN = 10**18;
     uint32 public constant DAY = 86400;
 
-    function setUp() public virtual override {}
-
     function _deployDao(address admin) internal {
         ADMIN = admin;
-        dao = new DaoCore(ADMIN, ADMIN);
+        dao = new DaoCore(ADMIN);
     }
 
     function _deployTBIO() internal {

@@ -18,7 +18,7 @@ contract Voting_test is Test {
     bytes4 public constant VOTE_STANDARD = bytes4(keccak256("standard"));
 
     function setUp() public {
-        dao = new DaoCore(ADMIN, ADMIN);
+        dao = new DaoCore(ADMIN);
         agora = new Agora(address(dao));
         voting = new Voting(address(dao));
         VOTING = address(voting);
