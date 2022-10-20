@@ -30,7 +30,7 @@ contract Onboarding_test is Test {
     }
 
     function setUp() public {
-        dao = new DaoCore(ADMIN, ADMIN);
+        dao = new DaoCore(ADMIN);
         onboarding = new Onboarding(address(dao));
 
         vm.prank(ADMIN);

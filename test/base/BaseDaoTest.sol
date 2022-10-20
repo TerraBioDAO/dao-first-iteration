@@ -39,7 +39,7 @@ abstract contract BaseDaoTest is BaseTest {
 
     function _deployDao(address admin) internal {
         ADMIN = admin;
-        dao = new DaoCore(ADMIN, ADMIN);
+        dao = new DaoCore(ADMIN);
     }
 
     function _deployTBIO() internal {

@@ -17,7 +17,9 @@ contract Voting_test is BaseDaoTest {
     bytes4 public constant VOTE_STANDARD = bytes4(keccak256("standard"));
 
     function setUp() public {
+
         _deployDao(address(501));
+
         agora = new Agora(address(dao));
         AGORA = address(agora);
         _branch(Slot.AGORA, AGORA);
