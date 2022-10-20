@@ -103,7 +103,7 @@ contract StorageTester_test is BaseTest {
     using stdStorage for StdStorage;
     StorageTester public contractToTest;
 
-    function setUp() public override {
+    function setUp() public {
         vm.record();
         contractToTest = new StorageTester();
     }
