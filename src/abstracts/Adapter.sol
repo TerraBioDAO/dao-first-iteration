@@ -12,7 +12,7 @@ abstract contract Adapter is SlotEntry, IAdapter {
     constructor(address core, bytes4 slot) SlotEntry(core, slot, false) {}
 
     modifier onlyCore() {
-        require(msg.sender == _core, "SlotGuard: not the core");
+        require(msg.sender == _core, "Adapter: not the core");
         _;
     }
 
@@ -20,26 +20,23 @@ abstract contract Adapter is SlotEntry, IAdapter {
         IDaoCore core = IDaoCore(_core);
         require(
             core.isSlotExtension(slot) && core.getSlotContractAddr(slot) == msg.sender,
-            "SlotGuard: wrong extension"
+            "Adapter: wrong extension"
         );
         _;
     }
 
     modifier onlyMember() {
-        require(IDaoCore(_core).hasRole(msg.sender, Slot.USER_EXISTS), "SlotGuard: not a member");
+        require(IDaoCore(_core).hasRole(msg.sender, Slot.USER_EXISTS), "Adapter: not a member");
         _;
     }
 
     modifier onlyProposer() {
-        require(
-            IDaoCore(_core).hasRole(msg.sender, Slot.USER_PROPOSER),
-            "SlotGuard: not a proposer"
-        );
+        require(IDaoCore(_core).hasRole(msg.sender, Slot.USER_PROPOSER), "Adapter: not a proposer");
         _;
     }
 
     modifier onlyAdmin() {
-        require(IDaoCore(_core).hasRole(msg.sender, Slot.USER_ADMIN), "SlotGuard: not an admin");
+        require(IDaoCore(_core).hasRole(msg.sender, Slot.USER_ADMIN), "Adapter: not an admin");
         _;
     }
 

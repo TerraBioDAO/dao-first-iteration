@@ -96,7 +96,12 @@ contract DaoCore_test is BaseDaoTest {
     );
 
     function testEmitOnChangeSlotEntry(bytes4 slot, address addr) public {
-        vm.assume(slot != Slot.EMPTY && slot != Slot.MANAGING && addr != address(0));
+        vm.assume(
+            slot != Slot.EMPTY &&
+                slot != Slot.MANAGING &&
+                slot != Slot.ONBOARDING &&
+                addr != address(0)
+        );
         addr = _newEntry(slot, false);
 
         vm.prank(MANAGING);

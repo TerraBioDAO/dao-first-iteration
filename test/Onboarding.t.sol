@@ -82,7 +82,7 @@ contract Onboarding_test is Test {
 
     function testCannotSetAdminMember(address user) public {
         vm.assume(user != address(0) && user != ADMIN);
-        vm.expectRevert("SlotGuard: not an admin");
+        vm.expectRevert("Adapter: not an admin");
         onboarding.setAdminMember(user, true);
     }
 
