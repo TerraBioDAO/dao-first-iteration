@@ -171,6 +171,7 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
         a.availableBalance -= amount;
         _users[user].account = a;
         _withdrawTransfer(user, amount);
+        emit Withdrawn(user, amount);
     }
 
     function vaultDeposit(

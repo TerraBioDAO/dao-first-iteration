@@ -18,7 +18,7 @@ abstract contract ProposerAdapter is Adapter, IProposerAdapter {
         _;
     }
 
-    function finalizeProposal(bytes32 proposalId) external override onlyExtension(Slot.AGORA) {
+    function executeProposal(bytes32 proposalId) external override onlyExtension(Slot.AGORA) {
         require(bytes4(proposalId) == slotId, "Adapter: wrong proposalId"); // is useful? will be too late at this time
         _ongoingProposals.decrement();
     }

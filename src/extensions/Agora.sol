@@ -84,7 +84,7 @@ contract Agora is CoreExtension, IAgora {
             // This should not be possible, block slot entry when proposals ongoing
             require(adapter != address(0), "Agora: adapter not found");
 
-            IProposerAdapter(adapter).finalizeProposal(proposalId);
+            IProposerAdapter(adapter).executeProposal(proposalId);
             // error should be handled here
         }
         p.proceeded = true;

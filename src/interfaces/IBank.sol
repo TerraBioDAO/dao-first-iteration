@@ -11,6 +11,10 @@ interface IBank {
         uint96 advanceDeposit
     ) external returns (uint96 voteWeight);
 
+    function advancedDeposit(address user, uint128 amount) external;
+
+    function withdrawAmount(address user, uint128 amount) external;
+
     function setFinancingProposalData(bytes32 proposalId, uint256 amount) external;
 
     function executeFinancingProposal(
