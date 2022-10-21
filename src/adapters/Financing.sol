@@ -17,7 +17,7 @@ contract Financing is ProposerAdapter {
         uint256 amount; // the amount requested for funding
     }
 
-    mapping(bytes28 => Proposal) public proposals;
+    mapping(bytes28 => Proposal) private proposals;
 
     constructor(address core) Adapter(core, Slot.FINANCING) {}
 
@@ -28,7 +28,7 @@ contract Financing is ProposerAdapter {
      * @param proposal The Proposal data
      */
     function submitProposal(Proposal memory proposal) external onlyProposer {
-        require(proposal.amount > 0, "invalid requested amount");
+        require(proposal.amount > 0, "Financing: invalid requested amount");
 
         bytes28 proposalId = bytes28(keccak256(abi.encode(proposal)));
 

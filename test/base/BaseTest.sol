@@ -108,6 +108,22 @@ abstract contract BaseTest is Test {
         return slots;
     }
 
+    function getLastReadSlots(address contractAddress) public returns (bytes32[] memory) {
+        (bytes32[] memory reads, ) = vm.accesses(contractAddress);
+
+        bytes32[] memory slots = new bytes32[](reads.length);
+
+        if (reads.length > readsLengths[contractAddress]) {
+            for (uint256 i = 0; i < reads.length - readsLengths[contractAddress]; i++) {
+                slots[i] = reads[readsLengths[contractAddress] + i];
+            }
+
+            readsLengths[contractAddress] = reads.length;
+        }
+
+        return slots;
+    }
+
     function readSlots(address contractAddress) public {
         bytes32 value;
         uint256 i;
