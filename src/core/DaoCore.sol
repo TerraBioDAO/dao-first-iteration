@@ -2,16 +2,14 @@
 
 pragma solidity ^0.8.16;
 
-import "../helpers/Slot.sol";
-import "./IDaoCore.sol";
-import "../guards/CoreGuard.sol";
-import "../adapters/IAdapter.sol";
+import "../abstracts/CoreExtension.sol";
+import "../interfaces/IDaoCore.sol";
 
 /**
  * @notice Main contract, keep states of the DAO
  */
 
-contract DaoCore is IDaoCore, CoreGuard {
+contract DaoCore is CoreExtension, IDaoCore {
     /// @notice The map to track all members of the DAO with their roles or credits
     mapping(address => mapping(bytes4 => bool)) public members;
     /// @notice counter for existing members
@@ -23,7 +21,7 @@ contract DaoCore is IDaoCore, CoreGuard {
     /// @notice keeps track of Extensions and Adapters
     mapping(bytes4 => Entry) public entries;
 
-    constructor(address admin) CoreGuard(address(this), Slot.CORE) {
+    constructor(address admin) CoreExtension(address(this), Slot.CORE) {
         _addAdmin(admin);
         _addSlotEntry(Slot.MANAGING, admin, false);
         _addSlotEntry(Slot.ONBOARDING, admin, false);

@@ -5,7 +5,7 @@ pragma solidity ^0.8.16;
 import "forge-std/Test.sol";
 import "test/base/BaseDaoTest.sol";
 import "src/extensions/Agora.sol";
-import "src/extensions/IAgora.sol";
+import "src/interfaces/IAgora.sol";
 import "src/adapters/Voting.sol";
 
 contract Agora_test is BaseDaoTest {
@@ -59,7 +59,7 @@ contract Agora_test is BaseDaoTest {
     }
 
     function testCannotAddNewVoteParam() public {
-        vm.expectRevert("CoreGuard: not the right adapter");
+        vm.expectRevert("Cores: not the right adapter");
         agora.changeVoteParams(VOTE_STANDARD, IAgora.Consensus.MEMBER, 50, 50, 7500);
 
         vm.startPrank(VOTING);

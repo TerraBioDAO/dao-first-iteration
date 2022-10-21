@@ -53,7 +53,7 @@ contract Managing_test is Test {
         vm.assume(slot != Slot.EMPTY);
 
         ENTRY = _newEntry(slot, false);
-        vm.expectRevert("SlotGuard: not an admin");
+        vm.expectRevert("Adapter: not an admin");
         managing.manageSlotEntry(slot, ENTRY);
     }
 }

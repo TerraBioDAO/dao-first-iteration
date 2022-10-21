@@ -6,9 +6,9 @@ import "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-contracts/security/ReentrancyGuard.sol";
 import "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
 
-import "../helpers/Slot.sol";
-import "../guards/CoreGuard.sol";
-import "../extensions/IAgora.sol";
+import "../abstracts/CoreExtension.sol";
+import "../interfaces/IBank.sol";
+import "../interfaces/IProposerAdapter.sol";
 
 /**
  * @notice Should be the only contract to approve to move tokens
@@ -16,7 +16,7 @@ import "../extensions/IAgora.sol";
  * Manage only the TBIO token
  */
 
-contract Bank is CoreGuard, ReentrancyGuard {
+contract Bank is CoreExtension, ReentrancyGuard, IBank {
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -85,9 +85,21 @@ contract Bank is CoreGuard, ReentrancyGuard {
     //mapping(bytes4 => uint256) public vaultsBalance;
     //mapping(bytes32 => uint256) public financingProposalsBalance;
 
-    constructor(address core, address terraBioTokenAddr) CoreGuard(core, Slot.BANK) {
+    constructor(address core, address terraBioTokenAddr) CoreExtension(core, Slot.BANK) {
         terraBioToken = terraBioTokenAddr;
         MAX_TIMESTAMP = type(uint32).max;
+    }
+
+    function setFinancingProposalData(bytes32 proposalId, uint256 amount) external pure {
+        revert("NOT IMPLEMENTED");
+    }
+
+    function executeFinancingProposal(
+        bytes32 proposalId,
+        address applicant,
+        uint256 amount
+    ) external pure returns (bool) {
+        revert("NOT IMPLEMENTED");
     }
 
     function advancedDeposit(address user, uint128 amount)

@@ -2,18 +2,16 @@
 
 pragma solidity ^0.8.16;
 
-import "../helpers/Slot.sol";
-import "../core/IDaoCore.sol";
-import "../guards/SlotGuard.sol";
-import "../extensions/IBank.sol";
-import "../extensions/IAgora.sol";
+import "../abstracts/ProposerAdapter.sol";
+import "../interfaces/IBank.sol";
+import "../interfaces/IAgora.sol";
 import "../adapters/Voting.sol";
 
 /**
  * @notice Financing submit and process proposals to finance projects.
  * Financing is only in TBIO
  */
-contract Financing is SlotGuard {
+contract Financing is ProposerAdapter {
     struct Proposal {
         address applicant; // the proposal applicant address
         uint256 amount; // the amount requested for funding
@@ -21,7 +19,7 @@ contract Financing is SlotGuard {
 
     mapping(bytes28 => Proposal) public proposals;
 
-    constructor(address core) SlotGuard(core, Slot.FINANCING) {}
+    constructor(address core) Adapter(core, Slot.FINANCING) {}
 
     /**
      * @notice Creates financing proposal.
