@@ -27,7 +27,7 @@ contract Agora_test is BaseDaoTest {
         _branch(Slot.AGORA, AGORA);
         VOTING = _branchMock(Slot.VOTING, false);
         vm.prank(VOTING);
-        agora.changeVoteParams(VOTE_DEFAULT, IAgora.Consensus(1), 86400, 86400, 8000);
+        agora.changeVoteParams(VOTE_DEFAULT, IAgora.Consensus(1), 86400, 86400, 8000, 86400);
         ADAPTER = _branchMock(SLOT, false);
     }
 
@@ -37,15 +37,17 @@ contract Agora_test is BaseDaoTest {
         uint8 consensus,
         uint32 votingPeriod,
         uint32 gracePeriod,
-        uint32 threshold
+        uint32 threshold,
+        uint32 adminValidationPeriod
     ) public {
-        _addVoteId(voteId, consensus, votingPeriod, gracePeriod, threshold);
+        _addVoteId(voteId, consensus, votingPeriod, gracePeriod, threshold, adminValidationPeriod);
 
         IAgora.VoteParam memory param = IAgora.VoteParam(
             IAgora.Consensus(consensus),
             votingPeriod,
             gracePeriod,
             threshold,
+            adminValidationPeriod,
             0
         );
 
@@ -55,23 +57,24 @@ contract Agora_test is BaseDaoTest {
         assertEq(storedParam.votingPeriod, param.votingPeriod);
         assertEq(storedParam.gracePeriod, param.gracePeriod);
         assertEq(storedParam.threshold, param.threshold);
+        assertEq(storedParam.adminValidationPeriod, param.adminValidationPeriod);
         assertEq(storedParam.utilisation, param.utilisation);
     }
 
     function testCannotAddNewVoteParam() public {
         vm.expectRevert("Cores: not the right adapter");
-        agora.changeVoteParams(VOTE_STANDARD, IAgora.Consensus.MEMBER, 50, 50, 7500);
+        agora.changeVoteParams(VOTE_STANDARD, IAgora.Consensus.MEMBER, 50, 50, 7500, 777);
 
         vm.startPrank(VOTING);
         vm.expectRevert("Agora: wrong threshold or below min value");
-        agora.changeVoteParams(VOTE_STANDARD, IAgora.Consensus.MEMBER, 50, 50, 750000);
+        agora.changeVoteParams(VOTE_STANDARD, IAgora.Consensus.MEMBER, 50, 50, 750000, 777);
 
         vm.expectRevert("Agora: below min period");
-        agora.changeVoteParams(VOTE_STANDARD, IAgora.Consensus.MEMBER, 0, 50, 7500);
+        agora.changeVoteParams(VOTE_STANDARD, IAgora.Consensus.MEMBER, 0, 50, 7500, 777);
 
-        agora.changeVoteParams(VOTE_STANDARD, IAgora.Consensus.MEMBER, 50, 50, 7500);
+        agora.changeVoteParams(VOTE_STANDARD, IAgora.Consensus.MEMBER, 50, 50, 7500, 777);
         vm.expectRevert("Agora: cannot replace params");
-        agora.changeVoteParams(VOTE_STANDARD, IAgora.Consensus.MEMBER, 100, 100, 10000);
+        agora.changeVoteParams(VOTE_STANDARD, IAgora.Consensus.MEMBER, 100, 100, 10000, 777);
     }
 
     event VoteParamsChanged(bytes4 indexed voteId, bool indexed added);
@@ -80,7 +83,7 @@ contract Agora_test is BaseDaoTest {
         vm.assume(voteId != bytes4(0));
         vm.expectEmit(true, true, false, false, address(agora));
         emit VoteParamsChanged(voteId, true);
-        _addVoteId(voteId, 2, 50, 50, 7500);
+        _addVoteId(voteId, 2, 50, 50, 7500, 777);
         // agora.changeVoteParams(voteId, IAgora.Consensus.MEMBER, 50, 50, 7500);
     }
 
@@ -204,7 +207,8 @@ contract Agora_test is BaseDaoTest {
         uint8 consensus,
         uint32 votingPeriod,
         uint32 gracePeriod,
-        uint32 threshold
+        uint32 threshold,
+        uint32 adminValidationPeriod
     ) internal {
         vm.assume(
             (consensus == 1 || consensus == 2) &&
@@ -218,7 +222,8 @@ contract Agora_test is BaseDaoTest {
             IAgora.Consensus(consensus),
             votingPeriod,
             gracePeriod,
-            threshold
+            threshold,
+            adminValidationPeriod
         );
     }
 

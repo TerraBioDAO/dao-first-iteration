@@ -59,6 +59,7 @@ interface IAgora {
         uint32 votingPeriod;
         uint32 gracePeriod;
         uint32 threshold; // 0 to 10000
+        uint32 adminValidationPeriod;
         uint256 utilisation; // to fit
     }
 
@@ -91,7 +92,8 @@ interface IAgora {
         Consensus consensus,
         uint32 votingPeriod,
         uint32 gracePeriod,
-        uint32 threshold
+        uint32 threshold,
+        uint32 adminValidationPeriod
     ) external;
 
     function submitVote(
