@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.16;
 
-import "src/extensions/IAgora.sol";
+import "src/interfaces/IAgora.sol";
 
 contract Agora_reverts is IAgora {
     function submitProposal(

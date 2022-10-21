@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.16;
 
-import "src/extensions/IBank.sol";
+import "src/interfaces/IBank.sol";
 
 contract Bank_reverts is IBank {
     function newCommitment(
@@ -15,6 +15,21 @@ contract Bank_reverts is IBank {
         voter == voter;
         deposit == deposit;
         lockPeriod == lockPeriod;
+        revert();
+    }
+
+    function newCommitment(
+        address user,
+        bytes32 proposalId,
+        uint96 lockedAmount,
+        uint32 lockPeriod,
+        uint96 advanceDeposit
+    ) external returns (uint96) {
+        user == user;
+        proposalId == proposalId;
+        lockedAmount == lockedAmount;
+        lockPeriod == lockPeriod;
+        advanceDeposit == advanceDeposit;
         revert();
     }
 

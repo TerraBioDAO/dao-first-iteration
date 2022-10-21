@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.16;
 
+//import "openzeppelin-contracts/utils/Counters.sol";
 import "test/base/BaseTest.sol";
 import "test/reverts/Core_reverts.sol";
 import "test/reverts/Bank_reverts.sol";
@@ -9,15 +10,34 @@ import "test/reverts/Agora_reverts.sol";
 import "src/adapters/Financing.sol";
 
 contract FinancingSlots {
-    // BEGIN COPY / PASTE from original
+    // BEGIN COPY VARS from contract to test
+    // run 'forge inspect Financing storage --pretty'
+    //+-------------------+-----------------------------------------------+------+--------+-------+--------------------------------------+
+    //| Name              | Type                                          | Slot | Offset | Bytes | Contract                             |
+    //+==================================================================================================================================+
+    //| _paused           | bool                                          | 0    | 0      | 1     | src/adapters/Financing.sol:Financing |
+    //|-------------------+-----------------------------------------------+------+--------+-------+--------------------------------------|
+    //| _ongoingProposals | struct Counters.Counter                       | 1    | 0      | 32    | src/adapters/Financing.sol:Financing |
+    //|-------------------+-----------------------------------------------+------+--------+-------+--------------------------------------|
+    //| proposals         | mapping(bytes28 => struct Financing.Proposal) | 2    | 0      | 32    | src/adapters/Financing.sol:Financing |
+    //+-------------------+-----------------------------------------------+------+--------+-------+--------------------------------------+
+    //
+    // Respect order !
+    //
+    using Counters for Counters.Counter;
+
     struct Proposal {
         address applicant; // the proposal applicant address
         uint256 amount; // the amount requested for funding
     }
 
-    mapping(bytes28 => Proposal) private proposals; // slot 0
+    bool private _paused;
 
-    // END COPY / PASTE
+    Counters.Counter private _ongoingProposals;
+
+    mapping(bytes28 => Proposal) private proposals; // slot 2
+
+    // END COPY VARS
 
     function getProposal(bytes28 index) public view returns (Proposal memory) {
         return proposals[index];
@@ -96,9 +116,9 @@ contract Financing_test is BaseTest {
     }
 
     function calculateSlotForProposals(bytes28 index) public pure returns (bytes32) {
-        // mapping(bytes28 => Proposal) public proposals;  @slot 0
+        // mapping(bytes28 => Proposal) public proposals;  @slot 2
         // pattern
-        return keccak256(abi.encode(bytes28(index), 0));
+        return keccak256(abi.encode(bytes28(index), 2));
     }
 
     // Test slot pattern
@@ -155,7 +175,7 @@ contract Financing_test is BaseTest {
             address(core),
             abi.encodeWithSelector(core.hasRole.selector, NOT_PROPOSER, Slot.USER_PROPOSER)
         );
-        vm.expectRevert("SlotGuard: not a proposer");
+        vm.expectRevert("Adapter: not a proposer");
         financing.submitProposal(proposal);
 
         vm.mockCall(

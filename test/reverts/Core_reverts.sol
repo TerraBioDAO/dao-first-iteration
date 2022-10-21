@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.16;
 
-import "src/core/IDaoCore.sol";
+import "src/interfaces/IDaoCore.sol";
 
 contract Core_reverts is IDaoCore {
     function changeSlotEntry(bytes4 slot, address contractAddr) external pure {
