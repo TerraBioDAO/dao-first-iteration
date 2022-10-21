@@ -9,12 +9,15 @@ import "test/reverts/Agora_reverts.sol";
 import "src/adapters/Financing.sol";
 
 contract FinancingSlots {
+    // BEGIN COPY / PASTE from original
     struct Proposal {
         address applicant; // the proposal applicant address
         uint256 amount; // the amount requested for funding
     }
 
-    mapping(bytes28 => Proposal) private proposals;
+    mapping(bytes28 => Proposal) private proposals; // slot 0
+
+    // END COPY / PASTE
 
     function getProposal(bytes28 index) public view returns (Proposal memory) {
         return proposals[index];
@@ -25,11 +28,13 @@ contract FinancingSlots {
         Proposal storage proposal = proposals[index];
         proposal.applicant = _proposal.applicant;
         proposal.amount = _proposal.amount;
-    }*/
+    }
+    */
 }
 
 contract Financing_test is BaseTest {
     using stdStorage for StdStorage;
+
     IDaoCore public core;
     IERC20 public token;
     IBank public bank;
@@ -90,7 +95,7 @@ contract Financing_test is BaseTest {
         );
     }
 
-    function calculateSlotForProposals(bytes32 index) public pure returns (bytes32) {
+    function calculateSlotForProposals(bytes28 index) public pure returns (bytes32) {
         // mapping(bytes28 => Proposal) public proposals;  @slot 0
         // pattern
         return keccak256(abi.encode(bytes28(index), 0));
@@ -112,6 +117,7 @@ contract Financing_test is BaseTest {
         bytes32[] memory lastReadSlots = getLastReadSlots(address(financingSlots));
         assertEq(lastReadSlots.length, 2); // one value expected
         assertLt(uint256(lastReadSlots[0]), uint256(lastReadSlots[1]));
+        assertEq(uint256(lastReadSlots[0]) + 1, uint256(lastReadSlots[1]));
 
         /* can do the same with setter
         financingSlots.setProposal(index, FinancingSlots.Proposal(address(0), 0));
@@ -122,7 +128,7 @@ contract Financing_test is BaseTest {
         */
 
         /* with Foundry StdStorage
-        // Doesn't work !
+        // Doesn't work !?
         uint256 retrievedSlot = stdstore
         .target(address(financingSlots))
         .sig("getProposal(bytes28)")
