@@ -7,14 +7,11 @@ import "../interfaces/IAgora.sol";
 import "../interfaces/IProposerAdapter.sol";
 
 contract Agora is CoreExtension, IAgora {
-    uint256 public immutable ADMIN_VALIDATION_PERIOD;
-
     mapping(bytes32 => Proposal) private _proposals;
     mapping(bytes4 => VoteParam) private _voteParams;
     mapping(bytes32 => mapping(address => bool)) private _votes;
 
     constructor(address core) CoreExtension(core, Slot.AGORA) {
-        ADMIN_VALIDATION_PERIOD = 7 * Slot.DAY; // 7 days
         _addVoteParam(
             Slot.VOTE_STANDARD,
             Consensus.TOKEN,
@@ -132,7 +129,7 @@ contract Agora is CoreExtension, IAgora {
         }
 
         // is validated?
-        if (timestamp < p.createdAt + ADMIN_VALIDATION_PERIOD) {
+        if (timestamp < p.createdAt + vp.adminValidationPeriod) {
             if (!p.adminApproved) {
                 return ProposalStatus.VALIDATION;
             }
