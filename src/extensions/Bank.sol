@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.16;
+pragma solidity 0.8.17;
 
 import "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-contracts/security/ReentrancyGuard.sol";
@@ -106,30 +106,30 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
     ) external onlyAdapter(Slot.VOTING) returns (uint96 voteWeight) {
         require(!_users[user].commitmentsList.contains(proposalId), "Bank: already committed");
 
-        Account memory a = _users[user].account;
+        Account memory _account = _users[user].account;
 
         // check for available balance
-        if (block.timestamp >= a.nextRetrieval) {
-            a = _updateUserAccount(a, user);
+        if (block.timestamp >= _account.nextRetrieval) {
+            _account = _updateUserAccount(_account, user);
         }
 
         // calcul amount to deposit in the contract
         uint256 toTransfer;
-        if (a.availableBalance >= lockedAmount) {
-            a.availableBalance -= lockedAmount;
+        if (_account.availableBalance >= lockedAmount) {
+            _account.availableBalance -= lockedAmount;
         } else {
-            toTransfer = lockedAmount - a.availableBalance;
-            a.availableBalance = 0;
+            toTransfer = lockedAmount - _account.availableBalance;
+            _account.availableBalance = 0;
         }
 
         _depositTransfer(user, toTransfer + advanceDeposit);
 
         uint32 retrievalDate = uint32(block.timestamp) + lockPeriod;
-        a.availableBalance += advanceDeposit;
-        a.lockedBalance += lockedAmount;
+        _account.availableBalance += advanceDeposit;
+        _account.lockedBalance += lockedAmount;
 
-        if (a.nextRetrieval > retrievalDate) {
-            a.nextRetrieval = retrievalDate;
+        if (_account.nextRetrieval > retrievalDate) {
+            _account.nextRetrieval = retrievalDate;
         }
 
         voteWeight = _calculVoteWeight(lockPeriod, lockedAmount);
@@ -142,21 +142,21 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
             lockPeriod,
             retrievalDate
         );
-        _users[user].account = a;
+        _users[user].account = _account;
 
         emit NewCommitment(proposalId, user, lockPeriod, lockedAmount);
     }
 
     function withdrawAmount(address user, uint128 amount) external onlyAdapter(Slot.VOTING) {
-        Account memory a = _users[user].account;
+        Account memory _account = _users[user].account;
 
-        if (block.timestamp >= a.nextRetrieval) {
-            a = _updateUserAccount(a, user);
+        if (block.timestamp >= _account.nextRetrieval) {
+            _account = _updateUserAccount(_account, user);
         }
 
-        require(a.availableBalance <= amount, "Bank: insuffisant available balance");
-        a.availableBalance -= amount;
-        _users[user].account = a;
+        require(_account.availableBalance <= amount, "Bank: insuffisant available balance");
+        _account.availableBalance -= amount;
+        _users[user].account = _account;
         _withdrawTransfer(user, amount);
         emit Withdrawn(user, amount);
     }

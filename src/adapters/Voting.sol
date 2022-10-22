@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.16;
+pragma solidity 0.8.17;
 
 import "../abstracts/ProposerAdapter.sol";
 import "../interfaces/IBank.sol";
@@ -60,14 +60,14 @@ contract Voting is ProposerAdapter {
     function executeProposal(bytes32 proposalId) public override {
         super.executeProposal(proposalId);
 
-        ProposedVoteParam memory pvp = _proposals[bytes28(proposalId << 32)].voteParam;
+        ProposedVoteParam memory _voteParam = _proposals[bytes28(proposalId << 32)].voteParam;
         _getAgora().changeVoteParams(
-            pvp.voteId,
-            pvp.consensus,
-            pvp.votingPeriod,
-            pvp.gracePeriod,
-            pvp.threshold,
-            pvp.adminValidationPeriod
+            _voteParam.voteId,
+            _voteParam.consensus,
+            _voteParam.votingPeriod,
+            _voteParam.gracePeriod,
+            _voteParam.threshold,
+            _voteParam.adminValidationPeriod
         );
         delete _proposals[bytes28(proposalId << 32)];
     }
@@ -92,7 +92,7 @@ contract Voting is ProposerAdapter {
             "Voting: cannot replace vote params"
         );
 
-        ProposedVoteParam memory pvp = ProposedVoteParam(
+        ProposedVoteParam memory _voteParam = ProposedVoteParam(
             voteId,
             consensus,
             votingPeriod,
@@ -102,8 +102,12 @@ contract Voting is ProposerAdapter {
         );
         Consultation memory emptyConsultation;
 
-        Proposal memory p = Proposal(ProposalType.VOTE_PARAMS, emptyConsultation, pvp);
-        bytes28 proposalId = bytes28(keccak256(abi.encode(p)));
+        Proposal memory _proposal = Proposal(
+            ProposalType.VOTE_PARAMS,
+            emptyConsultation,
+            _voteParam
+        );
+        bytes28 proposalId = bytes28(keccak256(abi.encode(_proposal)));
 
         agora.submitProposal(
             slotId,
@@ -114,7 +118,7 @@ contract Voting is ProposerAdapter {
             minStartTime,
             msg.sender
         );
-        _proposals[proposalId] = p;
+        _proposals[proposalId] = _proposal;
     }
 
     function proposeConsultation(
@@ -122,11 +126,15 @@ contract Voting is ProposerAdapter {
         string calldata description,
         uint32 minStartTime
     ) external onlyMember {
-        Consultation memory c = Consultation(title, description, msg.sender);
-        ProposedVoteParam memory emptyPVP;
+        Consultation memory _consultation = Consultation(title, description, msg.sender);
+        ProposedVoteParam memory _emptyVoteParam;
 
-        Proposal memory p = Proposal(ProposalType.CONSULTATION, c, emptyPVP);
-        bytes28 proposalId = bytes28(keccak256(abi.encode(p)));
+        Proposal memory _proposal = Proposal(
+            ProposalType.CONSULTATION,
+            _consultation,
+            _emptyVoteParam
+        );
+        bytes28 proposalId = bytes28(keccak256(abi.encode(_proposal)));
         _getAgora().submitProposal(
             slotId,
             proposalId,
@@ -136,7 +144,7 @@ contract Voting is ProposerAdapter {
             minStartTime,
             msg.sender
         );
-        _proposals[proposalId] = p;
+        _proposals[proposalId] = _proposal;
     }
 
     function withdrawAmount(uint128 amount) external onlyMember {
@@ -182,10 +190,10 @@ contract Voting is ProposerAdapter {
     function getProposedVoteParam(bytes28 proposalId)
         external
         view
-        returns (ProposedVoteParam memory pvp)
+        returns (ProposedVoteParam memory _voteParam)
     {
-        pvp = _proposals[proposalId].voteParam;
-        require(pvp.voteId != Slot.EMPTY, "Voting: no vote params");
+        _voteParam = _proposals[proposalId].voteParam;
+        require(_voteParam.voteId != Slot.EMPTY, "Voting: no vote params");
     }
 
     function _getBank() internal view returns (IBank) {

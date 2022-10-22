@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.16;
+pragma solidity 0.8.17;
 
 interface IAgora {
     event VoteParamsChanged(bytes4 indexed voteId, bool indexed added); // add consensus?
