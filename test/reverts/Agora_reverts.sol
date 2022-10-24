@@ -30,13 +30,15 @@ contract Agora_reverts is IAgora {
         Consensus consensus,
         uint32 votingPeriod,
         uint32 gracePeriod,
-        uint32 threshold
+        uint32 threshold,
+        uint32 adminValidationPeriod
     ) external pure {
         voteId == voteId;
         consensus == consensus;
         votingPeriod == votingPeriod;
         gracePeriod == gracePeriod;
         threshold == threshold;
+        adminValidationPeriod == adminValidationPeriod;
 
         revert();
     }

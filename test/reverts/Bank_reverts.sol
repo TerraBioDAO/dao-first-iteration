@@ -50,4 +50,18 @@ contract Bank_reverts is IBank {
 
         revert();
     }
+
+    function advancedDeposit(address user, uint128 amount) external pure {
+        user == user;
+        amount == amount;
+
+        revert();
+    }
+
+    function withdrawAmount(address user, uint128 amount) external pure {
+        user == user;
+        amount == amount;
+
+        revert();
+    }
 }
