@@ -21,7 +21,6 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     address public immutable terraBioToken;
-    uint64 internal constant DAY = 86400;
     uint32 internal immutable MAX_TIMESTAMP;
 
     event NewCommitment(
@@ -171,6 +170,7 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
         a.availableBalance -= amount;
         _users[user].account = a;
         _withdrawTransfer(user, amount);
+        emit Withdrawn(user, amount);
     }
 
     function vaultDeposit(
@@ -416,17 +416,17 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
         pure
         returns (uint96)
     {
-        if (lockPeriod == DAY) {
+        if (lockPeriod == Slot.DAY) {
             return lockAmount / 10;
-        } else if (lockPeriod == 7 * DAY) {
+        } else if (lockPeriod == 7 * Slot.DAY) {
             return lockAmount;
-        } else if (lockPeriod == 15 * DAY) {
+        } else if (lockPeriod == 15 * Slot.DAY) {
             return lockAmount * 2;
-        } else if (lockPeriod == 30 * DAY) {
+        } else if (lockPeriod == 30 * Slot.DAY) {
             return lockAmount * 4;
-        } else if (lockPeriod == 120 * DAY) {
+        } else if (lockPeriod == 120 * Slot.DAY) {
             return lockAmount * 25;
-        } else if (lockPeriod == 365 * DAY) {
+        } else if (lockPeriod == 365 * Slot.DAY) {
             return lockAmount * 50;
         } else {
             revert("Bank: incorrect lock period");

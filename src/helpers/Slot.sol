@@ -3,6 +3,10 @@
 pragma solidity ^0.8.16;
 
 library Slot {
+    // VARIABLES
+    uint32 internal constant DAY = 86400;
+
+    // GENERAL
     bytes4 internal constant EMPTY = 0x00000000;
     bytes4 internal constant CORE = 0xFFFFFFFF;
 
@@ -26,4 +30,7 @@ library Slot {
 
     // VAULTS
     bytes4 internal constant TREASURY = bytes4(keccak256("treasury"));
+
+    // VOTE PARAMS
+    bytes4 internal constant VOTE_STANDARD = bytes4(keccak256("vote-standard"));
 }

@@ -7,14 +7,19 @@ import "../interfaces/IAgora.sol";
 import "../interfaces/IProposerAdapter.sol";
 
 contract Agora is CoreExtension, IAgora {
-    uint256 public immutable ADMIN_VALIDATION_PERIOD;
-
     mapping(bytes32 => Proposal) private _proposals;
     mapping(bytes4 => VoteParam) private _voteParams;
     mapping(bytes32 => mapping(address => bool)) private _votes;
 
     constructor(address core) CoreExtension(core, Slot.AGORA) {
-        ADMIN_VALIDATION_PERIOD = 7 * 86400; // 7 days
+        _addVoteParam(
+            Slot.VOTE_STANDARD,
+            Consensus.TOKEN,
+            7 * Slot.DAY,
+            3 * Slot.DAY,
+            8000,
+            7 * Slot.DAY
+        );
     }
 
     function submitProposal(
@@ -57,12 +62,20 @@ contract Agora is CoreExtension, IAgora {
         Consensus consensus,
         uint32 votingPeriod,
         uint32 gracePeriod,
-        uint32 threshold
+        uint32 threshold,
+        uint32 adminValidationPeriod
     ) external onlyAdapter(Slot.VOTING) {
         if (consensus == Consensus.NO_VOTE) {
             _removeVoteParam(voteId);
         } else {
-            _addVoteParam(voteId, consensus, votingPeriod, gracePeriod, threshold);
+            _addVoteParam(
+                voteId,
+                consensus,
+                votingPeriod,
+                gracePeriod,
+                threshold,
+                adminValidationPeriod
+            );
         }
     }
 
@@ -84,7 +97,7 @@ contract Agora is CoreExtension, IAgora {
             // This should not be possible, block slot entry when proposals ongoing
             require(adapter != address(0), "Agora: adapter not found");
 
-            IProposerAdapter(adapter).finalizeProposal(proposalId);
+            IProposerAdapter(adapter).executeProposal(proposalId);
             // error should be handled here
         }
         p.proceeded = true;
@@ -116,7 +129,7 @@ contract Agora is CoreExtension, IAgora {
         }
 
         // is validated?
-        if (timestamp < p.createdAt + ADMIN_VALIDATION_PERIOD) {
+        if (timestamp < p.createdAt + vp.adminValidationPeriod) {
             if (!p.adminApproved) {
                 return ProposalStatus.VALIDATION;
             }
@@ -174,7 +187,8 @@ contract Agora is CoreExtension, IAgora {
         Consensus consensus,
         uint32 votingPeriod,
         uint32 gracePeriod,
-        uint32 threshold
+        uint32 threshold,
+        uint32 adminValidationPeriod
     ) internal {
         VoteParam memory vote = _voteParams[voteId];
         require(vote.consensus == Consensus.NO_VOTE, "Agora: cannot replace params");
@@ -186,6 +200,7 @@ contract Agora is CoreExtension, IAgora {
         vote.votingPeriod = votingPeriod;
         vote.gracePeriod = gracePeriod;
         vote.threshold = threshold;
+        vote.adminValidationPeriod = adminValidationPeriod;
 
         _voteParams[voteId] = vote;
 
