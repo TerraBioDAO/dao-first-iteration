@@ -22,13 +22,21 @@ contract Financing is ProposerAdapter {
     constructor(address core) Adapter(core, Slot.FINANCING) {}
 
     /**
-     * @notice Creates financing proposal.
-     * @dev Requested amount must be greater than zero.
-     * @dev Only members of the DAO can create a financing proposal.
-     * @param proposal The Proposal data
+     * @notice Creates financing proposal. Only PROPOSER role can create a financing proposal.
+     * @param voteId vote parameters id
+     * @param amount of the proposal
+     * @param applicant of the proposal
+     * requirements :
+     * - Only PROPOSER role can create a financing proposal.
+     * - Requested amount must be greater than zero.
      */
-    function submitProposal(Proposal memory proposal) external onlyProposer {
-        require(proposal.amount > 0, "Financing: invalid requested amount");
+    function submitProposal(
+        bytes4 voteId,
+        uint256 amount,
+        address applicant
+    ) external onlyProposer {
+        require(amount > 0, "Financing: invalid requested amount");
+        Proposal memory proposal = Proposal(applicant, amount);
 
         bytes28 proposalId = bytes28(keccak256(abi.encode(proposal)));
 
@@ -37,15 +45,15 @@ contract Financing is ProposerAdapter {
         IAgora agora = IAgora(IDaoCore(_core).getSlotContractAddr(Slot.AGORA));
         IBank bank = IBank(IDaoCore(_core).getSlotContractAddr(Slot.BANK));
 
-        bank.setFinancingProposalData(
-            bytes32(bytes.concat(Slot.FINANCING, proposalId)),
-            proposal.amount
-        );
+        // Assume that Vault is TREASURY or ask vaultId as parameter ?
+        // TREASURY must have TBIO listed as available token
+        // Assume that Token is TBIO
+
+        bank.vaultCommit(Slot.TREASURY, bank.terraBioToken(), applicant, amount);
 
         // startime = 0 => startime = timestamp
-        // voteID in args
         // admin validation depends on sender role
-        agora.submitProposal(Slot.FINANCING, proposalId, true, true, bytes4(0), 0, msg.sender);
+        agora.submitProposal(Slot.FINANCING, proposalId, true, true, voteId, 0, msg.sender);
     }
 
     /**
@@ -62,6 +70,17 @@ contract Financing is ProposerAdapter {
 
         delete proposals[bytes28(proposalId << 32)];
 
-        return bank.executeFinancingProposal(proposalId, proposal.applicant, proposal.amount);
+        return bank.vaultTransfer(proposalId, proposal.applicant, proposal.amount);
+    }
+
+    /**
+     * @notice Create a vault
+     * @dev Only admin can create a Vault.
+     * @param vaultId vault id
+     * @param tokenList array of token addresses
+     */
+    function createVault(bytes4 vaultId, address[] memory tokenList) external onlyAdmin {
+        IBank bank = IBank(dao.getSlotContractAddr(Slot.BANK));
+        bank.createVault(vaultId, tokenList);
     }
 }
