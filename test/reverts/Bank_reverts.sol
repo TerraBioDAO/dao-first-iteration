@@ -64,4 +64,43 @@ contract Bank_reverts is IBank {
 
         revert();
     }
+
+    function vaultCommit(
+        bytes4 vaultId,
+        address tokenAddr,
+        address applicant,
+        uint128 amount
+    ) external pure {
+        vaultId == vaultId;
+        tokenAddr == tokenAddr;
+        applicant == applicant;
+        amount == amount;
+
+        revert();
+    }
+
+    function vaultTransfer(
+        bytes4 vaultId,
+        address tokenAddr,
+        address destinationAddr,
+        uint128 amount
+    ) external returns (bool) {
+        vaultId == vaultId;
+        tokenAddr == tokenAddr;
+        destinationAddr == destinationAddr;
+        amount == amount;
+
+        revert();
+    }
+
+    function createVault(bytes4 vaultId, address[] memory tokenList) external pure {
+        vaultId == vaultId;
+        tokenList[0] == tokenList[0];
+
+        revert();
+    }
+
+    function terraBioToken() external pure returns (address) {
+        revert();
+    }
 }

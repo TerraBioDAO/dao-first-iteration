@@ -15,11 +15,21 @@ interface IBank {
 
     function withdrawAmount(address user, uint128 amount) external;
 
-    function setFinancingProposalData(bytes32 proposalId, uint256 amount) external;
-
-    function executeFinancingProposal(
-        bytes32 proposalId,
+    function vaultCommit(
+        bytes4 vaultId,
+        address tokenAddr,
         address applicant,
-        uint256 amount
+        uint128 amount
+    ) external;
+
+    function vaultTransfer(
+        bytes4 vaultId,
+        address tokenAddr,
+        address destinationAddr,
+        uint128 amount
     ) external returns (bool);
+
+    function createVault(bytes4 vaultId, address[] memory tokenList) external;
+
+    function terraBioToken() external returns (address);
 }
