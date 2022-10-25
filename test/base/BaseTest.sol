@@ -8,7 +8,7 @@ import "openzeppelin-contracts/utils/Strings.sol";
 import "openzeppelin-contracts/utils/StorageSlot.sol";
 import "forge-std/Test.sol";
 
-import "test/reverts/ERC20_reverts.sol";
+import { ERC20_reverts, Core_reverts, Agora_reverts, Bank_reverts } from "test/reverts/reverts.sol";
 
 abstract contract BaseTest is Test {
     using stdStorage for StdStorage;

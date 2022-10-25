@@ -32,6 +32,7 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
     event Deposit(address indexed account, uint256 amount);
     event Withdrawn(address indexed account, uint256 amount);
 
+    event VaultCreated(bytes4 indexed vaultId);
     event VaultDeposit(
         bytes4 indexed vaultId,
         address indexed tokenAddr,
@@ -45,6 +46,12 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
         uint128 amount
     );
     event VaultTransfer(
+        bytes4 indexed vaultId,
+        address indexed tokenAddr,
+        address indexed applicant,
+        uint128 amount
+    );
+    event VaultInternalTransfer(
         bytes4 indexed vaultId,
         address indexed tokenAddr,
         address indexed applicant,
@@ -195,6 +202,8 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
             }
         }
         _vaults[vaultId].isExist = true;
+
+        emit VaultCreated(vaultId);
     }
 
     function vaultCommit(
@@ -223,17 +232,24 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
     ) external nonReentrant onlyAdapter(Slot.FINANCING) returns (bool) {
         _vaults[vaultId].balance[tokenAddr].commitedBalance -= amount;
 
-        if (tokenAddr == address(terraBioToken)) {
+        if (
+            tokenAddr == address(terraBioToken) &&
+            IDaoCore(_core).hasRole(destinationAddr, Slot.USER_EXISTS)
+        ) {
             // TBIO case
-            // applicant receive proposal amount on his internal account
+            // applicant is a member receive proposal amount on his internal account
             // he should withdraw it if needed
             _users[destinationAddr].account.availableBalance += amount;
-        } else {
-            // important nonReentrant here as we don't track proposalId and balance associated
-            IERC20(tokenAddr).transfer(destinationAddr, amount);
+
+            emit VaultInternalTransfer(vaultId, tokenAddr, destinationAddr, amount);
+            return true;
         }
 
+        // important nonReentrant here as we don't track proposalId and balance associated
+        IERC20(tokenAddr).transfer(destinationAddr, amount);
+
         emit VaultTransfer(vaultId, tokenAddr, destinationAddr, amount);
+
         return true;
     }
 
