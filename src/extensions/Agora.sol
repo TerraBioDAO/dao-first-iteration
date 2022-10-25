@@ -24,14 +24,14 @@ contract Agora is CoreExtension, IAgora {
 
     function submitProposal(
         bytes4 slot,
-        bytes28 proposalId,
+        bytes28 adapterProposalId,
         bool adminApproved,
         bool executable,
         bytes4 voteId,
         uint32 minStartTime,
         address initiater
     ) external onlyAdapter(slot) {
-        bytes32 proposalId = bytes32(bytes.concat(slot, proposalId));
+        bytes32 proposalId = bytes32(bytes.concat(slot, adapterProposalId));
         Proposal memory p = _proposals[proposalId];
         require(!p.active, "Agora: proposal already exist");
 
@@ -104,6 +104,7 @@ contract Agora is CoreExtension, IAgora {
 
         // reward for finalizer
 
+        --_voteParams[p.voteId].utilisation;
         _proposals[proposalId] = p;
         emit ProposalFinalized(proposalId, result, finalizer);
     }

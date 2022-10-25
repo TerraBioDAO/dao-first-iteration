@@ -13,12 +13,11 @@ contract Agora_test is BaseDaoTest {
 
     address public AGORA;
     address public VOTING;
-    address public ADAPTER;
+    address public ADAPTER_ADDR;
     address public constant USER = address(5);
-    bytes4 public constant SLOT = bytes4("a");
+    bytes4 public constant ADAPTER_SLOT = bytes4("a");
     bytes4 public constant VOTE_STANDARD = bytes4(keccak256("standard"));
     bytes4 public constant VOTE_DEFAULT = bytes4(0);
-    bytes32 public constant PPS = bytes32("a");
 
     function setUp() public {
         _deployDao(address(501));
@@ -28,10 +27,88 @@ contract Agora_test is BaseDaoTest {
         VOTING = _branchMock(Slot.VOTING, false);
         vm.prank(VOTING);
         agora.changeVoteParams(VOTE_DEFAULT, IAgora.Consensus(1), 86400, 86400, 8000, 86400);
-        ADAPTER = _branchMock(SLOT, false);
+        ADAPTER_ADDR = _branchMock(ADAPTER_SLOT, false);
     }
 
-    // changeVoteParams()
+    /*////////////////////////////////
+                UTILS
+    ////////////////////////////////*/
+    function _addVoteId(
+        bytes4 voteId,
+        uint8 consensus,
+        uint32 votingPeriod,
+        uint32 gracePeriod,
+        uint32 threshold,
+        uint32 adminValidationPeriod
+    ) internal {
+        vm.assume(
+            (consensus == 1 || consensus == 2) &&
+                threshold <= 10000 &&
+                votingPeriod > 0 &&
+                voteId != bytes4(0) &&
+                voteId != Slot.VOTE_STANDARD
+        );
+        vm.prank(VOTING);
+        agora.changeVoteParams(
+            voteId,
+            IAgora.Consensus(consensus),
+            votingPeriod,
+            gracePeriod,
+            threshold,
+            adminValidationPeriod
+        );
+    }
+
+    function _submitProposal(
+        bytes4 slot,
+        bytes28 adapterProposalId,
+        bool adminApproval,
+        bool executable,
+        uint32 minStartTime,
+        bytes4 voteId,
+        address initiater
+    ) internal returns (bytes32) {
+        vm.assume(!_slotValid(slot) || slot == ADAPTER_SLOT);
+        address adapter = _branchMock(slot, false);
+        vm.prank(adapter);
+        agora.submitProposal(
+            slot,
+            adapterProposalId,
+            adminApproval,
+            executable,
+            voteId,
+            minStartTime,
+            initiater
+        );
+
+        return bytes32(bytes.concat(slot, adapterProposalId));
+    }
+
+    function _defaultVote() internal view returns (IAgora.VoteParam memory) {
+        return agora.getVoteParams(VOTE_DEFAULT);
+    }
+
+    function _standardVote() internal view returns (IAgora.VoteParam memory) {
+        return agora.getVoteParams(Slot.VOTE_STANDARD);
+    }
+
+    function _score(bytes32 ppsId) internal view returns (IAgora.Score memory) {
+        return agora.getProposal(ppsId).score;
+    }
+
+    /*////////////////////////////////
+            changeVoteParams()
+    ////////////////////////////////*/
+    function testVoteParamsAddedAtDeployment() public {
+        IAgora.VoteParam memory storedParam = agora.getVoteParams(Slot.VOTE_STANDARD);
+        assertEq(uint256(storedParam.consensus), uint256(1)); // TOKEN
+        assertEq(storedParam.votingPeriod, 7 * Slot.DAY);
+        assertEq(storedParam.gracePeriod, 3 * Slot.DAY);
+        assertEq(storedParam.threshold, 8000);
+        assertEq(storedParam.adminValidationPeriod, 7 * Slot.DAY);
+        assertEq(storedParam.utilisation, 0);
+    }
+
     function testAddVoteParam(
         bytes4 voteId,
         uint8 consensus,
@@ -85,6 +162,9 @@ contract Agora_test is BaseDaoTest {
         emit VoteParamsChanged(voteId, true);
         _addVoteId(voteId, 2, 50, 50, 7500, 777);
         // agora.changeVoteParams(voteId, IAgora.Consensus.MEMBER, 50, 50, 7500);
+
+        emit log_bytes32(bytes32(Slot.VOTE_STANDARD));
+        // 0x54fd88eb
     }
 
     function testRemoveVoteParam() public {
@@ -92,68 +172,89 @@ contract Agora_test is BaseDaoTest {
         // when a vote/ proposal is started
     }
 
+    /*////////////////////////////////
+            submitProposal()
+    ////////////////////////////////*/
     function testSubmitProposal(
+        bytes4 slot,
+        bytes28 adapterProposalId,
         bool adminApproved,
         bool executable,
         uint32 minStartTime
     ) public {
-        vm.assume(minStartTime >= 1000);
         vm.warp(1000);
-        bytes32 ppsId = _submitProposal(adminApproved, executable, minStartTime, bytes28(PPS));
+        vm.assume(minStartTime >= 1000);
+        bytes32 proposalId = _submitProposal(
+            slot,
+            adapterProposalId,
+            adminApproved,
+            executable,
+            minStartTime,
+            Slot.VOTE_STANDARD,
+            USER
+        );
 
-        assertTrue(agora.getProposal(ppsId).active, "active");
-        assertEq(agora.getProposal(ppsId).adminApproved, adminApproved, "approval");
-        assertEq(agora.getProposal(ppsId).executable, executable, "executable");
-        assertEq(agora.getProposal(ppsId).minStartTime, minStartTime, "min start time");
-        assertEq(agora.getProposal(ppsId).initiater, USER, "initiater");
+        assertTrue(agora.getProposal(proposalId).active, "active");
+        assertEq(agora.getProposal(proposalId).adminApproved, adminApproved, "approval");
+        assertEq(agora.getProposal(proposalId).executable, executable, "executable");
+        assertEq(agora.getProposal(proposalId).minStartTime, minStartTime, "min start time");
+        assertEq(agora.getProposal(proposalId).initiater, USER, "initiater");
 
-        assertEq(agora.getVoteParams(VOTE_DEFAULT).utilisation, 1);
+        assertEq(agora.getVoteParams(Slot.VOTE_STANDARD).utilisation, 1);
     }
 
     function testCannotSubmitProposal() public {
         vm.warp(1000);
-        vm.prank(ADAPTER);
+        vm.startPrank(ADAPTER_ADDR);
         vm.expectRevert("Agora: unknown vote params");
-        agora.submitProposal(SLOT, bytes28(PPS), true, true, VOTE_STANDARD, 500, USER);
+        agora.submitProposal(ADAPTER_SLOT, bytes28("1"), true, true, VOTE_STANDARD, 500, USER);
 
-        vm.prank(ADAPTER);
         vm.expectRevert("Agora: wrong starting time");
-        agora.submitProposal(SLOT, bytes28(PPS), true, true, VOTE_DEFAULT, 500, USER);
+        agora.submitProposal(ADAPTER_SLOT, bytes28("1"), true, true, VOTE_DEFAULT, 500, USER);
 
-        vm.prank(ADAPTER);
-        agora.submitProposal(SLOT, bytes28(PPS), true, true, VOTE_DEFAULT, 0, USER);
+        agora.submitProposal(ADAPTER_SLOT, bytes28("1"), true, true, VOTE_DEFAULT, 0, USER);
 
-        vm.prank(ADAPTER);
         vm.expectRevert("Agora: proposal already exist");
-        agora.submitProposal(SLOT, bytes28(PPS), true, true, VOTE_DEFAULT, 0, USER);
+        agora.submitProposal(ADAPTER_SLOT, bytes28("1"), true, true, VOTE_DEFAULT, 0, USER);
     }
 
+    /*////////////////////////////////
+            getProposalStatus()
+    ////////////////////////////////*/
     function testGetProposalStatus() public {
-        /* enum ProposalStatus {0  UNKNOWN,
-                                1  VALIDATION,
-                                2  STANDBY,
-                                3  ONGOING,
-                                4  CLOSED,
-                                5  SUSPENDED,
-                                6  TO_FINALIZE,
-                                7  ARCHIVED  }*/
-
-        assertEq(uint8(agora.getProposalStatus(PPS)), 0);
+        assertEq(uint8(agora.getProposalStatus(bytes32("1"))), 0);
 
         vm.warp(1000);
-        bytes32 ppsId = _submitProposal(false, true, type(uint32).max, bytes28("1"));
+
+        bytes32 ppsId = _submitProposal(
+            ADAPTER_SLOT,
+            bytes28("1"),
+            false,
+            true,
+            type(uint32).max,
+            Slot.VOTE_STANDARD,
+            USER
+        );
         assertEq(uint8(agora.getProposalStatus(ppsId)), 1); // validation
         vm.warp(1000 + 7 * DAY + 100); // after validation period
         assertEq(uint8(agora.getProposalStatus(ppsId)), 2); // standby
 
         vm.warp(1000);
-        ppsId = _submitProposal(true, false, 2000, bytes28("2"));
+        ppsId = _submitProposal(
+            ADAPTER_SLOT,
+            bytes28("2"),
+            true,
+            false,
+            2000,
+            Slot.VOTE_STANDARD,
+            USER
+        );
         assertEq(uint8(agora.getProposalStatus(ppsId)), 2); // standby
         vm.warp(3000);
         assertEq(uint8(agora.getProposalStatus(ppsId)), 3); // ongoing
-        vm.warp(3200 + _defaultVote().votingPeriod);
+        vm.warp(3200 + _standardVote().votingPeriod);
         assertEq(uint8(agora.getProposalStatus(ppsId)), 4); // closed
-        vm.warp(3200 + _defaultVote().votingPeriod + _defaultVote().gracePeriod);
+        vm.warp(3200 + _standardVote().votingPeriod + _standardVote().gracePeriod);
         assertEq(uint8(agora.getProposalStatus(ppsId)), 6); // to_finalize
 
         vm.prank(VOTING);
@@ -161,10 +262,21 @@ contract Agora_test is BaseDaoTest {
         assertEq(uint8(agora.getProposalStatus(ppsId)), 7); // archived
     }
 
+    /*////////////////////////////////
+              submitVote()
+    ////////////////////////////////*/
     function testSubmitVote(uint8 value, uint128 voteWeight) public {
         vm.assume(value <= 2 && voteWeight > 0 && voteWeight <= 50 * 50_000e18);
         vm.warp(1000);
-        bytes32 ppsId = _submitProposal(true, false, 0, bytes28("1"));
+        bytes32 ppsId = _submitProposal(
+            ADAPTER_SLOT,
+            bytes28("1"),
+            true,
+            true,
+            0,
+            Slot.VOTE_STANDARD,
+            USER
+        );
 
         vm.warp(2000);
         vm.prank(VOTING);
@@ -199,59 +311,5 @@ contract Agora_test is BaseDaoTest {
 
     function testCannotFinalizeProposal() private {
         // include vote rejected
-    }
-
-    // ------------------------- UTILS
-    function _addVoteId(
-        bytes4 voteId,
-        uint8 consensus,
-        uint32 votingPeriod,
-        uint32 gracePeriod,
-        uint32 threshold,
-        uint32 adminValidationPeriod
-    ) internal {
-        vm.assume(
-            (consensus == 1 || consensus == 2) &&
-                threshold <= 10000 &&
-                votingPeriod > 0 &&
-                voteId != bytes4(0)
-        );
-        vm.prank(VOTING);
-        agora.changeVoteParams(
-            voteId,
-            IAgora.Consensus(consensus),
-            votingPeriod,
-            gracePeriod,
-            threshold,
-            adminValidationPeriod
-        );
-    }
-
-    function _submitProposal(
-        bool adminApproval,
-        bool executable,
-        uint32 minStartTime,
-        bytes28 ppsId
-    ) internal returns (bytes32) {
-        vm.prank(ADAPTER);
-        agora.submitProposal(
-            SLOT,
-            ppsId,
-            adminApproval,
-            executable,
-            VOTE_DEFAULT,
-            minStartTime,
-            USER
-        );
-
-        return bytes32(bytes.concat(SLOT, ppsId));
-    }
-
-    function _defaultVote() internal view returns (IAgora.VoteParam memory) {
-        return agora.getVoteParams(VOTE_DEFAULT);
-    }
-
-    function _score(bytes32 ppsId) internal view returns (IAgora.Score memory) {
-        return agora.getProposal(ppsId).score;
     }
 }
