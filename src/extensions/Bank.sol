@@ -188,7 +188,7 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
     {
         require(!_vaults[vaultId].isExist, "Bank: vault already exist");
         for (uint256 i; i < tokenList.length; ) {
-            require(address(IERC20(tokenList[i])) != address(0), "Bank: non erc20 token");
+            //require(address(IERC20(tokenList[i])) != address(0), "Bank: non erc20 token");
             _vaults[vaultId].tokenList.add(tokenList[i]);
             unchecked {
                 ++i;
@@ -203,11 +203,11 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
         address applicant,
         uint128 amount
     ) external onlyAdapter(Slot.FINANCING) {
-        require(_vaults[vaultId].isExist, "Bank: inexistant vaultId");
-        require(
+        //require(_vaults[vaultId].isExist, "Bank: inexistant vaultId");
+        /*require(
             _vaults[vaultId].balance[tokenAddr].availableBalance >= amount,
             "Bank: not enough in the vault"
-        );
+        );*/
 
         _vaults[vaultId].balance[tokenAddr].availableBalance -= amount;
         _vaults[vaultId].balance[tokenAddr].commitedBalance += amount;
@@ -323,8 +323,8 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
         view
         returns (uint128, uint128)
     {
-        require(bank.isVaultExist(vaultId), "Bank: non-existent vaultId");
-        require(isTokenInVaultTokenList(tokenAddr), "Bank: token not in vault list");
+        //require(this.isVaultExist(vaultId), "Bank: non-existent vaultId");
+        //require(this.isTokenInVaultTokenList(vaultId, tokenAddr), "Bank: token not in vault list");
         Balance memory b = _vaults[vaultId].balance[tokenAddr];
         return (b.availableBalance, b.commitedBalance);
     }

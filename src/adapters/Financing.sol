@@ -49,7 +49,7 @@ contract Financing is ProposerAdapter {
         // TREASURY must have TBIO listed as available token
         // Assume that Token is TBIO
 
-        bank.vaultCommit(Slot.TREASURY, bank.terraBioToken(), applicant, amount);
+        bank.vaultCommit(Slot.TREASURY, bank.terraBioToken(), applicant, uint128(amount));
 
         // startime = 0 => startime = timestamp
         // admin validation depends on sender role
@@ -70,7 +70,15 @@ contract Financing is ProposerAdapter {
 
         delete proposals[bytes28(proposalId << 32)];
 
-        return bank.vaultTransfer(proposalId, proposal.applicant, proposal.amount);
+        // Assume that Vault is TREASURY or ask vaultId as parameter ?
+        // Assume token is TBio
+        return
+            bank.vaultTransfer(
+                Slot.TREASURY,
+                bank.terraBioToken(),
+                proposal.applicant,
+                uint128(proposal.amount)
+            );
     }
 
     /**
@@ -80,6 +88,7 @@ contract Financing is ProposerAdapter {
      * @param tokenList array of token addresses
      */
     function createVault(bytes4 vaultId, address[] memory tokenList) external onlyAdmin {
+        IDaoCore dao = IDaoCore(_core);
         IBank bank = IBank(dao.getSlotContractAddr(Slot.BANK));
         bank.createVault(vaultId, tokenList);
     }

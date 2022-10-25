@@ -264,7 +264,7 @@ contract Bank_test is BaseDaoTest {
     }
 
     // newFinancingProposal()
-    function testNewFinancingProposal(uint128 amount) public {
+    /*function testNewFinancingProposal(uint128 amount) public {
         vm.assume(amount > 0 && amount < type(uint128).max);
         _mintTBIO(USER, amount);
         vm.prank(USER);
@@ -335,5 +335,5 @@ contract Bank_test is BaseDaoTest {
         );
         assertEq(availableBalance, 0);
         assertEq(committedBalance, 0);
-    }
+    }*/
 }

@@ -77,6 +77,8 @@ contract Financing_test is BaseTest {
     bytes32 public constant PROPOSAL = keccak256(abi.encode("a proposal"));
     bytes32 public constant ANOTHER_PROPOSAL = keccak256(abi.encode("another proposal"));
 
+    bytes4 public constant VOTE_ID = bytes4(keccak256(abi.encode("vote params")));
+
     uint256 public constant AMOUNT = 10**20;
 
     function setUp() public {
@@ -100,10 +102,15 @@ contract Financing_test is BaseTest {
             abi.encode(BANK)
         );
 
-        // set financing proposal data
         vm.mockCall(
             address(bank),
-            abi.encodeWithSelector(bank.setFinancingProposalData.selector),
+            abi.encodeWithSelector(bank.vaultCommit.selector),
+            abi.encode(true) // useless for setter
+        );
+
+        vm.mockCall(
+            address(bank),
+            abi.encodeWithSelector(bank.vaultTransfer.selector),
             abi.encode(true) // useless for setter
         );
 
@@ -176,7 +183,7 @@ contract Financing_test is BaseTest {
             abi.encodeWithSelector(core.hasRole.selector, NOT_PROPOSER, Slot.USER_PROPOSER)
         );
         vm.expectRevert("Adapter: not a proposer");
-        financing.submitProposal(proposal);
+        financing.submitProposal(Slot.TREASURY, proposal.amount, proposal.applicant);
 
         vm.mockCall(
             address(core),
@@ -194,7 +201,7 @@ contract Financing_test is BaseTest {
             abi.encodeWithSelector(bank.setFinancingProposalData.selector, PROPOSER, Slot.USER_PROPOSER)
         );*/
         vm.expectRevert("Financing: invalid requested amount");
-        financing.submitProposal(proposal);
+        financing.submitProposal(Slot.TREASURY, proposal.amount, proposal.applicant);
 
         vm.mockCall(
             address(core),
@@ -203,20 +210,39 @@ contract Financing_test is BaseTest {
         );
         proposal = Financing.Proposal(APPLICANT, AMOUNT);
         bytes28 proposalId = bytes28(keccak256(abi.encode(proposal)));
+
         vm.prank(PROPOSER);
+        console.logBytes4(core.hasRole.selector);
         vm.expectCall(
             address(core),
             abi.encodeWithSelector(core.hasRole.selector, PROPOSER, Slot.USER_PROPOSER)
         );
-        vm.expectCall(
+        console.logBytes4(bank.vaultCommit.selector);
+        /*vm.expectCall(
             address(bank),
             abi.encodeWithSelector(
-                bank.setFinancingProposalData.selector,
-                bytes32(bytes.concat(Slot.FINANCING, proposalId)),
-                proposal.amount
+                bank.vaultCommit.selector,
+                Slot.TREASURY,
+                TOKEN_ADDRESS,
+                APPLICANT,
+                uint128(proposal.amount)
             )
-        );
-        financing.submitProposal(proposal);
+        );*/
+        console.logBytes4(agora.submitProposal.selector);
+        /*vm.expectCall(
+            address(agora),
+            abi.encodeWithSelector(
+                agora.submitProposal.selector,
+                Slot.TREASURY,
+                proposalId,
+                true,
+                true,
+                VOTE_ID,
+                0,
+                PROPOSER
+            )
+        );*/
+        financing.submitProposal(Slot.TREASURY, proposal.amount, proposal.applicant);
 
         // check value with calculated slot
         bytes32 slot = calculateSlotForProposals(proposalId);
