@@ -41,7 +41,7 @@ contract Managing is ProposerAdapter {
 
         // store in the core
         // IDaoCore(_core).submitProposal(
-        //     bytes32(bytes.concat(slotId, proposalId)),
+        //     proposalId.concatWithSlot(slot),
         //     msg.sender,
         //     votingContract
         // );

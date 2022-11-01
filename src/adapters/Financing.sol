@@ -11,6 +11,8 @@ import "../interfaces/IAgora.sol";
  * Financing is only in TBIO
  */
 contract Financing is ProposerAdapter {
+    using Slot for bytes28;
+
     struct Proposal {
         address applicant; // the proposal applicant address
         uint256 amount; // the amount requested for funding

@@ -9,6 +9,8 @@ import "src/interfaces/IAgora.sol";
 import "src/adapters/Voting.sol";
 
 contract Agora_test is BaseDaoTest {
+    using Slot for bytes28;
+
     Agora public agora;
 
     address public AGORA;
@@ -244,7 +246,7 @@ contract Agora_test is BaseDaoTest {
             USER
         );
 
-        return bytes32(bytes.concat(SLOT, ppsId));
+        return ppsId.concatWithSlot(SLOT);
     }
 
     function _defaultVote() internal view returns (IAgora.VoteParam memory) {

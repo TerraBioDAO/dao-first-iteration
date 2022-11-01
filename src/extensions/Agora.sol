@@ -7,6 +7,8 @@ import "../interfaces/IAgora.sol";
 import "../interfaces/IProposerAdapter.sol";
 
 contract Agora is CoreExtension, IAgora {
+    using Slot for bytes28;
+
     mapping(bytes32 => Proposal) private _proposals;
     mapping(bytes4 => VoteParam) private _voteParams;
     mapping(bytes32 => mapping(address => bool)) private _votes;
@@ -31,12 +33,12 @@ contract Agora is CoreExtension, IAgora {
         uint32 minStartTime,
         address initiater
     ) external onlyAdapter(slot) {
-        bytes32 _proposalId = bytes32(bytes.concat(slot, proposalId));
+        bytes32 _proposalId = proposalId.concatWithSlot(slot);
         Proposal memory _proposal = _proposals[_proposalId];
         require(!_proposal.active, "Agora: proposal already exist");
 
-        VoteParam memory vote = _voteParams[voteId];
-        require(vote.votingPeriod > 0, "Agora: unknown vote params");
+        VoteParam memory _voteParam = _voteParams[voteId];
+        require(_voteParam.votingPeriod > 0, "Agora: unknown vote params");
 
         uint32 timestamp = uint32(block.timestamp);
 
@@ -51,7 +53,7 @@ contract Agora is CoreExtension, IAgora {
         _proposal.initiater = initiater;
         _proposal.voteId = voteId;
 
-        _proposals[proposalId] = _proposal;
+        _proposals[_proposalId] = _proposal;
         ++_voteParams[voteId].utilisation;
 
         emit ProposalSubmitted(slot, initiater, voteId, _proposalId);

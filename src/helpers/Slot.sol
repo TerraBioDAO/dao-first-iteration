@@ -33,4 +33,8 @@ library Slot {
 
     // VOTE PARAMS
     bytes4 internal constant VOTE_STANDARD = bytes4(keccak256("vote-standard"));
+
+    function concatWithSlot(bytes28 proposalId, bytes4 slot) internal pure returns (bytes32) {
+        return bytes32(bytes.concat(slot, proposalId));
+    }
 }

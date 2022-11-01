@@ -51,6 +51,7 @@ contract FinancingSlots {
 
 contract Financing_test is BaseTest {
     using stdStorage for StdStorage;
+    using Slot for bytes28;
 
     IDaoCore public core;
     IERC20 public token;
