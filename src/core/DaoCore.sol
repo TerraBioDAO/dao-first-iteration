@@ -2,14 +2,15 @@
 
 pragma solidity 0.8.17;
 
-import "../abstracts/CoreExtension.sol";
+import "../abstracts/Extension.sol";
 import "../interfaces/IDaoCore.sol";
+import "../helpers/Constants.sol";
 
 /**
  * @notice Main contract, keep states of the DAO
  */
 
-contract DaoCore is CoreExtension, IDaoCore {
+contract DaoCore is Extension, IDaoCore, Constants {
     /// @notice The map to track all members of the DAO with their roles or credits
     mapping(address => mapping(bytes4 => bool)) public members;
     /// @notice counter for existing members
@@ -21,15 +22,15 @@ contract DaoCore is CoreExtension, IDaoCore {
     /// @notice keeps track of Extensions and Adapters
     mapping(bytes4 => Entry) public entries;
 
-    constructor(address admin) CoreExtension(address(this), Slot.CORE) {
+    constructor(address admin) Extension(address(this), Slot.CORE) {
         _addAdmin(admin);
         _addSlotEntry(Slot.MANAGING, admin, false);
         _addSlotEntry(Slot.ONBOARDING, admin, false);
 
         // push roles
-        _roles.push(Slot.USER_EXISTS);
-        _roles.push(Slot.USER_ADMIN);
-        _roles.push(Slot.USER_PROPOSER);
+        _roles.push(ROLE_MEMBER);
+        _roles.push(ROLE_ADMIN);
+        _roles.push(ROLE_PROPOSER);
     }
 
     function changeSlotEntry(bytes4 slot, address contractAddr)
@@ -73,7 +74,7 @@ contract DaoCore is CoreExtension, IDaoCore {
         bool value
     ) external onlyAdapter(Slot.ONBOARDING) {
         require(account != address(0), "Core: zero address used");
-        if (role == Slot.USER_EXISTS && !value) {
+        if (role == ROLE_MEMBER && !value) {
             _revokeMember(account);
         } else {
             _changeMemberStatus(account, role, value);
@@ -84,7 +85,7 @@ contract DaoCore is CoreExtension, IDaoCore {
     function addNewAdmin(address account) external onlyAdapter(Slot.ONBOARDING) {
         require(account != address(0), "Core: zero address used");
         _addAdmin(account);
-        emit MemberStatusChanged(account, Slot.USER_ADMIN, true);
+        emit MemberStatusChanged(account, ROLE_ADMIN, true);
     }
 
     // GETTERS
@@ -111,14 +112,14 @@ contract DaoCore is CoreExtension, IDaoCore {
     // INTERNAL FUNCTIONS
 
     function _addAdmin(address account) internal {
-        if (!members[account][Slot.USER_EXISTS]) {
+        if (!members[account][ROLE_MEMBER]) {
             unchecked {
                 ++membersCount;
             }
-            members[account][Slot.USER_EXISTS] = true;
+            members[account][ROLE_MEMBER] = true;
         }
-        require(!members[account][Slot.USER_ADMIN], "Core: already an admin");
-        members[account][Slot.USER_ADMIN] = true;
+        require(!members[account][ROLE_ADMIN], "Core: already an admin");
+        members[account][ROLE_ADMIN] = true;
     }
 
     function _revokeMember(address account) internal {
@@ -141,7 +142,7 @@ contract DaoCore is CoreExtension, IDaoCore {
         bool value
     ) internal {
         require(members[account][role] != value, "Core: role not changing");
-        if (role == Slot.USER_EXISTS && value) {
+        if (role == ROLE_MEMBER && value) {
             unchecked {
                 ++membersCount;
             }

@@ -6,9 +6,10 @@ import "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-contracts/security/ReentrancyGuard.sol";
 import "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
 
-import "../abstracts/CoreExtension.sol";
+import "../abstracts/Extension.sol";
 import "../interfaces/IBank.sol";
 import "../interfaces/IProposerAdapter.sol";
+import "../helpers/Constants.sol";
 
 /**
  * @notice Should be the only contract to approve to move tokens
@@ -16,7 +17,7 @@ import "../interfaces/IProposerAdapter.sol";
  * Manage only the TBIO token
  */
 
-contract Bank is CoreExtension, ReentrancyGuard, IBank {
+contract Bank is Extension, ReentrancyGuard, IBank, Constants {
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -84,7 +85,7 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
     mapping(address => User) private _users;
     mapping(bytes4 => Vault) private _vaults;
 
-    constructor(address core, address terraBioTokenAddr) CoreExtension(core, Slot.BANK) {
+    constructor(address core, address terraBioTokenAddr) Extension(core, Slot.BANK) {
         terraBioToken = terraBioTokenAddr;
         MAX_TIMESTAMP = type(uint32).max;
     }
@@ -220,7 +221,7 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
 
         if (
             tokenAddr == address(terraBioToken) &&
-            IDaoCore(_core).hasRole(destinationAddr, Slot.USER_EXISTS)
+            IDaoCore(_core).hasRole(destinationAddr, ROLE_MEMBER)
         ) {
             // TBIO case
             // applicant is a member receive proposal amount on his internal account
@@ -411,17 +412,17 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
         pure
         returns (uint96)
     {
-        if (lockPeriod == Slot.DAY) {
+        if (lockPeriod == 1 days) {
             return lockAmount / 10;
-        } else if (lockPeriod == 7 * Slot.DAY) {
+        } else if (lockPeriod == 7 days) {
             return lockAmount;
-        } else if (lockPeriod == 15 * Slot.DAY) {
+        } else if (lockPeriod == 15 days) {
             return lockAmount * 2;
-        } else if (lockPeriod == 30 * Slot.DAY) {
+        } else if (lockPeriod == 30 days) {
             return lockAmount * 4;
-        } else if (lockPeriod == 120 * Slot.DAY) {
+        } else if (lockPeriod == 120 days) {
             return lockAmount * 25;
-        } else if (lockPeriod == 365 * Slot.DAY) {
+        } else if (lockPeriod == 365 days) {
             return lockAmount * 50;
         } else {
             revert("Bank: incorrect lock period");

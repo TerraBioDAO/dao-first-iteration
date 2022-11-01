@@ -7,7 +7,7 @@ import "openzeppelin-contracts/utils/Counters.sol";
 import "./SlotEntry.sol";
 import "../interfaces/IDaoCore.sol";
 
-abstract contract CoreExtension is SlotEntry {
+abstract contract Extension is SlotEntry {
     modifier onlyAdapter(bytes4 slot_) {
         require(
             IDaoCore(_core).getSlotContractAddr(slot_) == msg.sender,

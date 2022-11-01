@@ -19,7 +19,7 @@ contract Voting is ProposerAdapter {
     }
 
     struct ProposedVoteParam {
-        bytes4 voteId;
+        bytes4 voteParamId;
         IAgora.Consensus consensus;
         uint32 votingPeriod;
         uint32 gracePeriod;
@@ -60,14 +60,15 @@ contract Voting is ProposerAdapter {
     function executeProposal(bytes32 proposalId) public override {
         super.executeProposal(proposalId);
 
-        ProposedVoteParam memory _voteParam = _proposals[bytes28(proposalId << 32)].voteParam;
+        ProposedVoteParam memory _proposedVoteParam = _proposals[bytes28(proposalId << 32)]
+            .voteParam;
         _getAgora().changeVoteParams(
-            _voteParam.voteId,
-            _voteParam.consensus,
-            _voteParam.votingPeriod,
-            _voteParam.gracePeriod,
-            _voteParam.threshold,
-            _voteParam.adminValidationPeriod
+            _proposedVoteParam.voteParamId,
+            _proposedVoteParam.consensus,
+            _proposedVoteParam.votingPeriod,
+            _proposedVoteParam.gracePeriod,
+            _proposedVoteParam.threshold,
+            _proposedVoteParam.adminValidationPeriod
         );
         delete _proposals[bytes28(proposalId << 32)];
     }
@@ -85,15 +86,15 @@ contract Voting is ProposerAdapter {
         uint32 minStartTime,
         uint32 adminValidationPeriod
     ) external onlyMember {
-        bytes4 voteId = bytes4(keccak256(bytes(name)));
+        bytes4 voteParamId = bytes4(keccak256(bytes(name)));
         IAgora agora = _getAgora();
         require(
-            agora.getVoteParams(voteId).votingPeriod == 0,
+            agora.getVoteParams(voteParamId).votingPeriod == 0,
             "Voting: cannot replace vote params"
         );
 
         ProposedVoteParam memory _voteParam = ProposedVoteParam(
-            voteId,
+            voteParamId,
             consensus,
             votingPeriod,
             gracePeriod,
@@ -114,7 +115,7 @@ contract Voting is ProposerAdapter {
             proposalId,
             false,
             true,
-            Slot.VOTE_STANDARD,
+            VOTE_STANDARD,
             minStartTime,
             msg.sender
         );
@@ -140,7 +141,7 @@ contract Voting is ProposerAdapter {
             proposalId,
             true,
             false,
-            Slot.VOTE_STANDARD,
+            VOTE_STANDARD,
             minStartTime,
             msg.sender
         );
@@ -163,9 +164,9 @@ contract Voting is ProposerAdapter {
         uint32 threshold,
         uint32 adminValidationPeriod
     ) external onlyAdmin {
-        bytes4 voteId = bytes4(keccak256(bytes(name)));
+        bytes4 voteParamId = bytes4(keccak256(bytes(name)));
         _getAgora().changeVoteParams(
-            voteId,
+            voteParamId,
             consensus,
             votingPeriod,
             gracePeriod,
@@ -174,8 +175,8 @@ contract Voting is ProposerAdapter {
         );
     }
 
-    function removeVoteParams(bytes4 voteId) external onlyAdmin {
-        _getAgora().changeVoteParams(voteId, IAgora.Consensus.NO_VOTE, 0, 0, 0, 0);
+    function removeVoteParams(bytes4 voteParamId) external onlyAdmin {
+        _getAgora().changeVoteParams(voteParamId, IAgora.Consensus.NO_VOTE, 0, 0, 0, 0);
     }
 
     function getConsultation(bytes28 proposalId)
@@ -193,7 +194,7 @@ contract Voting is ProposerAdapter {
         returns (ProposedVoteParam memory _voteParam)
     {
         _voteParam = _proposals[proposalId].voteParam;
-        require(_voteParam.voteId != Slot.EMPTY, "Voting: no vote params");
+        require(_voteParam.voteParamId != Slot.EMPTY, "Voting: no vote params");
     }
 
     function _getBank() internal view returns (IBank) {

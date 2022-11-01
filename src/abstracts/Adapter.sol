@@ -7,8 +7,9 @@ import "openzeppelin-contracts/utils/Counters.sol";
 import "./SlotEntry.sol";
 import "../interfaces/IAdapter.sol";
 import "../interfaces/IDaoCore.sol";
+import "../helpers/Constants.sol";
 
-abstract contract Adapter is SlotEntry, IAdapter {
+abstract contract Adapter is SlotEntry, IAdapter, Constants {
     constructor(address core, bytes4 slot) SlotEntry(core, slot, false) {}
 
     modifier onlyCore() {
@@ -26,17 +27,17 @@ abstract contract Adapter is SlotEntry, IAdapter {
     }
 
     modifier onlyMember() {
-        require(IDaoCore(_core).hasRole(msg.sender, Slot.USER_EXISTS), "Adapter: not a member");
+        require(IDaoCore(_core).hasRole(msg.sender, ROLE_MEMBER), "Adapter: not a member");
         _;
     }
 
     modifier onlyProposer() {
-        require(IDaoCore(_core).hasRole(msg.sender, Slot.USER_PROPOSER), "Adapter: not a proposer");
+        require(IDaoCore(_core).hasRole(msg.sender, ROLE_PROPOSER), "Adapter: not a proposer");
         _;
     }
 
     modifier onlyAdmin() {
-        require(IDaoCore(_core).hasRole(msg.sender, Slot.USER_ADMIN), "Adapter: not an admin");
+        require(IDaoCore(_core).hasRole(msg.sender, ROLE_ADMIN), "Adapter: not an admin");
         _;
     }
 
