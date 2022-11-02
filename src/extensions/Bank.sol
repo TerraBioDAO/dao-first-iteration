@@ -33,30 +33,16 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
     event Withdrawn(address indexed account, uint256 amount);
 
     event VaultCreated(bytes4 indexed vaultId);
-    event VaultDeposit(
-        bytes4 indexed vaultId,
-        address indexed tokenAddr,
-        address indexed from,
-        uint128 amount
-    );
-    event VaultCommit(
-        bytes4 indexed vaultId,
-        address indexed tokenAddr,
-        address indexed applicant,
-        uint128 amount
-    );
+
     event VaultTransfer(
         bytes4 indexed vaultId,
         address indexed tokenAddr,
-        address indexed applicant,
+        address from,
+        address to,
         uint128 amount
     );
-    event VaultInternalTransfer(
-        bytes4 indexed vaultId,
-        address indexed tokenAddr,
-        address indexed applicant,
-        uint128 amount
-    );
+
+    event VaultAmountCommitted(bytes4 indexed vaultId, address indexed tokenAddr, uint128 amount);
 
     struct User {
         Account account;
@@ -186,7 +172,7 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
 
         IERC20(tokenAddr).transferFrom(tokenOwner, address(this), amount);
         _vaults[vaultId].balance[tokenAddr].availableBalance += amount;
-        emit VaultDeposit(vaultId, tokenAddr, tokenOwner, amount);
+        emit VaultTransfer(vaultId, tokenAddr, tokenOwner, address(this), amount);
     }
 
     function createVault(bytes4 vaultId, address[] memory tokenList)
@@ -221,7 +207,7 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
         _vaults[vaultId].balance[tokenAddr].availableBalance -= amount;
         _vaults[vaultId].balance[tokenAddr].commitedBalance += amount;
 
-        emit VaultCommit(vaultId, tokenAddr, applicant, amount);
+        emit VaultAmountCommitted(vaultId, tokenAddr, amount);
     }
 
     function vaultTransfer(
@@ -241,14 +227,14 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
             // he should withdraw it if needed
             _users[destinationAddr].account.availableBalance += amount;
 
-            emit VaultInternalTransfer(vaultId, tokenAddr, destinationAddr, amount);
+            emit VaultTransfer(vaultId, tokenAddr, address(this), address(this), amount);
             return true;
         }
 
         // important nonReentrant here as we don't track proposalId and balance associated
         IERC20(tokenAddr).transfer(destinationAddr, amount);
 
-        emit VaultTransfer(vaultId, tokenAddr, destinationAddr, amount);
+        emit VaultTransfer(vaultId, tokenAddr, address(this), destinationAddr, amount);
 
         return true;
     }
