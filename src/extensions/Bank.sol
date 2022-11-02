@@ -32,12 +32,17 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
     event Deposit(address indexed account, uint256 amount);
     event Withdrawn(address indexed account, uint256 amount);
 
-    event VaultDeposit(
+    event VaultCreated(bytes4 indexed vaultId);
+
+    event VaultTransfer(
         bytes4 indexed vaultId,
         address indexed tokenAddr,
-        address indexed from,
+        address from,
+        address to,
         uint128 amount
     );
+
+    event VaultAmountCommitted(bytes4 indexed vaultId, address indexed tokenAddr, uint128 amount);
 
     struct User {
         Account account;
@@ -79,26 +84,9 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
     mapping(address => User) private _users;
     mapping(bytes4 => Vault) private _vaults;
 
-    mapping(address => mapping(bytes4 => uint256)) public internalBalances;
-
-    //mapping(bytes4 => uint256) public vaultsBalance;
-    //mapping(bytes32 => uint256) public financingProposalsBalance;
-
     constructor(address core, address terraBioTokenAddr) CoreExtension(core, Slot.BANK) {
         terraBioToken = terraBioTokenAddr;
         MAX_TIMESTAMP = type(uint32).max;
-    }
-
-    function setFinancingProposalData(bytes32 proposalId, uint256 amount) external pure {
-        revert("NOT IMPLEMENTED");
-    }
-
-    function executeFinancingProposal(
-        bytes32 proposalId,
-        address applicant,
-        uint256 amount
-    ) external pure returns (bool) {
-        revert("NOT IMPLEMENTED");
     }
 
     function advancedDeposit(address user, uint128 amount)
@@ -184,7 +172,7 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
 
         IERC20(tokenAddr).transferFrom(tokenOwner, address(this), amount);
         _vaults[vaultId].balance[tokenAddr].availableBalance += amount;
-        emit VaultDeposit(vaultId, tokenAddr, tokenOwner, amount);
+        emit VaultTransfer(vaultId, tokenAddr, tokenOwner, address(this), amount);
     }
 
     function createVault(bytes4 vaultId, address[] memory tokenList)
@@ -193,38 +181,36 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
     {
         require(!_vaults[vaultId].isExist, "Bank: vault already exist");
         for (uint256 i; i < tokenList.length; ) {
+            //require(address(IERC20(tokenList[i])) != address(0), "Bank: non erc20 token");
             _vaults[vaultId].tokenList.add(tokenList[i]);
             unchecked {
                 ++i;
             }
         }
         _vaults[vaultId].isExist = true;
+
+        emit VaultCreated(vaultId);
     }
 
-    function newFincancingProposal(
+    function vaultCommit(
         bytes4 vaultId,
         address tokenAddr,
+        address applicant,
         uint128 amount
     ) external onlyAdapter(Slot.FINANCING) {
-        require(_vaults[vaultId].isExist, "Bank: inexistant vaultId");
-        require(
+        //require(_vaults[vaultId].isExist, "Bank: inexistant vaultId");
+        /*require(
             _vaults[vaultId].balance[tokenAddr].availableBalance >= amount,
             "Bank: not enough in the vault"
-        );
-        /*require(
-            financingProposalsBalance[proposalId] == amount,
-            "Bank: bad financing proposals balance"
         );*/
 
         _vaults[vaultId].balance[tokenAddr].availableBalance -= amount;
         _vaults[vaultId].balance[tokenAddr].commitedBalance += amount;
 
-        // emit something
-        // need to track movemnts by proposalID?
-        // no need to track destinationAddr ?
+        emit VaultAmountCommitted(vaultId, tokenAddr, amount);
     }
 
-    function executeFinancingProposal(
+    function vaultTransfer(
         bytes4 vaultId,
         address tokenAddr,
         address destinationAddr,
@@ -232,10 +218,24 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
     ) external nonReentrant onlyAdapter(Slot.FINANCING) returns (bool) {
         _vaults[vaultId].balance[tokenAddr].commitedBalance -= amount;
 
+        if (
+            tokenAddr == address(terraBioToken) &&
+            IDaoCore(_core).hasRole(destinationAddr, Slot.USER_EXISTS)
+        ) {
+            // TBIO case
+            // applicant is a member receive proposal amount on his internal account
+            // he should withdraw it if needed
+            _users[destinationAddr].account.availableBalance += amount;
+
+            emit VaultTransfer(vaultId, tokenAddr, address(this), address(this), amount);
+            return true;
+        }
+
         // important nonReentrant here as we don't track proposalId and balance associated
         IERC20(tokenAddr).transfer(destinationAddr, amount);
 
-        // emit something
+        emit VaultTransfer(vaultId, tokenAddr, address(this), destinationAddr, amount);
+
         return true;
     }
 
@@ -325,6 +325,8 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
         view
         returns (uint128, uint128)
     {
+        //require(this.isVaultExist(vaultId), "Bank: non-existent vaultId");
+        //require(this.isTokenInVaultTokenList(vaultId, tokenAddr), "Bank: token not in vault list");
         Balance memory b = _vaults[vaultId].balance[tokenAddr];
         return (b.availableBalance, b.commitedBalance);
     }
@@ -339,6 +341,14 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
             }
         }
         return tokenList;
+    }
+
+    function isTokenInVaultTokenList(bytes4 vaultId, address tokenAddr)
+        external
+        view
+        returns (bool)
+    {
+        return _vaults[vaultId].tokenList.contains(tokenAddr);
     }
 
     function isVaultExist(bytes4 vaultId) external view returns (bool) {
@@ -356,21 +366,6 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
     function _withdrawTransfer(address account, uint256 amount) internal {
         IERC20(terraBioToken).transfer(account, amount);
         emit Withdrawn(account, amount);
-    }
-
-    function _changeInternalBalance(
-        address account,
-        bytes4 unit,
-        bool isDeposit,
-        uint256 amount
-    ) internal {
-        uint256 balance = internalBalances[account][unit];
-        if (!isDeposit) {
-            require(amount <= balance, "Bank: insufficiant balance");
-            internalBalances[account][unit] -= amount;
-        } else {
-            internalBalances[account][unit] += amount;
-        }
     }
 
     function _updateUserAccount(Account memory account, address user)

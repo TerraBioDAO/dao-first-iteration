@@ -4,9 +4,6 @@ pragma solidity ^0.8.16;
 
 //import "openzeppelin-contracts/utils/Counters.sol";
 import "test/base/BaseTest.sol";
-import "test/reverts/Core_reverts.sol";
-import "test/reverts/Bank_reverts.sol";
-import "test/reverts/Agora_reverts.sol";
 import "src/adapters/Financing.sol";
 
 contract FinancingSlots {
@@ -80,15 +77,19 @@ contract Financing_test is BaseTest {
     uint256 public constant AMOUNT = 10**20;
 
     function setUp() public {
+        // Set contracts with revert calls by default
+        // Calls will not revert if they are mocked
         token = ERC20_reverts(TOKEN_ADDRESS);
         core = Core_reverts(CORE);
         bank = Bank_reverts(BANK);
         agora = Agora_reverts(AGORA);
+        ///////////
 
         financing = new Financing(address(core));
 
         financingSlots = new FinancingSlots();
 
+        // Core mocks
         vm.mockCall(
             address(core),
             abi.encodeWithSelector(core.getSlotContractAddr.selector, Slot.AGORA),
@@ -100,14 +101,24 @@ contract Financing_test is BaseTest {
             abi.encode(BANK)
         );
 
-        // set financing proposal data
+        // Bank mocks
         vm.mockCall(
             address(bank),
-            abi.encodeWithSelector(bank.setFinancingProposalData.selector),
+            abi.encodeWithSelector(bank.terraBioToken.selector),
+            abi.encode(TOKEN_ADDRESS)
+        );
+        vm.mockCall(
+            address(bank),
+            abi.encodeWithSelector(bank.vaultCommit.selector),
+            abi.encode(true) // useless for setter
+        );
+        vm.mockCall(
+            address(bank),
+            abi.encodeWithSelector(bank.vaultTransfer.selector),
             abi.encode(true) // useless for setter
         );
 
-        // submit proposal to Agora
+        // Agora mocks
         vm.mockCall(
             address(agora),
             abi.encodeWithSelector(agora.submitProposal.selector),
@@ -161,7 +172,7 @@ contract Financing_test is BaseTest {
         assertEq(lastReadSlots[0], calculatedSlot);
     }
 
-    function testSubmitProposal_onlyProposer() public {
+    function testSubmitProposal_onlyProposer_revert() public {
         // Setup
         ///////////
         vm.mockCall(
@@ -169,54 +180,121 @@ contract Financing_test is BaseTest {
             abi.encodeWithSelector(core.hasRole.selector, NOT_PROPOSER, Slot.USER_PROPOSER),
             abi.encode(false)
         );
-        Financing.Proposal memory proposal = Financing.Proposal(APPLICANT, AMOUNT);
+        Financing.Proposal memory proposal = Financing.Proposal(
+            APPLICANT,
+            AMOUNT,
+            Slot.TREASURY,
+            TOKEN_ADDRESS
+        );
         vm.prank(NOT_PROPOSER);
         vm.expectCall(
             address(core),
             abi.encodeWithSelector(core.hasRole.selector, NOT_PROPOSER, Slot.USER_PROPOSER)
         );
         vm.expectRevert("Adapter: not a proposer");
-        financing.submitProposal(proposal);
+        financing.submitProposal(
+            Slot.TREASURY,
+            proposal.amount,
+            proposal.applicant,
+            Slot.TREASURY,
+            TOKEN_ADDRESS
+        );
+    }
 
+    function testSubmitProposal_amount_revert() public {
+        // Setup
+        ///////////
         vm.mockCall(
             address(core),
             abi.encodeWithSelector(core.hasRole.selector, PROPOSER, Slot.USER_PROPOSER),
             abi.encode(true)
         );
-        proposal = Financing.Proposal(APPLICANT, 0);
+        Financing.Proposal memory proposal = Financing.Proposal(
+            APPLICANT,
+            0,
+            Slot.TREASURY,
+            TOKEN_ADDRESS
+        );
         vm.prank(PROPOSER);
         vm.expectCall(
             address(core),
             abi.encodeWithSelector(core.hasRole.selector, PROPOSER, Slot.USER_PROPOSER)
         );
-        /*vm.expectCall(
-            address(bank),
-            abi.encodeWithSelector(bank.setFinancingProposalData.selector, PROPOSER, Slot.USER_PROPOSER)
-        );*/
+
         vm.expectRevert("Financing: invalid requested amount");
-        financing.submitProposal(proposal);
+        financing.submitProposal(
+            Slot.TREASURY,
+            proposal.amount,
+            proposal.applicant,
+            Slot.TREASURY,
+            TOKEN_ADDRESS
+        );
+    }
 
+    function testSubmitProposal() public {
+        // Setup
+        ///////////
         vm.mockCall(
             address(core),
             abi.encodeWithSelector(core.hasRole.selector, PROPOSER, Slot.USER_PROPOSER),
             abi.encode(true)
         );
-        proposal = Financing.Proposal(APPLICANT, AMOUNT);
+        Financing.Proposal memory proposal = Financing.Proposal(
+            APPLICANT,
+            AMOUNT,
+            Slot.TREASURY,
+            TOKEN_ADDRESS
+        );
         bytes28 proposalId = bytes28(keccak256(abi.encode(proposal)));
+
         vm.prank(PROPOSER);
+
+        ///////////////////////
+        // Expected calls
         vm.expectCall(
             address(core),
             abi.encodeWithSelector(core.hasRole.selector, PROPOSER, Slot.USER_PROPOSER)
+        );
+        vm.expectCall(
+            address(core),
+            abi.encodeWithSelector(core.getSlotContractAddr.selector, Slot.AGORA)
+        );
+        vm.expectCall(
+            address(core),
+            abi.encodeWithSelector(core.getSlotContractAddr.selector, Slot.BANK)
         );
         vm.expectCall(
             address(bank),
             abi.encodeWithSelector(
-                bank.setFinancingProposalData.selector,
-                bytes32(bytes.concat(Slot.FINANCING, proposalId)),
-                proposal.amount
+                bank.vaultCommit.selector,
+                Slot.TREASURY,
+                TOKEN_ADDRESS,
+                APPLICANT,
+                uint128(proposal.amount)
             )
         );
-        financing.submitProposal(proposal);
+        vm.expectCall(
+            address(agora),
+            abi.encodeWithSelector(
+                agora.submitProposal.selector,
+                Slot.FINANCING,
+                proposalId,
+                true,
+                true,
+                Slot.VOTE_STANDARD,
+                0,
+                PROPOSER
+            )
+        );
+        ///////////////////////
+
+        financing.submitProposal(
+            Slot.VOTE_STANDARD,
+            proposal.amount,
+            proposal.applicant,
+            Slot.TREASURY,
+            TOKEN_ADDRESS
+        );
 
         // check value with calculated slot
         bytes32 slot = calculateSlotForProposals(proposalId);
