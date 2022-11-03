@@ -17,6 +17,7 @@ contract Agora_test is BaseDaoTest {
     address public constant USER = address(5);
     bytes4 public constant ADAPTER_SLOT = bytes4("a");
     bytes4 public constant VOTE_STANDARD = bytes4(keccak256("standard"));
+    bytes4 public constant VOTE_MEMBER = bytes4(keccak256("member"));
     bytes4 public constant VOTE_DEFAULT = bytes4(0);
 
     function setUp() public {
@@ -25,15 +26,18 @@ contract Agora_test is BaseDaoTest {
         AGORA = address(agora);
         _branch(Slot.AGORA, AGORA);
         VOTING = _branchMock(Slot.VOTING, false);
-        vm.prank(VOTING);
-        agora.changeVoteParams(VOTE_DEFAULT, IAgora.Consensus(1), 86400, 86400, 8000, 86400);
         ADAPTER_ADDR = _branchMock(ADAPTER_SLOT, false);
+
+        vm.startPrank(VOTING);
+        agora.changeVoteParams(VOTE_DEFAULT, IAgora.Consensus(1), 86400, 86400, 8000, 86400);
+        agora.changeVoteParams(VOTE_MEMBER, IAgora.Consensus(2), 86400, 86400, 8000, 86400);
+        vm.stopPrank();
     }
 
     /*////////////////////////////////
                 UTILS
     ////////////////////////////////*/
-    function _addVoteId(
+    function _prepareAddVoteParam(
         bytes4 voteId,
         uint8 consensus,
         uint32 votingPeriod,
@@ -49,6 +53,24 @@ contract Agora_test is BaseDaoTest {
                 voteId != Slot.VOTE_STANDARD
         );
         vm.prank(VOTING);
+    }
+
+    function _addVoteParam(
+        bytes4 voteId,
+        uint8 consensus,
+        uint32 votingPeriod,
+        uint32 gracePeriod,
+        uint32 threshold,
+        uint32 adminValidationPeriod
+    ) internal returns (IAgora.VoteParam memory) {
+        _prepareAddVoteParam(
+            voteId,
+            consensus,
+            votingPeriod,
+            gracePeriod,
+            threshold,
+            adminValidationPeriod
+        );
         agora.changeVoteParams(
             voteId,
             IAgora.Consensus(consensus),
@@ -57,6 +79,34 @@ contract Agora_test is BaseDaoTest {
             threshold,
             adminValidationPeriod
         );
+        return
+            IAgora.VoteParam(
+                IAgora.Consensus(consensus),
+                votingPeriod,
+                gracePeriod,
+                threshold,
+                adminValidationPeriod,
+                0
+            );
+    }
+
+    function _prepareSubmitProposal(
+        bytes4 slot,
+        bytes28 adapterProposalId,
+        uint32 minStartTime
+    ) internal returns (bytes32 proposalId) {
+        // check params
+        vm.assume((minStartTime == 0 || minStartTime >= block.timestamp) && slot != Slot.EMPTY);
+
+        // create a new adapter (branched to the DAO) if inexistant
+        address adapter = dao.getSlotContractAddr(slot);
+        if (adapter == address(0)) {
+            adapter = _branchMock(slot, false);
+        }
+
+        proposalId = bytes32(bytes.concat(slot, adapterProposalId));
+        vm.prank(adapter);
+        // call submitProposal
     }
 
     function _submitProposal(
@@ -67,10 +117,10 @@ contract Agora_test is BaseDaoTest {
         uint32 minStartTime,
         bytes4 voteId,
         address initiater
-    ) internal returns (bytes32) {
-        vm.assume(!_slotValid(slot) || slot == ADAPTER_SLOT);
-        address adapter = _branchMock(slot, false);
-        vm.prank(adapter);
+    ) internal returns (bytes32 proposalId) {
+        proposalId = _prepareSubmitProposal(slot, adapterProposalId, minStartTime);
+        vm.assume(_isSlotActive(slot));
+        // slot valid
         agora.submitProposal(
             slot,
             adapterProposalId,
@@ -80,8 +130,6 @@ contract Agora_test is BaseDaoTest {
             minStartTime,
             initiater
         );
-
-        return bytes32(bytes.concat(slot, adapterProposalId));
     }
 
     function _defaultVote() internal view returns (IAgora.VoteParam memory) {
@@ -96,9 +144,6 @@ contract Agora_test is BaseDaoTest {
         return agora.getProposal(ppsId).score;
     }
 
-    /*////////////////////////////////
-            changeVoteParams()
-    ////////////////////////////////*/
     function testVoteParamsAddedAtDeployment() public {
         IAgora.VoteParam memory storedParam = agora.getVoteParams(Slot.VOTE_STANDARD);
         assertEq(uint256(storedParam.consensus), uint256(1)); // TOKEN
@@ -109,6 +154,9 @@ contract Agora_test is BaseDaoTest {
         assertEq(storedParam.utilisation, 0);
     }
 
+    /*////////////////////////////////
+            changeVoteParams()
+    ////////////////////////////////*/
     function testAddVoteParam(
         bytes4 voteId,
         uint8 consensus,
@@ -117,15 +165,13 @@ contract Agora_test is BaseDaoTest {
         uint32 threshold,
         uint32 adminValidationPeriod
     ) public {
-        _addVoteId(voteId, consensus, votingPeriod, gracePeriod, threshold, adminValidationPeriod);
-
-        IAgora.VoteParam memory param = IAgora.VoteParam(
-            IAgora.Consensus(consensus),
+        IAgora.VoteParam memory param = _addVoteParam(
+            voteId,
+            consensus,
             votingPeriod,
             gracePeriod,
             threshold,
-            adminValidationPeriod,
-            0
+            adminValidationPeriod
         );
 
         IAgora.VoteParam memory storedParam = agora.getVoteParams(voteId);
@@ -156,20 +202,95 @@ contract Agora_test is BaseDaoTest {
 
     event VoteParamsChanged(bytes4 indexed voteId, bool indexed added);
 
-    function testEmitOnVoteParam(bytes4 voteId) public {
-        vm.assume(voteId != bytes4(0));
-        vm.expectEmit(true, true, false, false, address(agora));
-        emit VoteParamsChanged(voteId, true);
-        _addVoteId(voteId, 2, 50, 50, 7500, 777);
-        // agora.changeVoteParams(voteId, IAgora.Consensus.MEMBER, 50, 50, 7500);
+    function testEmitOnVoteParam(
+        bytes4 voteId,
+        uint8 consensus,
+        uint32 votingPeriod,
+        uint32 gracePeriod,
+        uint32 threshold,
+        uint32 adminValidationPeriod
+    ) public {
+        _prepareAddVoteParam(
+            voteId,
+            consensus,
+            votingPeriod,
+            gracePeriod,
+            threshold,
+            adminValidationPeriod
+        );
 
-        emit log_bytes32(bytes32(Slot.VOTE_STANDARD));
-        // 0x54fd88eb
+        vm.expectEmit(true, true, false, false, AGORA);
+        emit VoteParamsChanged(voteId, true);
+        agora.changeVoteParams(
+            voteId,
+            IAgora.Consensus(consensus),
+            votingPeriod,
+            gracePeriod,
+            threshold,
+            adminValidationPeriod
+        );
     }
 
-    function testRemoveVoteParam() public {
-        // wait for the utilisation case
-        // when a vote/ proposal is started
+    function testRemoveVoteParam(
+        bytes4 voteId,
+        uint8 consensus,
+        uint32 votingPeriod,
+        uint32 gracePeriod,
+        uint32 threshold,
+        uint32 adminValidationPeriod
+    ) public {
+        IAgora.VoteParam memory param = _addVoteParam(
+            voteId,
+            consensus,
+            votingPeriod,
+            gracePeriod,
+            threshold,
+            adminValidationPeriod
+        );
+
+        IAgora.VoteParam memory storedParam = agora.getVoteParams(voteId);
+
+        assertEq(uint256(storedParam.consensus), uint256(param.consensus));
+        assertEq(storedParam.votingPeriod, param.votingPeriod);
+        assertEq(storedParam.gracePeriod, param.gracePeriod);
+        assertEq(storedParam.threshold, param.threshold);
+        assertEq(storedParam.adminValidationPeriod, param.adminValidationPeriod);
+        assertEq(storedParam.utilisation, param.utilisation);
+
+        vm.prank(VOTING);
+        agora.changeVoteParams(
+            voteId,
+            IAgora.Consensus.NO_VOTE,
+            votingPeriod,
+            gracePeriod,
+            threshold,
+            adminValidationPeriod
+        );
+
+        storedParam = agora.getVoteParams(voteId);
+
+        assertEq(uint256(storedParam.consensus), uint256(IAgora.Consensus.NO_VOTE));
+        assertEq(storedParam.votingPeriod, 0);
+        assertEq(storedParam.gracePeriod, 0);
+        assertEq(storedParam.threshold, 0);
+        assertEq(storedParam.adminValidationPeriod, 0);
+        assertEq(storedParam.utilisation, 0);
+    }
+
+    function testCannotRemoveVoteParam() private {
+        _addVoteParam(bytes4("vote"), 1, 1 days, 1 days, 8000, 3 days);
+        _submitProposal(ADAPTER_SLOT, bytes28("1"), false, true, 0, bytes4("vote"), USER);
+
+        vm.prank(VOTING);
+        vm.expectRevert("Agora: parameters still used");
+        agora.changeVoteParams(
+            bytes4("vote"),
+            IAgora.Consensus.NO_VOTE,
+            1 days,
+            1 days,
+            8000,
+            3 days
+        );
     }
 
     /*////////////////////////////////
@@ -183,7 +304,6 @@ contract Agora_test is BaseDaoTest {
         uint32 minStartTime
     ) public {
         vm.warp(1000);
-        vm.assume(minStartTime >= 1000);
         bytes32 proposalId = _submitProposal(
             slot,
             adapterProposalId,
@@ -193,13 +313,14 @@ contract Agora_test is BaseDaoTest {
             Slot.VOTE_STANDARD,
             USER
         );
+        if (minStartTime == 0) minStartTime = uint32(block.timestamp);
 
         assertTrue(agora.getProposal(proposalId).active, "active");
         assertEq(agora.getProposal(proposalId).adminApproved, adminApproved, "approval");
         assertEq(agora.getProposal(proposalId).executable, executable, "executable");
+        assertEq(agora.getProposal(proposalId).createdAt, block.timestamp, "created at");
         assertEq(agora.getProposal(proposalId).minStartTime, minStartTime, "min start time");
         assertEq(agora.getProposal(proposalId).initiater, USER, "initiater");
-
         assertEq(agora.getVoteParams(Slot.VOTE_STANDARD).utilisation, 1);
     }
 
@@ -218,15 +339,41 @@ contract Agora_test is BaseDaoTest {
         agora.submitProposal(ADAPTER_SLOT, bytes28("1"), true, true, VOTE_DEFAULT, 0, USER);
     }
 
+    event ProposalSubmitted(
+        bytes4 indexed slot,
+        address indexed from,
+        bytes4 indexed voteParam,
+        bytes32 proposalId
+    );
+
+    function testEmitOnSubmitProposal(
+        bytes4 slot,
+        bytes28 adapterProposalId,
+        bool adminApproval,
+        bool executable,
+        uint32 minStartTime
+    ) public {
+        bytes32 proposalId = _prepareSubmitProposal(slot, adapterProposalId, minStartTime);
+        vm.expectEmit(true, true, true, true, AGORA);
+        emit ProposalSubmitted(slot, USER, VOTE_DEFAULT, proposalId);
+        agora.submitProposal(
+            slot,
+            adapterProposalId,
+            adminApproval,
+            executable,
+            VOTE_DEFAULT,
+            minStartTime,
+            USER
+        );
+    }
+
     /*////////////////////////////////
             getProposalStatus()
     ////////////////////////////////*/
     function testGetProposalStatus() public {
-        assertEq(uint8(agora.getProposalStatus(bytes32("1"))), 0);
-
+        // long standby proposal with admin validation
         vm.warp(1000);
-
-        bytes32 ppsId = _submitProposal(
+        bytes32 proposalId = _submitProposal(
             ADAPTER_SLOT,
             bytes28("1"),
             false,
@@ -235,12 +382,21 @@ contract Agora_test is BaseDaoTest {
             Slot.VOTE_STANDARD,
             USER
         );
-        assertEq(uint8(agora.getProposalStatus(ppsId)), 1); // validation
-        vm.warp(1000 + 7 * DAY + 100); // after validation period
-        assertEq(uint8(agora.getProposalStatus(ppsId)), 2); // standby
 
+        // 0. UNKNOWN
+        assertEq(uint8(agora.getProposalStatus(bytes32("1"))), 0);
+
+        // 1. VALIDATION
+        assertEq(uint8(agora.getProposalStatus(proposalId)), 1);
+
+        vm.warp(1000 + _standardVote().adminValidationPeriod);
+
+        // 2. STANDBY
+        assertEq(uint8(agora.getProposalStatus(proposalId)), 2); // standby
+
+        // short standby without validation
         vm.warp(1000);
-        ppsId = _submitProposal(
+        proposalId = _submitProposal(
             ADAPTER_SLOT,
             bytes28("2"),
             true,
@@ -249,17 +405,32 @@ contract Agora_test is BaseDaoTest {
             Slot.VOTE_STANDARD,
             USER
         );
-        assertEq(uint8(agora.getProposalStatus(ppsId)), 2); // standby
+
+        // 2. STANDBY
+        assertEq(uint8(agora.getProposalStatus(proposalId)), 2);
+
         vm.warp(3000);
-        assertEq(uint8(agora.getProposalStatus(ppsId)), 3); // ongoing
+
+        // 3. ONGOING
+        assertEq(uint8(agora.getProposalStatus(proposalId)), 3);
+
         vm.warp(3200 + _standardVote().votingPeriod);
-        assertEq(uint8(agora.getProposalStatus(ppsId)), 4); // closed
+
+        // 4. CLOSED
+        assertEq(uint8(agora.getProposalStatus(proposalId)), 4);
+
         vm.warp(3200 + _standardVote().votingPeriod + _standardVote().gracePeriod);
-        assertEq(uint8(agora.getProposalStatus(ppsId)), 6); // to_finalize
+
+        // TODO => 5. SUSPENDED (once method impl)
+
+        // 6. TO_FINALIZE
+        assertEq(uint8(agora.getProposalStatus(proposalId)), 6);
 
         vm.prank(VOTING);
-        agora.finalizeProposal(ppsId, USER);
-        assertEq(uint8(agora.getProposalStatus(ppsId)), 7); // archived
+        agora.finalizeProposal(proposalId, USER);
+
+        // 7. ARCHIVED
+        assertEq(uint8(agora.getProposalStatus(proposalId)), 7);
     }
 
     /*////////////////////////////////
@@ -273,7 +444,7 @@ contract Agora_test is BaseDaoTest {
             bytes28("1"),
             true,
             true,
-            0,
+            uint32(block.timestamp),
             Slot.VOTE_STANDARD,
             USER
         );
@@ -294,7 +465,7 @@ contract Agora_test is BaseDaoTest {
     }
 
     function testCannotSubmitVote() private {
-        //
+        // outside voting period
     }
 
     function testSubmitMemberVote() private {
