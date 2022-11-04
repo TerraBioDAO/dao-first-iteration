@@ -248,8 +248,6 @@ contract Financing_test is BaseDaoTest {
         );
         bytes28 proposalId = bytes28(keccak256(abi.encode(proposal)));
 
-        vm.prank(PROPOSER);
-
         ///////////////////////
         // Expected calls
         vm.expectCall(
@@ -264,14 +262,14 @@ contract Financing_test is BaseDaoTest {
             address(core),
             abi.encodeWithSelector(core.getSlotContractAddr.selector, Slot.BANK)
         );
-        vm.expectCall(
-            address(core),
-            abi.encodeWithSelector(core.getSlotContractAddr.selector, Slot.AGORA)
-        );
-        vm.expectCall(
-            address(core),
-            abi.encodeWithSelector(core.getSlotContractAddr.selector, Slot.BANK)
-        );
+        // vm.expectCall(
+        //     address(core),
+        //     abi.encodeWithSelector(core.getSlotContractAddr.selector, Slot.AGORA)
+        // );
+        // vm.expectCall(
+        //     address(core),
+        //     abi.encodeWithSelector(core.getSlotContractAddr.selector, Slot.BANK)
+        // );
         vm.expectCall(
             address(bank),
             abi.encodeWithSelector(
@@ -297,6 +295,7 @@ contract Financing_test is BaseDaoTest {
         );
         ///////////////////////
 
+        vm.prank(PROPOSER);
         financing.submitProposal(
             VOTE_STANDARD,
             proposal.amount,

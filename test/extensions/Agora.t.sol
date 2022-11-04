@@ -18,7 +18,6 @@ contract Agora_test is BaseDaoTest {
     address public ADAPTER_ADDR;
     address public constant USER = address(5);
     bytes4 public constant ADAPTER_SLOT = bytes4("a");
-    bytes4 public constant VOTE_STANDARD = bytes4(keccak256("standard"));
     bytes4 public constant VOTE_MEMBER = bytes4(keccak256("member"));
     bytes4 public constant VOTE_DEFAULT = bytes4(0);
 
@@ -52,7 +51,7 @@ contract Agora_test is BaseDaoTest {
                 threshold <= 10000 &&
                 votingPeriod > 0 &&
                 voteId != bytes4(0) &&
-                voteId != Slot.VOTE_STANDARD
+                voteId != VOTE_STANDARD
         );
         vm.prank(VOTING);
     }
@@ -139,7 +138,7 @@ contract Agora_test is BaseDaoTest {
     }
 
     function _standardVote() internal view returns (IAgora.VoteParam memory) {
-        return agora.getVoteParams(Slot.VOTE_STANDARD);
+        return agora.getVoteParams(VOTE_STANDARD);
     }
 
     function _score(bytes32 ppsId) internal view returns (IAgora.Score memory) {
@@ -147,12 +146,12 @@ contract Agora_test is BaseDaoTest {
     }
 
     function testVoteParamsAddedAtDeployment() public {
-        IAgora.VoteParam memory storedParam = agora.getVoteParams(Slot.VOTE_STANDARD);
+        IAgora.VoteParam memory storedParam = agora.getVoteParams(VOTE_STANDARD);
         assertEq(uint256(storedParam.consensus), uint256(1)); // TOKEN
-        assertEq(storedParam.votingPeriod, 7 * Slot.DAY);
-        assertEq(storedParam.gracePeriod, 3 * Slot.DAY);
+        assertEq(storedParam.votingPeriod, 7 days);
+        assertEq(storedParam.gracePeriod, 3 days);
         assertEq(storedParam.threshold, 8000);
-        assertEq(storedParam.adminValidationPeriod, 7 * Slot.DAY);
+        assertEq(storedParam.adminValidationPeriod, 7 days);
         assertEq(storedParam.utilisation, 0);
     }
 
@@ -187,19 +186,20 @@ contract Agora_test is BaseDaoTest {
     }
 
     function testCannotAddNewVoteParam() public {
+        bytes4 NEW_VOTE = bytes4("5");
         vm.expectRevert("Cores: not the right adapter");
-        agora.changeVoteParams(VOTE_TEST, IAgora.Consensus.MEMBER, 50, 50, 7500, 777);
+        agora.changeVoteParams(NEW_VOTE, IAgora.Consensus.MEMBER, 50, 50, 7500, 777);
 
         vm.startPrank(VOTING);
         vm.expectRevert("Agora: wrong threshold or below min value");
-        agora.changeVoteParams(VOTE_TEST, IAgora.Consensus.MEMBER, 50, 50, 750000, 777);
+        agora.changeVoteParams(NEW_VOTE, IAgora.Consensus.MEMBER, 50, 50, 750000, 777);
 
         vm.expectRevert("Agora: below min period");
-        agora.changeVoteParams(VOTE_TEST, IAgora.Consensus.MEMBER, 0, 50, 7500, 777);
+        agora.changeVoteParams(NEW_VOTE, IAgora.Consensus.MEMBER, 0, 50, 7500, 777);
 
-        agora.changeVoteParams(VOTE_TEST, IAgora.Consensus.MEMBER, 50, 50, 7500, 777);
+        agora.changeVoteParams(NEW_VOTE, IAgora.Consensus.MEMBER, 50, 50, 7500, 777);
         vm.expectRevert("Agora: cannot replace params");
-        agora.changeVoteParams(VOTE_TEST, IAgora.Consensus.MEMBER, 100, 100, 10000, 777);
+        agora.changeVoteParams(NEW_VOTE, IAgora.Consensus.MEMBER, 100, 100, 10000, 777);
     }
 
     event VoteParamsChanged(bytes4 indexed voteId, bool indexed added);
@@ -312,7 +312,7 @@ contract Agora_test is BaseDaoTest {
             adminApproved,
             executable,
             minStartTime,
-            Slot.VOTE_STANDARD,
+            VOTE_STANDARD,
             USER
         );
         if (minStartTime == 0) minStartTime = uint32(block.timestamp);
@@ -323,14 +323,14 @@ contract Agora_test is BaseDaoTest {
         assertEq(agora.getProposal(proposalId).createdAt, block.timestamp, "created at");
         assertEq(agora.getProposal(proposalId).minStartTime, minStartTime, "min start time");
         assertEq(agora.getProposal(proposalId).initiater, USER, "initiater");
-        assertEq(agora.getVoteParams(Slot.VOTE_STANDARD).utilisation, 1);
+        assertEq(agora.getVoteParams(VOTE_STANDARD).utilisation, 1);
     }
 
     function testCannotSubmitProposal() public {
         vm.warp(1000);
         vm.startPrank(ADAPTER_ADDR);
         vm.expectRevert("Agora: unknown vote params");
-        agora.submitProposal(ADAPTER_SLOT, bytes28("1"), true, true, VOTE_STANDARD, 500, USER);
+        agora.submitProposal(ADAPTER_SLOT, bytes28("1"), true, true, bytes4("?"), 500, USER);
 
         vm.expectRevert("Agora: wrong starting time");
         agora.submitProposal(ADAPTER_SLOT, bytes28("1"), true, true, VOTE_DEFAULT, 500, USER);
@@ -381,7 +381,7 @@ contract Agora_test is BaseDaoTest {
             false,
             true,
             type(uint32).max,
-            Slot.VOTE_STANDARD,
+            VOTE_STANDARD,
             USER
         );
 
@@ -404,7 +404,7 @@ contract Agora_test is BaseDaoTest {
             true,
             false,
             2000,
-            Slot.VOTE_STANDARD,
+            VOTE_STANDARD,
             USER
         );
 
@@ -447,7 +447,7 @@ contract Agora_test is BaseDaoTest {
             true,
             true,
             uint32(block.timestamp),
-            Slot.VOTE_STANDARD,
+            VOTE_STANDARD,
             USER
         );
 
