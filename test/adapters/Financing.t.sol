@@ -3,7 +3,7 @@
 pragma solidity ^0.8.16;
 
 //import "openzeppelin-contracts/utils/Counters.sol";
-import "test/base/BaseTest.sol";
+import "test/base/BaseDaoTest.sol";
 import "src/adapters/Financing.sol";
 
 contract FinancingSlots {
@@ -49,8 +49,9 @@ contract FinancingSlots {
     */
 }
 
-contract Financing_test is BaseTest {
+contract Financing_test is BaseDaoTest {
     using stdStorage for StdStorage;
+    using Slot for bytes28;
 
     IDaoCore public core;
     IERC20 public token;
@@ -177,26 +178,26 @@ contract Financing_test is BaseTest {
         ///////////
         vm.mockCall(
             address(core),
-            abi.encodeWithSelector(core.hasRole.selector, NOT_PROPOSER, Slot.USER_PROPOSER),
+            abi.encodeWithSelector(core.hasRole.selector, NOT_PROPOSER, ROLE_PROPOSER),
             abi.encode(false)
         );
         Financing.Proposal memory proposal = Financing.Proposal(
             APPLICANT,
             AMOUNT,
-            Slot.TREASURY,
+            TREASURY,
             TOKEN_ADDRESS
         );
         vm.prank(NOT_PROPOSER);
         vm.expectCall(
             address(core),
-            abi.encodeWithSelector(core.hasRole.selector, NOT_PROPOSER, Slot.USER_PROPOSER)
+            abi.encodeWithSelector(core.hasRole.selector, NOT_PROPOSER, ROLE_PROPOSER)
         );
         vm.expectRevert("Adapter: not a proposer");
         financing.submitProposal(
-            Slot.TREASURY,
+            TREASURY,
             proposal.amount,
             proposal.applicant,
-            Slot.TREASURY,
+            TREASURY,
             TOKEN_ADDRESS
         );
     }
@@ -206,27 +207,27 @@ contract Financing_test is BaseTest {
         ///////////
         vm.mockCall(
             address(core),
-            abi.encodeWithSelector(core.hasRole.selector, PROPOSER, Slot.USER_PROPOSER),
+            abi.encodeWithSelector(core.hasRole.selector, PROPOSER, ROLE_PROPOSER),
             abi.encode(true)
         );
         Financing.Proposal memory proposal = Financing.Proposal(
             APPLICANT,
             0,
-            Slot.TREASURY,
+            TREASURY,
             TOKEN_ADDRESS
         );
         vm.prank(PROPOSER);
         vm.expectCall(
             address(core),
-            abi.encodeWithSelector(core.hasRole.selector, PROPOSER, Slot.USER_PROPOSER)
+            abi.encodeWithSelector(core.hasRole.selector, PROPOSER, ROLE_PROPOSER)
         );
 
         vm.expectRevert("Financing: invalid requested amount");
         financing.submitProposal(
-            Slot.TREASURY,
+            TREASURY,
             proposal.amount,
             proposal.applicant,
-            Slot.TREASURY,
+            TREASURY,
             TOKEN_ADDRESS
         );
     }
@@ -236,13 +237,13 @@ contract Financing_test is BaseTest {
         ///////////
         vm.mockCall(
             address(core),
-            abi.encodeWithSelector(core.hasRole.selector, PROPOSER, Slot.USER_PROPOSER),
+            abi.encodeWithSelector(core.hasRole.selector, PROPOSER, ROLE_PROPOSER),
             abi.encode(true)
         );
         Financing.Proposal memory proposal = Financing.Proposal(
             APPLICANT,
             AMOUNT,
-            Slot.TREASURY,
+            TREASURY,
             TOKEN_ADDRESS
         );
         bytes28 proposalId = bytes28(keccak256(abi.encode(proposal)));
@@ -253,7 +254,15 @@ contract Financing_test is BaseTest {
         // Expected calls
         vm.expectCall(
             address(core),
-            abi.encodeWithSelector(core.hasRole.selector, PROPOSER, Slot.USER_PROPOSER)
+            abi.encodeWithSelector(core.hasRole.selector, PROPOSER, ROLE_PROPOSER)
+        );
+        vm.expectCall(
+            address(core),
+            abi.encodeWithSelector(core.getSlotContractAddr.selector, Slot.AGORA)
+        );
+        vm.expectCall(
+            address(core),
+            abi.encodeWithSelector(core.getSlotContractAddr.selector, Slot.BANK)
         );
         vm.expectCall(
             address(core),
@@ -267,7 +276,7 @@ contract Financing_test is BaseTest {
             address(bank),
             abi.encodeWithSelector(
                 bank.vaultCommit.selector,
-                Slot.TREASURY,
+                TREASURY,
                 TOKEN_ADDRESS,
                 APPLICANT,
                 uint128(proposal.amount)
@@ -281,7 +290,7 @@ contract Financing_test is BaseTest {
                 proposalId,
                 true,
                 true,
-                Slot.VOTE_STANDARD,
+                VOTE_STANDARD,
                 0,
                 PROPOSER
             )
@@ -289,10 +298,10 @@ contract Financing_test is BaseTest {
         ///////////////////////
 
         financing.submitProposal(
-            Slot.VOTE_STANDARD,
+            VOTE_STANDARD,
             proposal.amount,
             proposal.applicant,
-            Slot.TREASURY,
+            TREASURY,
             TOKEN_ADDRESS
         );
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.16;
+pragma solidity 0.8.17;
 
 import "../helpers/Slot.sol";
 import "../interfaces/ISlotEntry.sol";
@@ -15,8 +15,8 @@ abstract contract SlotEntry is ISlotEntry {
         bytes4 slot,
         bool isExt
     ) {
-        require(core != address(0), "CoreGuard: zero address");
-        require(slot != Slot.EMPTY, "CoreGuard: empty slot");
+        require(core != address(0), "SlotEntry: zero address");
+        require(slot != Slot.EMPTY, "SlotEntry: empty slot");
         _core = core;
         slotId = slot;
         isExtension = isExt;

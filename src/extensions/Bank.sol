@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.16;
+pragma solidity 0.8.17;
 
 import "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-contracts/security/ReentrancyGuard.sol";
 import "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
 
-import "../abstracts/CoreExtension.sol";
+import "../abstracts/Extension.sol";
 import "../interfaces/IBank.sol";
 import "../interfaces/IProposerAdapter.sol";
+import "../helpers/Constants.sol";
 
 /**
  * @notice Should be the only contract to approve to move tokens
@@ -16,7 +17,7 @@ import "../interfaces/IProposerAdapter.sol";
  * Manage only the TBIO token
  */
 
-contract Bank is CoreExtension, ReentrancyGuard, IBank {
+contract Bank is Extension, ReentrancyGuard, IBank, Constants {
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -84,7 +85,7 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
     mapping(address => User) private _users;
     mapping(bytes4 => Vault) private _vaults;
 
-    constructor(address core, address terraBioTokenAddr) CoreExtension(core, Slot.BANK) {
+    constructor(address core, address terraBioTokenAddr) Extension(core, Slot.BANK) {
         terraBioToken = terraBioTokenAddr;
         MAX_TIMESTAMP = type(uint32).max;
     }
@@ -106,30 +107,30 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
     ) external onlyAdapter(Slot.VOTING) returns (uint96 voteWeight) {
         require(!_users[user].commitmentsList.contains(proposalId), "Bank: already committed");
 
-        Account memory a = _users[user].account;
+        Account memory _account = _users[user].account;
 
         // check for available balance
-        if (block.timestamp >= a.nextRetrieval) {
-            a = _updateUserAccount(a, user);
+        if (block.timestamp >= _account.nextRetrieval) {
+            _account = _updateUserAccount(_account, user);
         }
 
         // calcul amount to deposit in the contract
         uint256 toTransfer;
-        if (a.availableBalance >= lockedAmount) {
-            a.availableBalance -= lockedAmount;
+        if (_account.availableBalance >= lockedAmount) {
+            _account.availableBalance -= lockedAmount;
         } else {
-            toTransfer = lockedAmount - a.availableBalance;
-            a.availableBalance = 0;
+            toTransfer = lockedAmount - _account.availableBalance;
+            _account.availableBalance = 0;
         }
 
         _depositTransfer(user, toTransfer + advanceDeposit);
 
         uint32 retrievalDate = uint32(block.timestamp) + lockPeriod;
-        a.availableBalance += advanceDeposit;
-        a.lockedBalance += lockedAmount;
+        _account.availableBalance += advanceDeposit;
+        _account.lockedBalance += lockedAmount;
 
-        if (a.nextRetrieval > retrievalDate) {
-            a.nextRetrieval = retrievalDate;
+        if (_account.nextRetrieval > retrievalDate) {
+            _account.nextRetrieval = retrievalDate;
         }
 
         voteWeight = _calculVoteWeight(lockPeriod, lockedAmount);
@@ -142,21 +143,21 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
             lockPeriod,
             retrievalDate
         );
-        _users[user].account = a;
+        _users[user].account = _account;
 
         emit NewCommitment(proposalId, user, lockPeriod, lockedAmount);
     }
 
     function withdrawAmount(address user, uint128 amount) external onlyAdapter(Slot.VOTING) {
-        Account memory a = _users[user].account;
+        Account memory _account = _users[user].account;
 
-        if (block.timestamp >= a.nextRetrieval) {
-            a = _updateUserAccount(a, user);
+        if (block.timestamp >= _account.nextRetrieval) {
+            _account = _updateUserAccount(_account, user);
         }
 
-        require(a.availableBalance <= amount, "Bank: insuffisant available balance");
-        a.availableBalance -= amount;
-        _users[user].account = a;
+        require(_account.availableBalance <= amount, "Bank: insuffisant available balance");
+        _account.availableBalance -= amount;
+        _users[user].account = _account;
         _withdrawTransfer(user, amount);
         emit Withdrawn(user, amount);
     }
@@ -220,7 +221,7 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
 
         if (
             tokenAddr == address(terraBioToken) &&
-            IDaoCore(_core).hasRole(destinationAddr, Slot.USER_EXISTS)
+            IDaoCore(_core).hasRole(destinationAddr, ROLE_MEMBER)
         ) {
             // TBIO case
             // applicant is a member receive proposal amount on his internal account
@@ -411,17 +412,17 @@ contract Bank is CoreExtension, ReentrancyGuard, IBank {
         pure
         returns (uint96)
     {
-        if (lockPeriod == Slot.DAY) {
+        if (lockPeriod == 1 days) {
             return lockAmount / 10;
-        } else if (lockPeriod == 7 * Slot.DAY) {
+        } else if (lockPeriod == 7 days) {
             return lockAmount;
-        } else if (lockPeriod == 15 * Slot.DAY) {
+        } else if (lockPeriod == 15 days) {
             return lockAmount * 2;
-        } else if (lockPeriod == 30 * Slot.DAY) {
+        } else if (lockPeriod == 30 days) {
             return lockAmount * 4;
-        } else if (lockPeriod == 120 * Slot.DAY) {
+        } else if (lockPeriod == 120 days) {
             return lockAmount * 25;
-        } else if (lockPeriod == 365 * Slot.DAY) {
+        } else if (lockPeriod == 365 days) {
             return lockAmount * 50;
         } else {
             revert("Bank: incorrect lock period");

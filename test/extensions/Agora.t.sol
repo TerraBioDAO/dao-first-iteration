@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.16;
+pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
 import "test/base/BaseDaoTest.sol";
@@ -9,6 +9,8 @@ import "src/interfaces/IAgora.sol";
 import "src/adapters/Voting.sol";
 
 contract Agora_test is BaseDaoTest {
+    using Slot for bytes28;
+
     Agora public agora;
 
     address public AGORA;
@@ -186,18 +188,18 @@ contract Agora_test is BaseDaoTest {
 
     function testCannotAddNewVoteParam() public {
         vm.expectRevert("Cores: not the right adapter");
-        agora.changeVoteParams(VOTE_STANDARD, IAgora.Consensus.MEMBER, 50, 50, 7500, 777);
+        agora.changeVoteParams(VOTE_TEST, IAgora.Consensus.MEMBER, 50, 50, 7500, 777);
 
         vm.startPrank(VOTING);
         vm.expectRevert("Agora: wrong threshold or below min value");
-        agora.changeVoteParams(VOTE_STANDARD, IAgora.Consensus.MEMBER, 50, 50, 750000, 777);
+        agora.changeVoteParams(VOTE_TEST, IAgora.Consensus.MEMBER, 50, 50, 750000, 777);
 
         vm.expectRevert("Agora: below min period");
-        agora.changeVoteParams(VOTE_STANDARD, IAgora.Consensus.MEMBER, 0, 50, 7500, 777);
+        agora.changeVoteParams(VOTE_TEST, IAgora.Consensus.MEMBER, 0, 50, 7500, 777);
 
-        agora.changeVoteParams(VOTE_STANDARD, IAgora.Consensus.MEMBER, 50, 50, 7500, 777);
+        agora.changeVoteParams(VOTE_TEST, IAgora.Consensus.MEMBER, 50, 50, 7500, 777);
         vm.expectRevert("Agora: cannot replace params");
-        agora.changeVoteParams(VOTE_STANDARD, IAgora.Consensus.MEMBER, 100, 100, 10000, 777);
+        agora.changeVoteParams(VOTE_TEST, IAgora.Consensus.MEMBER, 100, 100, 10000, 777);
     }
 
     event VoteParamsChanged(bytes4 indexed voteId, bool indexed added);
