@@ -128,7 +128,7 @@ contract Voting_test is BaseDaoTest {
     }
 
     function testRemoveVoteParams() public {
-        IAgora.VoteParam memory voteStandard = agora.getVoteParams(Slot.VOTE_STANDARD);
+        IAgora.VoteParam memory voteStandard = agora.getVoteParams(VOTE_STANDARD);
         assertTrue(voteStandard.votingPeriod > 0);
         assertTrue(voteStandard.gracePeriod > 0);
         assertTrue(voteStandard.threshold > 0);
@@ -136,9 +136,9 @@ contract Voting_test is BaseDaoTest {
         assertTrue(uint256(voteStandard.consensus) > 0);
 
         vm.startPrank(ADMIN);
-        voting.removeVoteParams(Slot.VOTE_STANDARD);
+        voting.removeVoteParams(VOTE_STANDARD);
 
-        voteStandard = agora.getVoteParams(Slot.VOTE_STANDARD);
+        voteStandard = agora.getVoteParams(VOTE_STANDARD);
         assertFalse(voteStandard.votingPeriod > 0);
         assertFalse(voteStandard.gracePeriod > 0);
         assertFalse(voteStandard.threshold > 0);

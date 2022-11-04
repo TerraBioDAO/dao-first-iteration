@@ -69,7 +69,7 @@ abstract contract BaseDaoTest is BaseTest, Constants {
     function _setAsMembers() internal {
         vm.startPrank(dao.getSlotContractAddr(Slot.ONBOARDING));
         for (uint256 i; i < USERS.length; i++) {
-            dao.changeMemberStatus(USERS[i], Slot.USER_EXISTS, true);
+            dao.changeMemberStatus(USERS[i], ROLE_MEMBER, true);
         }
         vm.stopPrank();
     }
