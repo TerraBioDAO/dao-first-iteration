@@ -33,9 +33,12 @@ abstract contract BaseDaoTest is BaseTest, Constants {
     DaoCore public dao;
     TBIOToken public tbio;
 
-    address public ADMIN;
-    address public constant ZERO = address(0);
-    uint32 public constant DAY = 86400;
+    address internal ADMIN;
+    address internal DAO;
+    address internal TBIO;
+    address internal constant ZERO = address(0);
+    uint32 internal constant DAY = 86400;
+    address[] internal USERS;
 
     mapping(bytes4 => bool) internal _activeSlot;
 
@@ -46,10 +49,35 @@ abstract contract BaseDaoTest is BaseTest, Constants {
     function _deployDao(address admin) internal {
         ADMIN = admin;
         dao = new DaoCore(ADMIN);
+        DAO = address(dao);
     }
 
     function _deployTBIO() internal {
         tbio = new TBIOToken();
+        TBIO = address(tbio);
+    }
+
+    function _newUsersSet(uint160 offset, uint256 length) internal {
+        address[] memory list = new address[](length);
+
+        for (uint160 i; i < length; i++) {
+            list[i] = address(i + offset + 1);
+        }
+        USERS = list;
+    }
+
+    function _setAsMembers() internal {
+        vm.startPrank(dao.getSlotContractAddr(Slot.ONBOARDING));
+        for (uint256 i; i < USERS.length; i++) {
+            dao.changeMemberStatus(USERS[i], ROLE_MEMBER, true);
+        }
+        vm.stopPrank();
+    }
+
+    function _mintTBIOForAll(uint256 amount) internal {
+        for (uint256 i; i < USERS.length; i++) {
+            tbio.mint(USERS[i], amount);
+        }
     }
 
     function _mintTBIO(address account, uint256 amount) internal {
