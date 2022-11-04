@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.16;
+pragma solidity 0.8.17;
 
 import "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import "forge-std/Test.sol";
 import "src/helpers/Slot.sol";
+import "src/helpers/Constants.sol";
 import "src/core/DaoCore.sol";
 import "test/base/BaseTest.sol";
 
@@ -28,9 +29,9 @@ contract TBIOToken is ERC20 {
 
 /// @notice use `e18` to add a decimal instead of `TOKEN = 10**18`
 
-abstract contract BaseDaoTest is BaseTest {
-    DaoCore internal dao;
-    TBIOToken internal tbio;
+abstract contract BaseDaoTest is BaseTest, Constants {
+    DaoCore public dao;
+    TBIOToken public tbio;
 
     address internal ADMIN;
     address internal DAO;
@@ -38,6 +39,12 @@ abstract contract BaseDaoTest is BaseTest {
     address internal constant ZERO = address(0);
     uint32 internal constant DAY = 86400;
     address[] internal USERS;
+
+    mapping(bytes4 => bool) internal _activeSlot;
+
+    function _isSlotActive(bytes4 slot) internal view returns (bool) {
+        return _activeSlot[slot];
+    }
 
     function _deployDao(address admin) internal {
         ADMIN = admin;
@@ -81,12 +88,14 @@ abstract contract BaseDaoTest is BaseTest {
     function _branch(bytes4 slot, address contractAddr) internal {
         vm.prank(ADMIN);
         dao.changeSlotEntry(slot, contractAddr);
+        _activeSlot[slot] = true;
     }
 
     function _branchMock(bytes4 slot, bool isExt) internal returns (address mockEntry) {
         mockEntry = _newEntry(slot, isExt);
         vm.prank(ADMIN);
         dao.changeSlotEntry(slot, mockEntry);
+        _activeSlot[slot] = true;
     }
 
     function _newEntry(bytes4 slot, bool isExt) internal returns (address entry) {

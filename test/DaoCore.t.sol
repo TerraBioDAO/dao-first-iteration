@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.16;
+pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
 import "src/core/DaoCore.sol";
@@ -121,25 +121,25 @@ contract DaoCore_test is BaseDaoTest {
         vm.assume(user != address(0) && user != ADMIN);
         _branchOnboarding();
         vm.prank(ONBOARDING);
-        dao.changeMemberStatus(user, Slot.USER_EXISTS, true);
+        dao.changeMemberStatus(user, ROLE_MEMBER, true);
 
         assertEq(dao.membersCount(), 2);
-        assertTrue(dao.hasRole(user, Slot.USER_EXISTS));
+        assertTrue(dao.hasRole(user, ROLE_MEMBER));
     }
 
     function testCannotChangeMemberStatus() public {
         vm.expectRevert("Cores: not the right adapter");
-        dao.changeMemberStatus(USER, Slot.USER_EXISTS, true);
+        dao.changeMemberStatus(USER, ROLE_MEMBER, true);
 
         _branchOnboarding();
         vm.startPrank(ONBOARDING);
-        dao.changeMemberStatus(USER, Slot.USER_EXISTS, true);
+        dao.changeMemberStatus(USER, ROLE_MEMBER, true);
 
         vm.expectRevert("Core: role not changing");
-        dao.changeMemberStatus(USER, Slot.USER_EXISTS, true);
+        dao.changeMemberStatus(USER, ROLE_MEMBER, true);
 
         vm.expectRevert("Core: zero address used");
-        dao.changeMemberStatus(address(0), Slot.USER_EXISTS, true);
+        dao.changeMemberStatus(address(0), ROLE_MEMBER, true);
     }
 
     function testAddNewAdmin() public {
@@ -148,8 +148,8 @@ contract DaoCore_test is BaseDaoTest {
         dao.addNewAdmin(USER);
 
         assertEq(dao.membersCount(), 2);
-        assertTrue(dao.hasRole(USER, Slot.USER_EXISTS));
-        assertTrue(dao.hasRole(USER, Slot.USER_ADMIN));
+        assertTrue(dao.hasRole(USER, ROLE_MEMBER));
+        assertTrue(dao.hasRole(USER, ROLE_ADMIN));
     }
 
     function testCannotAddNewAdmin() public {
@@ -171,21 +171,21 @@ contract DaoCore_test is BaseDaoTest {
         _branchOnboarding();
 
         vm.startPrank(ONBOARDING);
-        dao.changeMemberStatus(user, Slot.USER_EXISTS, true);
-        dao.changeMemberStatus(user, Slot.USER_PROPOSER, true);
+        dao.changeMemberStatus(user, ROLE_MEMBER, true);
+        dao.changeMemberStatus(user, ROLE_PROPOSER, true);
 
-        dao.changeMemberStatus(user, Slot.USER_EXISTS, false);
+        dao.changeMemberStatus(user, ROLE_MEMBER, false);
 
         assertEq(dao.membersCount(), 1);
-        assertFalse(dao.hasRole(user, Slot.USER_EXISTS));
-        assertFalse(dao.hasRole(user, Slot.USER_PROPOSER));
+        assertFalse(dao.hasRole(user, ROLE_MEMBER));
+        assertFalse(dao.hasRole(user, ROLE_PROPOSER));
     }
 
     function testGetRoles() public {
         bytes4[] memory roles = dao.getRolesList();
 
-        assertEq(roles[0], Slot.USER_EXISTS);
-        assertEq(roles[1], Slot.USER_ADMIN);
-        assertEq(roles[2], Slot.USER_PROPOSER);
+        assertEq(roles[0], ROLE_MEMBER);
+        assertEq(roles[1], ROLE_ADMIN);
+        assertEq(roles[2], ROLE_PROPOSER);
     }
 }
