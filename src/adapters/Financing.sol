@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.16;
+pragma solidity 0.8.17;
 
 import "../abstracts/ProposerAdapter.sol";
 import "../interfaces/IBank.sol";
@@ -11,6 +11,8 @@ import "../interfaces/IAgora.sol";
  * Financing is only in TBIO
  */
 contract Financing is ProposerAdapter {
+    using Slot for bytes28;
+
     struct Proposal {
         address applicant; // the proposal applicant address
         uint256 amount; // the amount requested for funding
@@ -50,6 +52,7 @@ contract Financing is ProposerAdapter {
         _getBank().vaultCommit(vaultId, tokenAddr, applicant, uint128(amount));
 
         // startime = 0 => startime = timestamp
+        // voteID in args
         // admin validation depends on sender role
         _getAgora().submitProposal(Slot.FINANCING, proposalId, true, true, voteId, 0, msg.sender);
     }

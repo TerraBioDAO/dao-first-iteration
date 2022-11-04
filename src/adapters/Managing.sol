@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.16;
+pragma solidity 0.8.17;
 
 import "../abstracts/ProposerAdapter.sol";
 
@@ -41,7 +41,7 @@ contract Managing is ProposerAdapter {
 
         // store in the core
         // IDaoCore(_core).submitProposal(
-        //     bytes32(bytes.concat(slotId, proposalId)),
+        //     proposalId.concatWithSlot(slot),
         //     msg.sender,
         //     votingContract
         // );

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.16;
+pragma solidity 0.8.17;
 
 interface IAgora {
-    event VoteParamsChanged(bytes4 indexed voteId, bool indexed added); // add consensus?
+    event VoteParamsChanged(bytes4 indexed voteParamId, bool indexed added); // add consensus?
 
     event ProposalSubmitted(
         bytes4 indexed slot,
@@ -72,7 +72,7 @@ interface IAgora {
         uint32 createdAt;
         uint32 minStartTime;
         uint32 shiftedTime;
-        bytes4 voteId;
+        bytes4 voteParamId;
         address initiater;
         Score score;
     }
@@ -82,13 +82,13 @@ interface IAgora {
         bytes28 proposalId,
         bool adminValidation,
         bool executable,
-        bytes4 voteId,
+        bytes4 voteParamId,
         uint32 startTime,
         address initiater
     ) external;
 
     function changeVoteParams(
-        bytes4 voteId,
+        bytes4 voteParamId,
         Consensus consensus,
         uint32 votingPeriod,
         uint32 gracePeriod,
@@ -108,5 +108,5 @@ interface IAgora {
     // GETTERS
     function getProposal(bytes32 proposalId) external view returns (Proposal memory);
 
-    function getVoteParams(bytes4 voteId) external view returns (VoteParam memory);
+    function getVoteParams(bytes4 voteParamId) external view returns (VoteParam memory);
 }

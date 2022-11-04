@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.16;
+pragma solidity 0.8.17;
 
 import "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import "forge-std/Test.sol";
 import "src/helpers/Slot.sol";
+import "src/helpers/Constants.sol";
 import "src/core/DaoCore.sol";
 import "test/base/BaseTest.sol";
 
@@ -28,7 +29,7 @@ contract TBIOToken is ERC20 {
 
 /// @notice use `e18` to add a decimal instead of `TOKEN = 10**18`
 
-abstract contract BaseDaoTest is BaseTest {
+abstract contract BaseDaoTest is BaseTest, Constants {
     DaoCore public dao;
     TBIOToken public tbio;
 

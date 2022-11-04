@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.16;
+pragma solidity 0.8.17;
 
 import "test/base/BaseDaoTest.sol";
 import "src/extensions/Bank.sol";
@@ -279,7 +279,7 @@ contract Bank_test is BaseDaoTest {
         bank.vaultDeposit(VAULT_TREASURY, address(tbio), USER, amount);
 
         vm.prank(FINANCING);
-        bank.newFincancingProposal(VAULT_TREASURY, address(tbio), amount);
+        bank.newFinancingProposal(VAULT_TREASURY, address(tbio), amount);
 
         (uint128 availableBalance, uint128 committedBalance) = bank.getVaultBalances(
             VAULT_TREASURY,
@@ -303,10 +303,10 @@ contract Bank_test is BaseDaoTest {
 
         vm.startPrank(FINANCING);
         vm.expectRevert("Bank: inexistant vaultId");
-        bank.newFincancingProposal(bytes4("0x01"), address(tbio), amount);
+        bank.newFinancingProposal(bytes4("0x01"), address(tbio), amount);
 
         vm.expectRevert("Bank: not enough in the vault");
-        bank.newFincancingProposal(VAULT_TREASURY, address(tbio), amount);
+        bank.newFinancingProposal(VAULT_TREASURY, address(tbio), amount);
     }
 
     function testExecuteFinancingProposal(uint128 amount) public {
@@ -323,7 +323,7 @@ contract Bank_test is BaseDaoTest {
         vm.startPrank(FINANCING);
         bank.vaultDeposit(VAULT_TREASURY, address(tbio), USER, amount);
 
-        bank.newFincancingProposal(VAULT_TREASURY, address(tbio), amount);
+        bank.newFinancingProposal(VAULT_TREASURY, address(tbio), amount);
 
         address destination = address(5);
         bank.executeFinancingProposal(VAULT_TREASURY, address(tbio), destination, amount);
