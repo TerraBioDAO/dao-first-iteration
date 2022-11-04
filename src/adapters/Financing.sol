@@ -52,7 +52,6 @@ contract Financing is ProposerAdapter {
         _getBank().vaultCommit(vaultId, tokenAddr, applicant, uint128(amount));
 
         // startime = 0 => startime = timestamp
-        // voteID in args
         // admin validation depends on sender role
         _getAgora().submitProposal(Slot.FINANCING, proposalId, true, true, voteId, 0, msg.sender);
     }

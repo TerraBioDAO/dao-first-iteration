@@ -21,14 +21,14 @@ contract Agora is Extension, IAgora, Constants {
 
     function submitProposal(
         bytes4 slot,
-        bytes28 proposalId,
+        bytes28 adapterProposalId,
         bool adminApproved,
         bool executable,
         bytes4 voteParamId,
         uint32 minStartTime,
         address initiater
     ) external onlyAdapter(slot) {
-        bytes32 _proposalId = proposalId.concatWithSlot(slot);
+        bytes32 _proposalId = adapterProposalId.concatWithSlot(slot);
         Proposal memory _proposal = _proposals[_proposalId];
         require(!_proposal.active, "Agora: proposal already exist");
 

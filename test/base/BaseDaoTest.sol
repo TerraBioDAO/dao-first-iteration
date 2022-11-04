@@ -37,6 +37,12 @@ abstract contract BaseDaoTest is BaseTest, Constants {
     address public constant ZERO = address(0);
     uint32 public constant DAY = 86400;
 
+    mapping(bytes4 => bool) internal _activeSlot;
+
+    function _isSlotActive(bytes4 slot) internal view returns (bool) {
+        return _activeSlot[slot];
+    }
+
     function _deployDao(address admin) internal {
         ADMIN = admin;
         dao = new DaoCore(ADMIN);
@@ -54,12 +60,14 @@ abstract contract BaseDaoTest is BaseTest, Constants {
     function _branch(bytes4 slot, address contractAddr) internal {
         vm.prank(ADMIN);
         dao.changeSlotEntry(slot, contractAddr);
+        _activeSlot[slot] = true;
     }
 
     function _branchMock(bytes4 slot, bool isExt) internal returns (address mockEntry) {
         mockEntry = _newEntry(slot, isExt);
         vm.prank(ADMIN);
         dao.changeSlotEntry(slot, mockEntry);
+        _activeSlot[slot] = true;
     }
 
     function _newEntry(bytes4 slot, bool isExt) internal returns (address entry) {
