@@ -117,7 +117,7 @@ contract Voting_test is BaseDaoTest {
             0
         );
 
-        IAgora.VoteParam memory storedParam = agora.getVoteParams(VOTE_CUSTOM);
+        IAgora.VoteParam memory storedParam = agora.getVoteParams(bytes4(keccak256("vote-custom")));
 
         assertEq(uint256(storedParam.consensus), uint256(param.consensus));
         assertEq(storedParam.votingPeriod, param.votingPeriod);
