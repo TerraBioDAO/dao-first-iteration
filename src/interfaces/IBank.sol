@@ -18,7 +18,6 @@ interface IBank {
     function vaultCommit(
         bytes4 vaultId,
         address tokenAddr,
-        address applicant,
         uint128 amount
     ) external;
 

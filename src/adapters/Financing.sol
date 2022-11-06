@@ -49,19 +49,29 @@ contract Financing is ProposerAdapter {
 
         proposals[proposalId] = proposal;
 
-        _getBank().vaultCommit(vaultId, tokenAddr, applicant, uint128(amount));
+        _getBank().vaultCommit(vaultId, tokenAddr, uint128(amount));
 
         // startime = 0 => startime = timestamp
         // admin validation depends on sender role
-        _getAgora().submitProposal(Slot.FINANCING, proposalId, true, true, voteId, 0, msg.sender);
+        _getAgora().submitProposal(Slot.FINANCING, proposalId, true, voteId, 0, msg.sender);
+    }
+
+    /**
+     * @notice Create a vault
+     * @dev Only admin can create a Vault.
+     * @param vaultId vault id
+     * @param tokenList array of token addresses
+     */
+    function createVault(bytes4 vaultId, address[] memory tokenList) external onlyAdmin {
+        _getBank().createVault(vaultId, tokenList);
     }
 
     /**
      * @notice Execute a financing proposal.
      * @param proposalId The proposal id.
      */
-    function executeProposal(bytes32 proposalId) public override {
-        super.executeProposal(proposalId);
+    function _executeProposal(bytes32 proposalId) internal override {
+        super._executeProposal(proposalId);
 
         Proposal memory proposal = proposals[bytes28(proposalId << 32)];
 
@@ -75,14 +85,8 @@ contract Financing is ProposerAdapter {
         );
     }
 
-    /**
-     * @notice Create a vault
-     * @dev Only admin can create a Vault.
-     * @param vaultId vault id
-     * @param tokenList array of token addresses
-     */
-    function createVault(bytes4 vaultId, address[] memory tokenList) external onlyAdmin {
-        _getBank().createVault(vaultId, tokenList);
+    function finalizeProposal(bytes32 proposalId) external override onlyMember {
+        //TODO implementation
     }
 
     function _getBank() internal view returns (IBank) {

@@ -18,17 +18,17 @@ abstract contract ProposerAdapter is Adapter, IProposerAdapter {
         _;
     }
 
-    function executeProposal(bytes32 proposalId) public virtual override onlyExtension(Slot.AGORA) {
-        require(bytes4(proposalId) == slotId, "Adapter: wrong proposalId"); // is useful? will be too late at this time
-        _ongoingProposals.decrement();
-    }
-
     function ongoingProposals() external view override returns (uint256) {
         return _ongoingProposals.current();
     }
 
     function pauseAdapter() external onlyAdmin {
         _paused = !_paused;
+    }
+
+    function _executeProposal(bytes32 proposalId) internal virtual {
+        require(bytes4(proposalId) == slotId, "Adapter: wrong proposalId"); // is useful? will be too late at this time
+        _ongoingProposals.decrement();
     }
 
     function _newProposal() private paused {

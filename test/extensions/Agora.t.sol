@@ -114,7 +114,6 @@ contract Agora_test is BaseDaoTest {
         bytes4 slot,
         bytes28 adapterProposalId,
         bool adminApproval,
-        bool executable,
         uint32 minStartTime,
         bytes4 voteId,
         address initiater
@@ -126,7 +125,6 @@ contract Agora_test is BaseDaoTest {
             slot,
             adapterProposalId,
             adminApproval,
-            executable,
             voteId,
             minStartTime,
             initiater
@@ -281,7 +279,7 @@ contract Agora_test is BaseDaoTest {
 
     function testCannotRemoveVoteParam() private {
         _addVoteParam(bytes4("vote"), 1, 1 days, 1 days, 8000, 3 days);
-        _submitProposal(ADAPTER_SLOT, bytes28("1"), false, true, 0, bytes4("vote"), USER);
+        _submitProposal(ADAPTER_SLOT, bytes28("1"), false, 0, bytes4("vote"), USER);
 
         vm.prank(VOTING);
         vm.expectRevert("Agora: parameters still used");
@@ -302,7 +300,6 @@ contract Agora_test is BaseDaoTest {
         bytes4 slot,
         bytes28 adapterProposalId,
         bool adminApproved,
-        bool executable,
         uint32 minStartTime
     ) public {
         vm.warp(1000);
@@ -310,7 +307,6 @@ contract Agora_test is BaseDaoTest {
             slot,
             adapterProposalId,
             adminApproved,
-            executable,
             minStartTime,
             VOTE_STANDARD,
             USER
@@ -319,7 +315,6 @@ contract Agora_test is BaseDaoTest {
 
         assertTrue(agora.getProposal(proposalId).active, "active");
         assertEq(agora.getProposal(proposalId).adminApproved, adminApproved, "approval");
-        assertEq(agora.getProposal(proposalId).executable, executable, "executable");
         assertEq(agora.getProposal(proposalId).createdAt, block.timestamp, "created at");
         assertEq(agora.getProposal(proposalId).minStartTime, minStartTime, "min start time");
         assertEq(agora.getProposal(proposalId).initiater, USER, "initiater");
@@ -330,15 +325,15 @@ contract Agora_test is BaseDaoTest {
         vm.warp(1000);
         vm.startPrank(ADAPTER_ADDR);
         vm.expectRevert("Agora: unknown vote params");
-        agora.submitProposal(ADAPTER_SLOT, bytes28("1"), true, true, bytes4("?"), 500, USER);
+        agora.submitProposal(ADAPTER_SLOT, bytes28("1"), true, bytes4("?"), 500, USER);
 
         vm.expectRevert("Agora: wrong starting time");
-        agora.submitProposal(ADAPTER_SLOT, bytes28("1"), true, true, VOTE_DEFAULT, 500, USER);
+        agora.submitProposal(ADAPTER_SLOT, bytes28("1"), true, VOTE_DEFAULT, 500, USER);
 
-        agora.submitProposal(ADAPTER_SLOT, bytes28("1"), true, true, VOTE_DEFAULT, 0, USER);
+        agora.submitProposal(ADAPTER_SLOT, bytes28("1"), true, VOTE_DEFAULT, 0, USER);
 
         vm.expectRevert("Agora: proposal already exist");
-        agora.submitProposal(ADAPTER_SLOT, bytes28("1"), true, true, VOTE_DEFAULT, 0, USER);
+        agora.submitProposal(ADAPTER_SLOT, bytes28("1"), true, VOTE_DEFAULT, 0, USER);
     }
 
     event ProposalSubmitted(
@@ -352,7 +347,6 @@ contract Agora_test is BaseDaoTest {
         bytes4 slot,
         bytes28 adapterProposalId,
         bool adminApproval,
-        bool executable,
         uint32 minStartTime
     ) public {
         bytes32 proposalId = _prepareSubmitProposal(slot, adapterProposalId, minStartTime);
@@ -362,7 +356,6 @@ contract Agora_test is BaseDaoTest {
             slot,
             adapterProposalId,
             adminApproval,
-            executable,
             VOTE_DEFAULT,
             minStartTime,
             USER
@@ -379,7 +372,6 @@ contract Agora_test is BaseDaoTest {
             ADAPTER_SLOT,
             bytes28("1"),
             false,
-            true,
             type(uint32).max,
             VOTE_STANDARD,
             USER
@@ -398,15 +390,7 @@ contract Agora_test is BaseDaoTest {
 
         // short standby without validation
         vm.warp(1000);
-        proposalId = _submitProposal(
-            ADAPTER_SLOT,
-            bytes28("2"),
-            true,
-            false,
-            2000,
-            VOTE_STANDARD,
-            USER
-        );
+        proposalId = _submitProposal(ADAPTER_SLOT, bytes28("2"), true, 2000, VOTE_STANDARD, USER);
 
         // 2. STANDBY
         assertEq(uint8(agora.getProposalStatus(proposalId)), 2);
@@ -429,7 +413,7 @@ contract Agora_test is BaseDaoTest {
         assertEq(uint8(agora.getProposalStatus(proposalId)), 6);
 
         vm.prank(VOTING);
-        agora.finalizeProposal(proposalId, USER);
+        agora.finalizeProposal(proposalId, USER, IAgora.VoteResult.ACCEPTED);
 
         // 7. ARCHIVED
         assertEq(uint8(agora.getProposalStatus(proposalId)), 7);
@@ -444,7 +428,6 @@ contract Agora_test is BaseDaoTest {
         bytes32 ppsId = _submitProposal(
             ADAPTER_SLOT,
             bytes28("1"),
-            true,
             true,
             uint32(block.timestamp),
             VOTE_STANDARD,

@@ -23,7 +23,6 @@ contract Agora is Extension, IAgora, Constants {
         bytes4 slot,
         bytes28 adapterProposalId,
         bool adminApproved,
-        bool executable,
         bytes4 voteParamId,
         uint32 minStartTime,
         address initiater
@@ -43,7 +42,6 @@ contract Agora is Extension, IAgora, Constants {
         _proposal.active = true;
         _proposal.adminApproved = adminApproved;
         _proposal.createdAt = timestamp;
-        _proposal.executable = executable;
         _proposal.minStartTime = minStartTime;
         _proposal.initiater = initiater;
         _proposal.voteParamId = voteParamId;
@@ -77,35 +75,13 @@ contract Agora is Extension, IAgora, Constants {
     }
 
     // Can be called by any member from VOTING adapter
-    function finalizeProposal(bytes32 proposalId, address finalizer)
-        external
-        onlyAdapter(Slot.VOTING)
-    {
-        require(
-            getProposalStatus(proposalId) == ProposalStatus.TO_FINALIZE,
-            "Agora: cannot be finalized"
-        );
-
-        Proposal memory _proposal = _proposals[proposalId];
-        VoteResult result = _calculVoteResult(
-            _proposal.score,
-            _voteParams[_proposal.voteParamId].threshold
-        );
-
-        if (result == VoteResult.ACCEPTED && _proposal.executable) {
-            address adapter = IDaoCore(_core).getSlotContractAddr(bytes4(proposalId));
-            // This should not be possible, block slot entry when proposals ongoing
-            require(adapter != address(0), "Agora: adapter not found");
-
-            IProposerAdapter(adapter).executeProposal(proposalId);
-            // error should be handled here
-        }
-        _proposal.proceeded = true;
-
-        // reward for finalizer
-
-        _proposals[proposalId] = _proposal;
-        emit ProposalFinalized(proposalId, result, finalizer);
+    function finalizeProposal(
+        bytes32 proposalId,
+        address finalizer,
+        VoteResult voteResult
+    ) external onlyAdapter(Slot.VOTING) {
+        _proposals[proposalId].proceeded = true;
+        emit ProposalFinalized(proposalId, finalizer, voteResult);
     }
 
     function submitVote(
@@ -117,8 +93,23 @@ contract Agora is Extension, IAgora, Constants {
         _submitVote(proposalId, voter, voteWeight, value);
     }
 
-    // GETTERS
-    function getProposalStatus(bytes32 proposalId) public view returns (ProposalStatus) {
+    function calculVoteResult(bytes32 proposalId) internal view returns (VoteResult) {
+        Proposal memory proposal = _proposals[proposalId];
+        Score memory score = proposal.score;
+        // how to integrate NOTA vote, should it be?
+        uint256 totalVote = score.nbYes + score.nbYes;
+
+        if (
+            totalVote != 0 &&
+            (score.nbYes * 10000) / totalVote >= _voteParams[proposal.voteParamId].threshold
+        ) {
+            return VoteResult.ACCEPTED;
+        } else {
+            return VoteResult.REJECTED;
+        }
+    }
+
+    function evaluateProposalStatus(bytes32 proposalId) internal view returns (ProposalStatus) {
         Proposal memory _proposal = _proposals[proposalId];
         VoteParam memory _voteParam = _voteParams[_proposal.voteParamId];
         uint256 timestamp = block.timestamp;
@@ -169,9 +160,13 @@ contract Agora is Extension, IAgora, Constants {
         }
     }
 
+    // GETTERS
+    function getProposalStatus(bytes32 proposalId) external view returns (ProposalStatus) {
+        return evaluateProposalStatus(proposalId);
+    }
+
     function getVoteResult(bytes32 proposalId) external view returns (VoteResult) {
-        Proposal memory _proposal = _proposals[proposalId];
-        return _calculVoteResult(_proposal.score, _voteParams[_proposal.voteParamId].threshold);
+        return calculVoteResult(proposalId);
     }
 
     function getProposal(bytes32 proposalId) external view returns (Proposal memory) {
@@ -228,7 +223,7 @@ contract Agora is Extension, IAgora, Constants {
         uint256 value
     ) internal {
         require(
-            getProposalStatus(proposalId) == ProposalStatus.ONGOING,
+            evaluateProposalStatus(proposalId) == ProposalStatus.ONGOING,
             "Agora: outside voting period"
         );
 
@@ -253,20 +248,5 @@ contract Agora is Extension, IAgora, Constants {
 
         _proposals[proposalId] = _proposal;
         emit MemberVoted(proposalId, voter, value, voteWeight);
-    }
-
-    function _calculVoteResult(Score memory score, uint32 threshold)
-        internal
-        pure
-        returns (VoteResult)
-    {
-        // how to integrate NOTA vote, should it be?
-        uint256 totalVote = score.nbYes + score.nbYes;
-
-        if (totalVote != 0 && (score.nbYes * 10000) / totalVote >= threshold) {
-            return VoteResult.ACCEPTED;
-        } else {
-            return VoteResult.REJECTED;
-        }
     }
 }

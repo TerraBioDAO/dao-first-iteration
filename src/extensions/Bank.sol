@@ -196,7 +196,6 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
     function vaultCommit(
         bytes4 vaultId,
         address tokenAddr,
-        address applicant,
         uint128 amount
     ) external onlyAdapter(Slot.FINANCING) {
         //require(_vaults[vaultId].isExist, "Bank: inexistant vaultId");

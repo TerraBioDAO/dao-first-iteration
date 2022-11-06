@@ -53,6 +53,10 @@ contract Managing is ProposerAdapter {
         delete proposals[bytes28(proposalId << 32)];
     }
 
+    function finalizeProposal(bytes32 proposalId) external override onlyMember {
+        //TODO implementation
+    }
+
     /**
      * @notice change a slot entry without vote
      * Should add a VETO by others admin
