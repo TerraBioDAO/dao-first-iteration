@@ -1,5 +1,9 @@
 # TerraBio DAO
 
+## Lancer les TU
+
+- `forge test` pour lancer tous les tests
+- `forge test -vvvv --match-contract Voting_test --match-test testProposeNewVoteParams` pour lancer un test d'un contrat avec logs
 
 ## Workflows
 
