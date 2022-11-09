@@ -145,6 +145,29 @@ contract Voting_test is BaseDaoTest {
         assertFalse(voteStandard.adminValidationPeriod > 0);
         assertFalse(uint256(voteStandard.consensus) > 0);
     }
+
+    /*////////////////////////////////
+            proposeNewVoteParams()
+        ////////////////////////////////*/
+    function testProposeNewVoteParams() public {
+        vm.startPrank(USERS[0]);
+
+        voting.proposeNewVoteParams(
+            "testNewVotePram",
+            IAgora.Consensus.MEMBER,
+            1 days,
+            1 days,
+            50000,
+            0,
+            7 days
+        );
+
+        IAgora.Proposal memory proposal = agora.getProposal(
+            hex"0e49311667dd89a9d508d9903eaea1c84f6d29940a37d339387e29b045cf8f06"
+        );
+
+        assertEq(proposal.voteParamId, hex"54fd88eb");
+    }
 }
 
 // "addNewVoteParams(string,uint8,uint32,uint32,uint32,uint32)": "bb4fba3b",

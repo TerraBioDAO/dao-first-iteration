@@ -276,7 +276,6 @@ contract Financing_test is BaseDaoTest {
                 bank.vaultCommit.selector,
                 TREASURY,
                 TOKEN_ADDRESS,
-                APPLICANT,
                 uint128(proposal.amount)
             )
         );
@@ -286,7 +285,6 @@ contract Financing_test is BaseDaoTest {
                 agora.submitProposal.selector,
                 Slot.FINANCING,
                 proposalId,
-                true,
                 true,
                 VOTE_STANDARD,
                 0,

@@ -14,8 +14,8 @@ interface IAgora {
 
     event ProposalFinalized(
         bytes32 indexed proposalId,
-        VoteResult indexed result,
-        address indexed finalizer
+        address indexed finalizer,
+        VoteResult indexed result
     );
 
     event MemberVoted(
@@ -67,7 +67,6 @@ interface IAgora {
         bool active;
         bool adminApproved;
         bool suspended;
-        bool executable;
         bool proceeded; // ended or executed
         uint32 createdAt;
         uint32 minStartTime;
@@ -81,7 +80,6 @@ interface IAgora {
         bytes4 slot,
         bytes28 proposalId,
         bool adminValidation,
-        bool executable,
         bytes4 voteParamId,
         uint32 startTime,
         address initiater
@@ -103,9 +101,17 @@ interface IAgora {
         uint256 value
     ) external;
 
-    function finalizeProposal(bytes32 proposalId, address finalizer) external;
+    function finalizeProposal(
+        bytes32 proposalId,
+        address finalizer,
+        VoteResult voteResult
+    ) external;
 
     // GETTERS
+    function getProposalStatus(bytes32 proposalId) external view returns (ProposalStatus);
+
+    function getVoteResult(bytes32 proposalId) external view returns (VoteResult);
+
     function getProposal(bytes32 proposalId) external view returns (Proposal memory);
 
     function getVoteParams(bytes4 voteParamId) external view returns (VoteParam memory);
