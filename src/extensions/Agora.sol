@@ -93,7 +93,45 @@ contract Agora is Extension, IAgora, Constants {
         _submitVote(proposalId, voter, voteWeight, value);
     }
 
-    function calculVoteResult(bytes32 proposalId) internal view returns (VoteResult) {
+    function validateProposal(bytes32 proposalId) external onlyAdapter(Slot.VOTING) {
+        require(
+            _evaluateProposalStatus(proposalId) == ProposalStatus.VALIDATION,
+            "Agora: no validation required"
+        );
+        Proposal memory proposal_ = _proposals[proposalId];
+        _proposals[proposalId].adminApproved = true;
+
+        uint256 timestamp = block.timestamp;
+        if (timestamp > proposal_.minStartTime) {
+            proposal_.shiftedTime += uint32(timestamp - proposal_.minStartTime);
+        }
+        // should postpone voting period!
+    }
+
+    // GETTERS
+    function getProposalStatus(bytes32 proposalId) external view returns (ProposalStatus) {
+        return _evaluateProposalStatus(proposalId);
+    }
+
+    function getVoteResult(bytes32 proposalId) external view returns (VoteResult) {
+        return _calculVoteResult(proposalId);
+    }
+
+    function getProposal(bytes32 proposalId) external view returns (Proposal memory) {
+        return _proposals[proposalId];
+    }
+
+    function getVoteParams(bytes4 voteParamId) external view returns (VoteParam memory) {
+        return _voteParams[voteParamId];
+    }
+
+    function getVotes(bytes32 proposalId, address voter) external view returns (bool) {
+        return _votes[proposalId][voter];
+    }
+
+    // INTERNAL FUNCTION
+
+    function _calculVoteResult(bytes32 proposalId) internal view returns (VoteResult) {
         Proposal memory proposal = _proposals[proposalId];
         Score memory score = proposal.score;
         // how to integrate NOTA vote, should it be?
@@ -109,7 +147,7 @@ contract Agora is Extension, IAgora, Constants {
         }
     }
 
-    function evaluateProposalStatus(bytes32 proposalId) internal view returns (ProposalStatus) {
+    function _evaluateProposalStatus(bytes32 proposalId) internal view returns (ProposalStatus) {
         Proposal memory _proposal = _proposals[proposalId];
         VoteParam memory _voteParam = _voteParams[_proposal.voteParamId];
         uint256 timestamp = block.timestamp;
@@ -160,29 +198,6 @@ contract Agora is Extension, IAgora, Constants {
         }
     }
 
-    // GETTERS
-    function getProposalStatus(bytes32 proposalId) external view returns (ProposalStatus) {
-        return evaluateProposalStatus(proposalId);
-    }
-
-    function getVoteResult(bytes32 proposalId) external view returns (VoteResult) {
-        return calculVoteResult(proposalId);
-    }
-
-    function getProposal(bytes32 proposalId) external view returns (Proposal memory) {
-        return _proposals[proposalId];
-    }
-
-    function getVoteParams(bytes4 voteParamId) external view returns (VoteParam memory) {
-        return _voteParams[voteParamId];
-    }
-
-    function getVotes(bytes32 proposalId, address voter) external view returns (bool) {
-        return _votes[proposalId][voter];
-    }
-
-    // INTERNAL FUNCTION
-
     function _addVoteParam(
         bytes4 voteParamId,
         Consensus consensus,
@@ -223,7 +238,7 @@ contract Agora is Extension, IAgora, Constants {
         uint256 value
     ) internal {
         require(
-            evaluateProposalStatus(proposalId) == ProposalStatus.ONGOING,
+            _evaluateProposalStatus(proposalId) == ProposalStatus.ONGOING,
             "Agora: outside voting period"
         );
 

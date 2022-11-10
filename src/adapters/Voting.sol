@@ -179,6 +179,10 @@ contract Voting is ProposerAdapter {
         _getAgora().changeVoteParams(voteParamId, IAgora.Consensus.NO_VOTE, 0, 0, 0, 0);
     }
 
+    function validateProposal(bytes32 proposalId) external onlyAdmin {
+        //
+    }
+
     function getConsultation(bytes28 proposalId)
         external
         view
