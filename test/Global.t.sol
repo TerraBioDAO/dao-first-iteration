@@ -108,6 +108,8 @@ contract Global is BaseDaoTest {
         // users votes
         vm.startPrank(USERS[0]);
         tbio.approve(BANK, 1000e18);
+        emit log_uint(agora.getProposal(proposalId).createdAt);
+        emit log_uint(agora.getProposal(proposalId).shiftedTime);
         emit log_uint(uint256(agora.getProposalStatus(proposalId)));
         // AGORA seem to not postpone the voting period ! ISSUE
         voting.submitVote(proposalId, 1, 50e18, 1 days, 0);

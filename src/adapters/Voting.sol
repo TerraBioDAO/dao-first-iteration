@@ -175,9 +175,14 @@ contract Voting is ProposerAdapter {
         );
     }
 
+    function validateProposal(bytes32 proposalId) external onlyAdmin {
+        //
+    }
+
     /* //////////////////////////
                 GETTERS
     ////////////////////////// */
+
     function getConsultation(bytes28 proposalId)
         external
         view

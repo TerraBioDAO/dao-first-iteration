@@ -100,6 +100,21 @@ contract Agora is Extension, IAgora, Constants {
         }
     }
 
+    function validateProposal(bytes32 proposalId) external onlyAdapter(Slot.VOTING) {
+        require(
+            _evaluateProposalStatus(proposalId) == ProposalStatus.VALIDATION,
+            "Agora: no validation required"
+        );
+        Proposal memory proposal_ = _proposals[proposalId];
+        _proposals[proposalId].adminApproved = true;
+
+        uint256 timestamp = block.timestamp;
+        if (timestamp > proposal_.minStartTime) {
+            proposal_.shiftedTime += uint32(timestamp - proposal_.minStartTime);
+        }
+        // should postpone voting period!
+    }
+
     /* //////////////////////////
                 GETTERS
     ////////////////////////// */
