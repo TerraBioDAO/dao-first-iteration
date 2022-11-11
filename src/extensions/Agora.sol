@@ -148,50 +148,56 @@ contract Agora is Extension, IAgora, Constants {
     }
 
     function _evaluateProposalStatus(bytes32 proposalId) internal view returns (ProposalStatus) {
-        Proposal memory _proposal = _proposals[proposalId];
-        VoteParam memory _voteParam = _voteParams[_proposal.voteParamId];
+        Proposal memory proposal_ = _proposals[proposalId];
+        VoteParam memory voteParam_ = _voteParams[proposal_.voteParamId];
         uint256 timestamp = block.timestamp;
 
-        // pps exist?
-        if (!_proposal.active) {
+        // proposal exist?
+        if (!proposal_.active) {
             return ProposalStatus.UNKNOWN;
         }
 
-        // is validated?
-        if (timestamp < _proposal.createdAt + _voteParam.adminValidationPeriod) {
-            if (!_proposal.adminApproved) {
-                return ProposalStatus.VALIDATION;
-            }
-        }
-
-        // has started
-        if (timestamp < _proposal.minStartTime) {
-            return ProposalStatus.STANDBY;
-        }
-
-        // is suspended
-        if (_proposal.suspended) {
+        // is suspended?
+        if (proposal_.suspended) {
             return ProposalStatus.SUSPENDED;
         }
 
-        // is in voting period
-        if (timestamp < _proposal.minStartTime + _proposal.shiftedTime + _voteParam.votingPeriod) {
+        // is approved by admin?
+        if (!proposal_.adminApproved) {
+            uint256 endOfValidationPeriod = proposal_.createdAt + voteParam_.adminValidationPeriod;
+            if (timestamp < endOfValidationPeriod) {
+                return ProposalStatus.VALIDATION;
+            } else {
+                // virtualy postpone the `minStartTime`
+                if (proposal_.minStartTime < endOfValidationPeriod) {
+                    proposal_.minStartTime = uint32(endOfValidationPeriod);
+                }
+            }
+        }
+
+        // has started?
+        if (timestamp < proposal_.minStartTime) {
+            return ProposalStatus.STANDBY;
+        }
+
+        // is in voting period?
+        if (timestamp < proposal_.minStartTime + proposal_.shiftedTime + voteParam_.votingPeriod) {
             return ProposalStatus.ONGOING;
         }
 
-        // is in grace period
+        // is in grace period?
         if (
             timestamp <
-            _proposal.minStartTime +
-                _proposal.shiftedTime +
-                _voteParam.votingPeriod +
-                _voteParam.gracePeriod
+            proposal_.minStartTime +
+                proposal_.shiftedTime +
+                voteParam_.votingPeriod +
+                voteParam_.gracePeriod
         ) {
             return ProposalStatus.CLOSED;
         }
 
         // is finalized
-        if (!_proposal.proceeded) {
+        if (!proposal_.proceeded) {
             return ProposalStatus.TO_FINALIZE;
         } else {
             return ProposalStatus.ARCHIVED;
