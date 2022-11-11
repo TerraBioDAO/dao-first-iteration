@@ -138,9 +138,6 @@ contract Agora is Extension, IAgora, Constants {
         return _votes[proposalId][voter];
     }
 
-    /* //////////////////////////
-        INTERNAL FUNCTIONS
-    ////////////////////////// */
     function _addVoteParam(
         bytes4 voteParamId,
         Consensus consensus,
