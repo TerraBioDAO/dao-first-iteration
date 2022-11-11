@@ -37,7 +37,7 @@ contract Managing is ProposerAdapter {
         // check votingContract
 
         Proposal memory proposal = Proposal(entrySlot, isExt, contractAddr, votingContract);
-        bytes28 proposalId = bytes28(keccak256(abi.encode(proposal)));
+        // bytes28 proposalId = bytes28(keccak256(abi.encode(proposal)));
 
         // store in the core
         // IDaoCore(_core).submitProposal(
