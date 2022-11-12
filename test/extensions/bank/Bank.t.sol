@@ -42,17 +42,17 @@ contract Bank_test is BaseDaoTest {
 
     function _lpToUint(LockPeriod lp) internal pure returns (uint32) {
         if (lp == LockPeriod.P1) {
-            return DAY;
+            return 1 days;
         } else if (lp == LockPeriod.P7) {
-            return 7 * DAY;
+            return 7 days;
         } else if (lp == LockPeriod.P15) {
-            return 15 * DAY;
+            return 15 days;
         } else if (lp == LockPeriod.P30) {
-            return 30 * DAY;
+            return 30 days;
         } else if (lp == LockPeriod.P120) {
-            return 120 * DAY;
+            return 120 days;
         } else if (lp == LockPeriod.P365) {
-            return 365 * DAY;
+            return 365 days;
         } else {
             return 0;
         }
@@ -112,25 +112,25 @@ contract Bank_test is BaseDaoTest {
 
         vm.prank(VOTING);
         vm.expectRevert("ERC20: insufficient allowance");
-        bank.newCommitment(USER, bytes32("0x01"), uint96(50e18), 7 * DAY, 0);
+        bank.newCommitment(USER, bytes32("0x01"), uint96(50e18), 7 days, 0);
 
         vm.prank(USER);
         tbio.approve(BANK, 50e18);
 
         vm.prank(VOTING);
         vm.expectRevert("ERC20: transfer amount exceeds balance");
-        bank.newCommitment(USER, bytes32("0x01"), uint96(50e18), 7 * DAY, 0);
+        bank.newCommitment(USER, bytes32("0x01"), uint96(50e18), 7 days, 0);
 
         _mintTBIO(USER, 50e18);
         vm.expectRevert("Cores: not the right adapter");
-        bank.newCommitment(USER, bytes32("0x01"), uint96(50e18), 7 * DAY, 0);
+        bank.newCommitment(USER, bytes32("0x01"), uint96(50e18), 7 days, 0);
 
         vm.prank(VOTING);
-        bank.newCommitment(USER, bytes32("0x01"), uint96(50e18), 7 * DAY, 0);
+        bank.newCommitment(USER, bytes32("0x01"), uint96(50e18), 7 days, 0);
 
         vm.prank(VOTING);
         vm.expectRevert("Bank: already committed");
-        bank.newCommitment(USER, bytes32("0x01"), uint96(50e18), 7 * DAY, 0);
+        bank.newCommitment(USER, bytes32("0x01"), uint96(50e18), 7 days, 0);
     }
 
     function testMultipleNewCommitment() public {

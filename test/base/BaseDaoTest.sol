@@ -37,8 +37,8 @@ abstract contract BaseDaoTest is BaseTest, Constants {
     address internal DAO;
     address internal TBIO;
     address internal constant ZERO = address(0);
-    uint32 internal constant DAY = 86400;
     address[] internal USERS;
+    bytes4 VOTE_STANDARD_RAW_VALUE = hex"54fd88eb";
 
     mapping(bytes4 => bool) internal _activeSlot;
 

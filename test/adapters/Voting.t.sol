@@ -149,8 +149,9 @@ contract Voting_test is BaseDaoTest {
     /*////////////////////////////////
             proposeNewVoteParams()
         ////////////////////////////////*/
-    function testProposeNewVoteParams() public {
+    function testProposeNewVoteParamsZeroMinStart() public {
         vm.startPrank(USERS[0]);
+        vm.warp(1641070800);
 
         voting.proposeNewVoteParams(
             "testNewVotePram",
@@ -162,11 +163,64 @@ contract Voting_test is BaseDaoTest {
             7 days
         );
 
-        IAgora.Proposal memory proposal = agora.getProposal(
-            hex"0e49311667dd89a9d508d9903eaea1c84f6d29940a37d339387e29b045cf8f06"
+        bytes32 registeredProposalId = hex"0e49311667dd89a9d508d9903eaea1c84f6d29940a37d339387e29b045cf8f06";
+
+        Voting.ProposedVoteParam memory proposedVoteParam = voting.getProposedVoteParam(
+            bytes28(registeredProposalId << 32)
+        );
+        assertEq(proposedVoteParam.votingPeriod, 86400);
+        assertEq(proposedVoteParam.gracePeriod, 86400);
+        assertEq(proposedVoteParam.threshold, 50000);
+        assertEq(proposedVoteParam.adminValidationPeriod, 604800);
+        assertEq(uint256(proposedVoteParam.consensus), uint256(IAgora.Consensus.MEMBER));
+
+        IAgora.VoteParam memory voteParam = agora.getVoteParams(VOTE_STANDARD_RAW_VALUE);
+        assertEq(voteParam.utilisation, 1);
+
+        IAgora.Proposal memory proposal = agora.getProposal(registeredProposalId);
+
+        assertFalse(proposal.adminApproved);
+        assertTrue(proposal.active);
+        assertEq(proposal.voteParamId, VOTE_STANDARD_RAW_VALUE);
+        assertEq(proposal.initiater, USERS[0]);
+        assertEq(proposal.minStartTime, 1641070800);
+    }
+
+    function testProposeNewVoteParams(uint32 minStartTime) public {
+        vm.assume(minStartTime > 0);
+        vm.startPrank(USERS[0]);
+
+        voting.proposeNewVoteParams(
+            "testNewVoteParam",
+            IAgora.Consensus.TOKEN,
+            3 days,
+            2 days,
+            50001,
+            minStartTime,
+            4 days
         );
 
-        assertEq(proposal.voteParamId, hex"54fd88eb");
+        bytes32 registeredProposalId = hex"0e493116fa7a66f7081a5170abf3fa16e897fc53a1bea03b97d248cc6af1596f";
+
+        Voting.ProposedVoteParam memory proposedVoteParam = voting.getProposedVoteParam(
+            bytes28(registeredProposalId << 32)
+        );
+        assertEq(proposedVoteParam.votingPeriod, 259200);
+        assertEq(proposedVoteParam.gracePeriod, 172800);
+        assertEq(proposedVoteParam.threshold, 50001);
+        assertEq(proposedVoteParam.adminValidationPeriod, 345600);
+        assertEq(uint256(proposedVoteParam.consensus), uint256(IAgora.Consensus.TOKEN));
+
+        IAgora.VoteParam memory voteParam = agora.getVoteParams(VOTE_STANDARD_RAW_VALUE);
+        assertEq(voteParam.utilisation, 1);
+
+        IAgora.Proposal memory proposal = agora.getProposal(registeredProposalId);
+
+        assertFalse(proposal.adminApproved);
+        assertTrue(proposal.active);
+        assertEq(proposal.voteParamId, VOTE_STANDARD_RAW_VALUE);
+        assertEq(proposal.initiater, USERS[0]);
+        assertEq(proposal.minStartTime, minStartTime);
     }
 }
 
@@ -181,7 +235,6 @@ contract Voting_test is BaseDaoTest {
 // "ongoingProposals()": "fd2b5e9d",
 // "pauseAdapter()": "074568e9",
 // "proposeConsultation(string,string,uint32)": "26827a93",
-// "proposeNewVoteParams(string,uint8,uint32,uint32,uint32,uint32,uint32)": "59e4cd85",
 // "removeVoteParams(bytes4)": "ca10143d",
 // "slotId()": "cecc2c6d",
 // "submitVote(bytes32,uint256,uint96,uint32,uint96)": "72d26234",
