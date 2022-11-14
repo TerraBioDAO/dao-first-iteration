@@ -25,7 +25,7 @@ contract Managing is ProposerAdapter {
         bytes4 entrySlot,
         bool isExt,
         address contractAddr,
-        address votingContract
+        address //votingContract
     ) external onlyAdmin {
         // check the contract input
         ISlotEntry entry = ISlotEntry(contractAddr);
@@ -36,7 +36,7 @@ contract Managing is ProposerAdapter {
 
         // check votingContract
 
-        Proposal memory proposal = Proposal(entrySlot, isExt, contractAddr, votingContract);
+        // Proposal memory proposal = Proposal(entrySlot, isExt, contractAddr, votingContract);
         // bytes28 proposalId = bytes28(keccak256(abi.encode(proposal)));
 
         // store in the core

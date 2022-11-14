@@ -48,6 +48,7 @@ contract Financing is ProposerAdapter {
         bytes28 proposalId = bytes28(keccak256(abi.encode(proposal)));
 
         proposals[proposalId] = proposal;
+        super._newProposal();
 
         _getBank().vaultCommit(vaultId, tokenAddr, uint128(amount));
 

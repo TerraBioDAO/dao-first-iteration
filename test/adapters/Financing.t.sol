@@ -40,6 +40,10 @@ contract FinancingSlots {
         return proposals[index];
     }
 
+    function getOngoingProposals() public view returns (uint256) {
+        return _ongoingProposals.current();
+    }
+
     /*
     function setProposal(bytes28 index, Proposal memory _proposal) public {
         Proposal storage proposal = proposals[index];
@@ -67,13 +71,16 @@ contract Financing_test is BaseDaoTest {
     address public constant AGORA = address(uint160(uint32(Slot.AGORA)));
     address public constant BANK = address(uint160(uint32(Slot.BANK)));
 
-    address public constant PROPOSER = address(0x0d);
-    address public constant NOT_PROPOSER = address(0x0c);
-    address public constant APPLICANT = address(0x0f);
-    address public constant NOT_RIGHT_ADAPTER = address(0x0e);
+    address public constant NOT_ADMIN = address(0x0b);
+    address public constant PROPOSER = address(0x0c);
+    address public constant NOT_PROPOSER = address(0x0d);
+    address public constant APPLICANT = address(0x0e);
+    address public constant NOT_RIGHT_ADAPTER = address(0x0f);
+    address public constant MEMBER = address(0x1a);
+    address public constant NOT_MEMBER = address(0x1b);
 
-    bytes32 public constant PROPOSAL = keccak256(abi.encode("a proposal"));
-    bytes32 public constant ANOTHER_PROPOSAL = keccak256(abi.encode("another proposal"));
+    bytes32 public constant PROPOSAL = keccak256("a proposal");
+    bytes32 public constant ANOTHER_PROPOSAL = keccak256("another proposal");
 
     uint256 public constant AMOUNT = 10**20;
 
@@ -84,6 +91,7 @@ contract Financing_test is BaseDaoTest {
         core = Core_reverts(CORE);
         bank = Bank_reverts(BANK);
         agora = Agora_reverts(AGORA);
+        ADMIN = address(0x0a);
         ///////////
 
         financing = new Financing(address(core));
@@ -133,21 +141,27 @@ contract Financing_test is BaseDaoTest {
         return keccak256(abi.encode(bytes28(index), 2));
     }
 
+    function calculateSlotForOngoingProposals() public pure returns (bytes32) {
+        // struct Counters.Counter private _ongoingProposals;  @slot 1
+        // pattern
+        return bytes32(uint256(1));
+    }
+
     // Test slot pattern
     //
     // If some variables have not getters
     // First create FinancingSlots contract to retrieve slot with stdstore or vm.accesses
     // and test if retrieved and calculated are equals
-    function testSlotsPatterns(bytes28 index) public {
+    function testSlotsForProposals(bytes28 index) public {
         vm.record();
-        //
-        // mapping(bytes28 => Proposal) public proposals;
+        //////////////////////
+        // mapping(bytes28 => Proposal) private proposals;
 
         // with getter
         financingSlots.getProposal(index);
 
         bytes32[] memory lastReadSlots = getLastReadSlots(address(financingSlots));
-        assertEq(lastReadSlots.length, 2); // one value expected
+        assertEq(lastReadSlots.length, 2); // two values expected
         assertLt(uint256(lastReadSlots[0]), uint256(lastReadSlots[1]));
         assertEq(uint256(lastReadSlots[0]) + 1, uint256(lastReadSlots[1]));
 
@@ -158,7 +172,6 @@ contract Financing_test is BaseDaoTest {
         assertEq(lastWrittenSlots.length, 2); // one value expected
         assertLt(uint256(lastWrittenSlots[0]), uint256(lastWrittenSlots[1]));
         */
-
         /* with Foundry StdStorage
         // Doesn't work !?
         uint256 retrievedSlot = stdstore
@@ -171,6 +184,20 @@ contract Financing_test is BaseDaoTest {
         bytes32 calculatedSlot = calculateSlotForProposals(index);
 
         assertEq(lastReadSlots[0], calculatedSlot);
+    }
+
+    function testSlotsForOngoingProposals() public {
+        vm.record();
+
+        //////////////////////
+        // struct Counters.Counter private _ongoingProposals;
+
+        // with getter
+        financingSlots.getOngoingProposals();
+
+        bytes32[] memory lastReadSlots = getLastReadSlots(address(financingSlots));
+        assertEq(lastReadSlots.length, 1); // one value expected
+        assertEq(lastReadSlots[0], calculateSlotForOngoingProposals());
     }
 
     function testSubmitProposal_onlyProposer_revert() public {
@@ -307,5 +334,315 @@ contract Financing_test is BaseDaoTest {
 
         assertEq(uint256(vm.load(address(financing), slot)), uint256(uint160(APPLICANT)));
         assertEq(uint256(vm.load(address(financing), bytes32(uint256(slot) + 1))), AMOUNT);
+    }
+
+    function testCreateVault_onlyAdmin_revert() public {
+        // Setup
+        ///////////
+        vm.mockCall(
+            address(core),
+            abi.encodeWithSelector(core.hasRole.selector, NOT_ADMIN, ROLE_ADMIN),
+            abi.encode(false)
+        );
+
+        bytes4 vaultId = bytes4(keccak256("a vault"));
+        address[] memory tokenList = new address[](1);
+        tokenList[0] = TOKEN_ADDRESS;
+
+        vm.prank(NOT_ADMIN);
+        vm.expectCall(
+            address(core),
+            abi.encodeWithSelector(core.hasRole.selector, NOT_ADMIN, ROLE_ADMIN)
+        );
+        vm.expectRevert("Adapter: not an admin");
+        financing.createVault(vaultId, tokenList);
+    }
+
+    function testCreateVault() public {
+        // Setup
+        ///////////
+        vm.mockCall(
+            address(core),
+            abi.encodeWithSelector(core.hasRole.selector, ADMIN, ROLE_ADMIN),
+            abi.encode(true)
+        );
+
+        bytes4 vaultId = bytes4(keccak256("a vault"));
+        address[] memory tokenList = new address[](1);
+        tokenList[0] = TOKEN_ADDRESS;
+
+        vm.mockCall(
+            address(bank),
+            abi.encodeWithSelector(bank.createVault.selector, vaultId, tokenList),
+            abi.encode(false) // useless
+        );
+
+        vm.prank(ADMIN);
+        vm.expectCall(
+            address(core),
+            abi.encodeWithSelector(core.hasRole.selector, ADMIN, ROLE_ADMIN)
+        );
+        vm.expectCall(
+            address(bank),
+            abi.encodeWithSelector(bank.createVault.selector, vaultId, tokenList)
+        );
+        financing.createVault(vaultId, tokenList);
+    }
+
+    function setUpFinalizeProposal() public {
+        vm.mockCall(
+            address(core),
+            abi.encodeWithSelector(core.hasRole.selector, PROPOSER, ROLE_PROPOSER),
+            abi.encode(true)
+        );
+
+        vm.prank(PROPOSER);
+        financing.submitProposal(VOTE_STANDARD, AMOUNT, APPLICANT, TREASURY, TOKEN_ADDRESS);
+    }
+
+    function testFinalizeProposal_onlyMember_revert() public {
+        // Setup
+        setUpFinalizeProposal();
+        ///////////
+
+        vm.mockCall(
+            address(core),
+            abi.encodeWithSelector(core.hasRole.selector, NOT_MEMBER, ROLE_MEMBER),
+            abi.encode(false)
+        );
+
+        bytes32 coreProposalId = keccak256("A proposal with full pattern");
+
+        vm.prank(NOT_MEMBER);
+        vm.expectCall(
+            address(core),
+            abi.encodeWithSelector(core.hasRole.selector, NOT_MEMBER, ROLE_MEMBER)
+        );
+        vm.expectRevert("Adapter: not a member");
+        financing.finalizeProposal(coreProposalId);
+    }
+
+    function testFinalizeProposal_notToFinalize_revert(uint8 status) public {
+        // Is possible with 'IAgora.ProposalStatus status' ?
+        vm.assume(status <= 7 && status != uint8(IAgora.ProposalStatus.TO_FINALIZE));
+
+        // Setup
+        setUpFinalizeProposal();
+        ///////////
+
+        bytes32 coreProposalId = keccak256("A proposal with full pattern");
+
+        vm.mockCall(
+            address(core),
+            abi.encodeWithSelector(core.hasRole.selector, MEMBER, ROLE_MEMBER),
+            abi.encode(true)
+        );
+        vm.mockCall(
+            address(agora),
+            abi.encodeWithSelector(agora.getProposalStatus.selector, coreProposalId),
+            abi.encode(status)
+        );
+
+        vm.prank(MEMBER);
+        vm.expectCall(
+            address(core),
+            abi.encodeWithSelector(core.hasRole.selector, MEMBER, ROLE_MEMBER)
+        );
+        vm.expectCall(
+            address(agora),
+            abi.encodeWithSelector(agora.getProposalStatus.selector, coreProposalId)
+        );
+        vm.expectRevert("Financing: proposal cannot be finalized");
+        financing.finalizeProposal(coreProposalId);
+    }
+
+    function testFinalizeProposal_without_execution() public {
+        ///////////////////////
+        // Setup
+        setUpFinalizeProposal();
+
+        ///////////////////////
+        // Initial state
+        Financing.Proposal memory proposal = Financing.Proposal(
+            APPLICANT,
+            AMOUNT,
+            TREASURY,
+            TOKEN_ADDRESS
+        );
+        bytes28 proposalId = bytes28(keccak256(abi.encode(proposal)));
+        bytes32 slot = calculateSlotForProposals(proposalId);
+
+        assertEq(uint256(vm.load(address(financing), slot)), uint256(uint160(APPLICANT)));
+        assertEq(uint256(vm.load(address(financing), bytes32(uint256(slot) + 1))), AMOUNT);
+
+        slot = calculateSlotForOngoingProposals();
+        assertEq(uint256(vm.load(address(financing), slot)), uint256(1));
+
+        bytes32 coreProposalId = proposalId.concatWithSlot(Slot.FINANCING);
+
+        ///////////////////////
+        // Mocked calls
+        vm.mockCall(
+            address(core),
+            abi.encodeWithSelector(core.hasRole.selector, MEMBER, ROLE_MEMBER),
+            abi.encode(true)
+        );
+        vm.mockCall(
+            address(agora),
+            abi.encodeWithSelector(agora.getProposalStatus.selector, coreProposalId),
+            abi.encode(IAgora.ProposalStatus.TO_FINALIZE)
+        );
+        IAgora.VoteResult voteResult = IAgora.VoteResult.REJECTED;
+        vm.mockCall(
+            address(agora),
+            abi.encodeWithSelector(agora.getVoteResult.selector, coreProposalId),
+            abi.encode(voteResult)
+        );
+        vm.mockCall(
+            address(agora),
+            abi.encodeWithSelector(
+                agora.finalizeProposal.selector,
+                coreProposalId,
+                MEMBER,
+                voteResult
+            ),
+            abi.encode("")
+        );
+
+        ///////////////////////
+        // Expected calls
+        vm.expectCall(
+            address(core),
+            abi.encodeWithSelector(core.hasRole.selector, MEMBER, ROLE_MEMBER)
+        );
+        vm.expectCall(
+            address(core),
+            abi.encodeWithSelector(core.getSlotContractAddr.selector, Slot.AGORA)
+        );
+
+        vm.expectCall(
+            address(agora),
+            abi.encodeWithSelector(agora.getProposalStatus.selector, coreProposalId)
+        );
+        vm.expectCall(
+            address(agora),
+            abi.encodeWithSelector(agora.getVoteResult.selector, coreProposalId)
+        );
+        vm.expectCall(
+            address(agora),
+            abi.encodeWithSelector(
+                agora.finalizeProposal.selector,
+                coreProposalId,
+                MEMBER,
+                voteResult
+            )
+        );
+        ///////////////////////
+
+        vm.prank(MEMBER);
+        financing.finalizeProposal(coreProposalId);
+
+        ///////////////////////
+        // check state values with calculated slot
+        slot = calculateSlotForProposals(proposalId);
+        assertEq(uint256(vm.load(address(financing), slot)), uint256(0));
+        assertEq(uint256(vm.load(address(financing), bytes32(uint256(slot) + 1))), uint256(0));
+
+        slot = calculateSlotForOngoingProposals();
+        assertEq(uint256(vm.load(address(financing), slot)), uint256(1));
+    }
+
+    function testFinalizeProposal_with_execution() public {
+        ///////////////////////
+        // Setup
+        setUpFinalizeProposal();
+
+        ///////////////////////
+        // Initial state
+        Financing.Proposal memory proposal = Financing.Proposal(
+            APPLICANT,
+            AMOUNT,
+            TREASURY,
+            TOKEN_ADDRESS
+        );
+        bytes28 proposalId = bytes28(keccak256(abi.encode(proposal)));
+        bytes32 slot = calculateSlotForProposals(proposalId);
+
+        assertEq(uint256(vm.load(address(financing), slot)), uint256(uint160(APPLICANT)));
+        assertEq(uint256(vm.load(address(financing), bytes32(uint256(slot) + 1))), AMOUNT);
+
+        bytes32 coreProposalId = proposalId.concatWithSlot(Slot.FINANCING);
+
+        ///////////////////////
+        // Mocked calls
+        vm.mockCall(
+            address(core),
+            abi.encodeWithSelector(core.hasRole.selector, MEMBER, ROLE_MEMBER),
+            abi.encode(true)
+        );
+        vm.mockCall(
+            address(agora),
+            abi.encodeWithSelector(agora.getProposalStatus.selector, coreProposalId),
+            abi.encode(IAgora.ProposalStatus.TO_FINALIZE)
+        );
+        IAgora.VoteResult voteResult = IAgora.VoteResult.ACCEPTED;
+        vm.mockCall(
+            address(agora),
+            abi.encodeWithSelector(agora.getVoteResult.selector, coreProposalId),
+            abi.encode(voteResult)
+        );
+        vm.mockCall(
+            address(agora),
+            abi.encodeWithSelector(
+                agora.finalizeProposal.selector,
+                coreProposalId,
+                MEMBER,
+                voteResult
+            ),
+            abi.encode("")
+        );
+
+        ///////////////////////
+        // Expected calls
+        vm.expectCall(
+            address(core),
+            abi.encodeWithSelector(core.hasRole.selector, MEMBER, ROLE_MEMBER)
+        );
+        vm.expectCall(
+            address(core),
+            abi.encodeWithSelector(core.getSlotContractAddr.selector, Slot.AGORA)
+        );
+
+        vm.expectCall(
+            address(agora),
+            abi.encodeWithSelector(agora.getProposalStatus.selector, coreProposalId)
+        );
+        vm.expectCall(
+            address(agora),
+            abi.encodeWithSelector(agora.getVoteResult.selector, coreProposalId)
+        );
+        vm.expectCall(
+            address(agora),
+            abi.encodeWithSelector(
+                agora.finalizeProposal.selector,
+                coreProposalId,
+                MEMBER,
+                voteResult
+            )
+        );
+        vm.expectCall(address(bank), abi.encodeWithSelector(bank.vaultTransfer.selector));
+        ///////////////////////
+
+        vm.prank(MEMBER);
+        financing.finalizeProposal(coreProposalId);
+
+        ///////////////////////
+        // check state values with calculated slot
+        slot = calculateSlotForProposals(proposalId);
+        assertEq(uint256(vm.load(address(financing), slot)), uint256(0));
+        assertEq(uint256(vm.load(address(financing), bytes32(uint256(slot) + 1))), uint256(0));
+
+        slot = calculateSlotForOngoingProposals();
+        assertEq(uint256(vm.load(address(financing), slot)), uint256(0));
     }
 }
