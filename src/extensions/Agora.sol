@@ -108,11 +108,48 @@ contract Agora is Extension, IAgora, Constants {
         Proposal memory proposal_ = _proposals[proposalId];
         _proposals[proposalId].adminApproved = true;
 
+        // postpone the `minStartTime` to now if passed
         uint256 timestamp = block.timestamp;
-        if (timestamp > proposal_.minStartTime) {
-            proposal_.shiftedTime += uint32(timestamp - proposal_.minStartTime);
+        if (proposal_.minStartTime < timestamp) {
+            proposal_.minStartTime = uint32(timestamp);
         }
-        // should postpone voting period!
+    }
+
+    function suspendProposal(bytes32 proposalId) external onlyAdapter(Slot.VOTING) {
+        ProposalStatus status = _evaluateProposalStatus(proposalId);
+        require(
+            status == ProposalStatus.STANDBY ||
+                status == ProposalStatus.VALIDATION ||
+                status == ProposalStatus.ONGOING ||
+                status == ProposalStatus.CLOSED,
+            "Agora: cannot suspend the proposal"
+        );
+
+        if (status == ProposalStatus.ONGOING) {
+            _proposals[proposalId].suspendedAt = uint32(block.timestamp);
+        } else if (status == ProposalStatus.CLOSED) {
+            // flag when the proposal is suspended
+            _proposals[proposalId].suspendedAt = 1;
+        }
+        _proposals[proposalId].suspended = true;
+    }
+
+    function unsuspendProposal(bytes32 proposalId) external onlyAdapter(Slot.VOTING) {
+        Proposal memory proposal_ = _proposals[proposalId];
+        require(proposal_.suspended, "Agora: proposal not suspended");
+        uint256 timestamp = block.timestamp;
+
+        proposal_.adminApproved = true;
+        proposal_.suspended = false;
+        if (proposal_.suspendedAt == 0) {
+            // only if suspended in STANDBY or VALIDATION
+            proposal_.minStartTime = uint32(timestamp);
+        } else if (proposal_.suspendedAt > 1) {
+            // postpone voting period if suspended in ONGOING
+            proposal_.shiftedTime += uint32(timestamp - proposal_.suspendedAt);
+        }
+
+        _proposals[proposalId] = proposal_;
     }
 
     /* //////////////////////////

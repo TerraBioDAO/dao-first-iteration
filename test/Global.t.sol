@@ -103,7 +103,7 @@ contract Global is BaseDaoTest {
 
         // admin cannot valid (not implemented)
         // so wait until end of validation period
-        // vm.warp(1 + agora.getVoteParams(VOTE_STANDARD).adminValidationPeriod);
+        vm.warp(1 + agora.getVoteParams(VOTE_STANDARD).adminValidationPeriod);
 
         // users votes
         vm.startPrank(USERS[0]);
