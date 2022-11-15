@@ -110,6 +110,7 @@ contract Voting is ProposerAdapter {
 
         agora.submitProposal(slotId, proposalId, false, VOTE_STANDARD, minStartTime, msg.sender);
         _votingProposals[proposalId] = _proposal;
+        _newProposal(); // better at the end or begining?
     }
 
     function proposeConsultation(
@@ -135,6 +136,7 @@ contract Voting is ProposerAdapter {
             msg.sender
         );
         _votingProposals[proposalId] = _proposal;
+        _newProposal();
     }
 
     function withdrawAmount(uint128 amount) external onlyMember {

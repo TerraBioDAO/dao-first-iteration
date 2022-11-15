@@ -75,10 +75,39 @@ contract Global is BaseDaoTest {
         onboarding.joinDao();
     }
 
+    function _printScore(bytes32 proposalId) internal {
+        IAgora.Proposal memory p = agora.getProposal(proposalId);
+
+        uint256 totalVote = p.score.nbYes + p.score.nbNo;
+        uint256 score = (p.score.nbYes * 10000) / totalVote;
+
+        emit log_uint(p.score.nbYes);
+        emit log_uint(p.score.nbNo);
+        emit log_uint(p.score.nbNota);
+        emit log_uint(totalVote);
+
+        if (
+            totalVote != 0 &&
+            (p.score.nbYes * 10000) / totalVote >= agora.getVoteParams(p.voteParamId).threshold
+        ) {
+            emit log("accepted");
+        } else {
+            emit log("rejected");
+        }
+
+        emit log_uint(score);
+        emit log("/");
+        emit log_uint(agora.getVoteParams(p.voteParamId).threshold);
+    }
+
     function _getSubmittedProposalId() internal returns (bytes32) {
         // vm.recordLogs() should be activated before the call
         Vm.Log[] memory logs = vm.getRecordedLogs();
         return bytes32(logs[0].data);
+    }
+
+    function _getScore(bytes32 proposalId) internal view returns (IAgora.Score memory) {
+        return agora.getProposal(proposalId).score;
     }
 
     function testUserJoinDao() public {
@@ -101,17 +130,51 @@ contract Global is BaseDaoTest {
         voting.proposeNewVoteParams("user2-vote", IAgora.Consensus.MEMBER, 2 days, 0, 7500, 0, 0);
         bytes32 proposalId = _getSubmittedProposalId();
 
-        // admin cannot valid (not implemented)
-        // so wait until end of validation period
+        // wait until end of validation period
         vm.warp(1 + agora.getVoteParams(VOTE_STANDARD).adminValidationPeriod);
 
-        // users votes
+        // user votes
+        // YES
+        vm.startPrank(USERS[2]);
+        tbio.approve(BANK, 1000e18);
+        voting.submitVote(proposalId, 0, 50e18, 15 days, 0);
+        vm.stopPrank();
+
+        // NO
+        vm.startPrank(USERS[4]);
+        tbio.approve(BANK, 1000e18);
+        voting.submitVote(proposalId, 1, 25e18, 7 days, 0);
+        vm.stopPrank();
+
+        // NOTA
         vm.startPrank(USERS[0]);
         tbio.approve(BANK, 1000e18);
-        emit log_uint(agora.getProposal(proposalId).createdAt);
-        emit log_uint(agora.getProposal(proposalId).shiftedTime);
-        emit log_uint(uint256(agora.getProposalStatus(proposalId)));
-        // AGORA seem to not postpone the voting period ! ISSUE
-        voting.submitVote(proposalId, 1, 50e18, 1 days, 0);
+        voting.submitVote(proposalId, 2, 50e18, 1 days, 0);
+        vm.stopPrank();
+
+        assertEq(_getScore(proposalId).memberVoted, 3);
+
+        // 0 ACCEPTED
+        // _printScore(proposalId);
+        assertEq(uint256(agora.getVoteResult(proposalId)), 0, "result");
+
+        // Execute proposal
+        vm.warp(
+            1 +
+                agora.getVoteParams(VOTE_STANDARD).adminValidationPeriod +
+                agora.getVoteParams(VOTE_STANDARD).votingPeriod +
+                agora.getVoteParams(VOTE_STANDARD).gracePeriod
+        );
+
+        // CAUTION: the counter for proposal is on the adapter but finalize decrement the Voting one
+        // test with others adapters
+
+        assertEq(voting.ongoingProposals(), 1);
+        vm.prank(USERS[6]);
+        voting.finalizeProposal(proposalId);
+        assertEq(voting.ongoingProposals(), 0);
+
+        assertEq(uint256(agora.getProposalStatus(proposalId)), 7);
+        assertTrue(agora.getVoteParams(bytes4(keccak256("user2-vote"))).votingPeriod > 0);
     }
 }
