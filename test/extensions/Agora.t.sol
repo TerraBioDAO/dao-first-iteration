@@ -407,8 +407,6 @@ contract Agora_test is BaseDaoTest {
 
         vm.warp(3200 + _standardVote().votingPeriod + _standardVote().gracePeriod);
 
-        // TODO => 5. SUSPENDED (once method impl)
-
         // 6. TO_FINALIZE
         assertEq(uint8(agora.getProposalStatus(proposalId)), 6);
 
@@ -417,6 +415,12 @@ contract Agora_test is BaseDaoTest {
 
         // 7. ARCHIVED
         assertEq(uint8(agora.getProposalStatus(proposalId)), 7);
+
+        // postpone startTime
+        vm.warp(1000);
+        proposalId = _submitProposal(ADAPTER_SLOT, bytes28("3"), true, 2000, VOTE_STANDARD, USER);
+        vm.warp(1001 + _standardVote().adminValidationPeriod);
+        assertEq(uint8(agora.getProposalStatus(proposalId)), 3);
     }
 
     /*////////////////////////////////
@@ -447,6 +451,71 @@ contract Agora_test is BaseDaoTest {
         } else {
             assertEq(_score(ppsId).nbNota, voteWeight, "nota");
         }
+    }
+
+    /*////////////////////////////////
+              suspendProposal()
+    ////////////////////////////////*/
+    function testSuspendProposal() public {
+        vm.warp(1000);
+        bytes32 proposalId = _submitProposal(
+            ADAPTER_SLOT,
+            bytes28("1"),
+            false,
+            2000,
+            VOTE_STANDARD,
+            USER
+        );
+
+        // VALIDATION
+        vm.prank(VOTING);
+        agora.suspendProposal(proposalId);
+        assertTrue(agora.getProposal(proposalId).suspended);
+        assertEq(agora.getProposal(proposalId).suspendedAt, 0);
+
+        // STANDBY
+        proposalId = _submitProposal(ADAPTER_SLOT, bytes28("2"), true, 2000, VOTE_STANDARD, USER);
+        vm.prank(VOTING);
+        agora.suspendProposal(proposalId);
+        assertTrue(agora.getProposal(proposalId).suspended);
+        assertEq(agora.getProposal(proposalId).suspendedAt, 0);
+
+        // ONGOING
+        proposalId = _submitProposal(ADAPTER_SLOT, bytes28("3"), true, 2000, VOTE_STANDARD, USER);
+        vm.warp(3000);
+        vm.prank(VOTING);
+        agora.suspendProposal(proposalId);
+        assertTrue(agora.getProposal(proposalId).suspended);
+        assertEq(agora.getProposal(proposalId).suspendedAt, 3000);
+
+        // CLOSED
+        proposalId = _submitProposal(ADAPTER_SLOT, bytes28("4"), true, 0, VOTE_STANDARD, USER);
+        vm.warp(3001 + _standardVote().votingPeriod);
+        vm.prank(VOTING);
+        agora.suspendProposal(proposalId);
+        assertTrue(agora.getProposal(proposalId).suspended);
+        assertEq(agora.getProposal(proposalId).suspendedAt, 1);
+    }
+
+    function testCannotSuspendProposal() public {
+        // UNKNOWN
+        vm.prank(VOTING);
+        vm.expectRevert("Agora: cannot suspend the proposal");
+        agora.suspendProposal(bytes32("1"));
+
+        // TO_FINALIZE
+        bytes32 proposalId = _submitProposal(
+            ADAPTER_SLOT,
+            bytes28("1"),
+            true,
+            2000,
+            VOTE_STANDARD,
+            USER
+        );
+        vm.warp(2001 + _standardVote().votingPeriod + _standardVote().gracePeriod);
+        vm.prank(VOTING);
+        vm.expectRevert("Agora: cannot suspend the proposal");
+        agora.suspendProposal(proposalId);
     }
 
     function testCannotSubmitVote() private {
