@@ -172,7 +172,7 @@ contract Agora is Extension, IAgora, Constants {
         Proposal memory proposal = _proposals[proposalId];
         Score memory score = proposal.score;
         // how to integrate NOTA vote, should it be?
-        uint256 totalVote = score.nbYes + score.nbYes;
+        uint256 totalVote = score.nbYes + score.nbNo;
 
         if (
             totalVote != 0 &&
