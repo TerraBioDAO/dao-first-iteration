@@ -78,16 +78,6 @@ contract Agora is Extension, IAgora, Constants {
         emit ProposalFinalized(proposalId, finalizer, voteResult);
     }
 
-    // Can be called by any member from VOTING adapter
-    function finalizeProposal(
-        bytes32 proposalId,
-        address finalizer,
-        VoteResult voteResult
-    ) external onlyAdapter(Slot.VOTING) {
-        _proposals[proposalId].proceeded = true;
-        emit ProposalFinalized(proposalId, finalizer, voteResult);
-    }
-
     function changeVoteParams(
         bytes4 voteParamId,
         Consensus consensus,
@@ -196,18 +186,12 @@ contract Agora is Extension, IAgora, Constants {
         uint32 threshold,
         uint32 adminValidationPeriod
     ) internal {
-<<<<<<< HEAD
         VoteParam memory voteParam_ = _voteParams[voteParamId];
         require(voteParam_.consensus == Consensus.NO_VOTE, "Agora: cannot replace params");
-=======
-        VoteParam memory _voteParam = _voteParams[voteParamId];
-        require(_voteParam.consensus == Consensus.NO_VOTE, "Agora: cannot replace params");
->>>>>>> e8c08b5 (Adapt contract layout and tests)
 
         require(votingPeriod > 0, "Agora: below min period");
         require(threshold <= 10000, "Agora: wrong threshold or below min value");
 
-<<<<<<< HEAD
         voteParam_.consensus = consensus;
         voteParam_.votingPeriod = votingPeriod;
         voteParam_.gracePeriod = gracePeriod;
@@ -215,15 +199,6 @@ contract Agora is Extension, IAgora, Constants {
         voteParam_.adminValidationPeriod = adminValidationPeriod;
 
         _voteParams[voteParamId] = voteParam_;
-=======
-        _voteParam.consensus = consensus;
-        _voteParam.votingPeriod = votingPeriod;
-        _voteParam.gracePeriod = gracePeriod;
-        _voteParam.threshold = threshold;
-        _voteParam.adminValidationPeriod = adminValidationPeriod;
-
-        _voteParams[voteParamId] = _voteParam;
->>>>>>> e8c08b5 (Adapt contract layout and tests)
 
         emit VoteParamsChanged(voteParamId, true);
     }
@@ -250,20 +225,13 @@ contract Agora is Extension, IAgora, Constants {
         require(!_votes[proposalId][voter], "Agora: proposal voted");
         _votes[proposalId][voter] = true;
 
-<<<<<<< HEAD
         Proposal memory proposal_ = _proposals[proposalId];
 
         if (_voteParams[proposal_.voteParamId].consensus == Consensus.MEMBER) {
-=======
-        Proposal memory _proposal = _proposals[proposalId];
-
-        if (_voteParams[_proposal.voteParamId].consensus == Consensus.MEMBER) {
->>>>>>> e8c08b5 (Adapt contract layout and tests)
             voteWeight = 1;
         }
 
         require(value <= 2, "Agora: neither (y), (n), (nota)");
-<<<<<<< HEAD
         ++proposal_.score.memberVoted;
         if (value == 0) {
             proposal_.score.nbYes += voteWeight;
@@ -274,18 +242,6 @@ contract Agora is Extension, IAgora, Constants {
         }
 
         _proposals[proposalId] = proposal_;
-=======
-        ++_proposal.score.memberVoted;
-        if (value == 0) {
-            _proposal.score.nbYes += voteWeight;
-        } else if (value == 1) {
-            _proposal.score.nbNo += voteWeight;
-        } else {
-            _proposal.score.nbNota += voteWeight;
-        }
-
-        _proposals[proposalId] = _proposal;
->>>>>>> e8c08b5 (Adapt contract layout and tests)
         emit MemberVoted(proposalId, voter, value, voteWeight);
     }
 
