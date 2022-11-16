@@ -71,6 +71,7 @@ interface IAgora {
         uint32 createdAt;
         uint32 minStartTime;
         uint32 shiftedTime;
+        uint32 suspendedAt;
         bytes4 voteParamId;
         address initiater;
         Score score;
