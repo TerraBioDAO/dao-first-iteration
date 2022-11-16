@@ -31,7 +31,7 @@ abstract contract ProposerAdapter is Adapter, IProposerAdapter {
         _ongoingProposals.decrement();
     }
 
-    function _newProposal() private paused {
+    function _newProposal() internal paused {
         _ongoingProposals.increment();
     }
 }

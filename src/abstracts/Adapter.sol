@@ -44,4 +44,8 @@ abstract contract Adapter is SlotEntry, IAdapter, Constants {
     function eraseAdapter() external override onlyCore {
         selfdestruct(payable(_core));
     }
+
+    function _retrieveProposalId(bytes32 coreProposalId) internal pure returns (bytes28) {
+        return bytes28(coreProposalId << 32);
+    }
 }

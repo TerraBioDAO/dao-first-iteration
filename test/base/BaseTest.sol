@@ -124,7 +124,7 @@ abstract contract BaseTest is Test {
         return slots;
     }
 
-    function readSlots(address contractAddress) public {
+    function readSlots(address contractAddress) public view {
         bytes32 value;
         uint256 i;
         while ((value = vm.load(contractAddress, bytes32(i))) != bytes32(0)) {
@@ -133,7 +133,7 @@ abstract contract BaseTest is Test {
         }
     }
 
-    function readSlots(address contractAddress, uint256 length) public {
+    function readSlots(address contractAddress, uint256 length) public view {
         for (uint256 i = 0; i < length; i++) {
             console.log("value@slot[%s] = %s", i, uint256(vm.load(contractAddress, bytes32(i))));
         }

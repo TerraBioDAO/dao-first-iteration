@@ -48,6 +48,7 @@ contract Financing is ProposerAdapter {
         bytes28 proposalId = bytes28(keccak256(abi.encode(proposal)));
 
         proposals[proposalId] = proposal;
+        super._newProposal();
 
         _getBank().vaultCommit(vaultId, tokenAddr, uint128(amount));
 
@@ -61,21 +62,48 @@ contract Financing is ProposerAdapter {
      * @dev Only admin can create a Vault.
      * @param vaultId vault id
      * @param tokenList array of token addresses
+     * requirements :
+     * - Only Admin can create a vault.
      */
     function createVault(bytes4 vaultId, address[] memory tokenList) external onlyAdmin {
         _getBank().createVault(vaultId, tokenList);
     }
 
     /**
-     * @notice Execute a financing proposal.
-     * @param proposalId The proposal id.
+     * @notice finalize proposal
+     * @dev Only admin can create a Vault.
+     * @param coreProposalId proposal id (bytes32)
+     * requirements :
+     * - Only Member can finalize a proposal.
+     * - Proposal status must be TO_FINALIZE
      */
-    function _executeProposal(bytes32 proposalId) internal override {
-        super._executeProposal(proposalId);
+    function finalizeProposal(bytes32 coreProposalId) external override onlyMember {
+        IAgora agora = _getAgora();
 
-        Proposal memory proposal = proposals[bytes28(proposalId << 32)];
+        require(
+            agora.getProposalStatus(coreProposalId) == IAgora.ProposalStatus.TO_FINALIZE,
+            "Financing: proposal cannot be finalized"
+        );
 
-        delete proposals[bytes28(proposalId << 32)];
+        IAgora.VoteResult voteResult = agora.getVoteResult(coreProposalId);
+
+        delete proposals[_retrieveProposalId(coreProposalId)];
+
+        if (voteResult == IAgora.VoteResult.ACCEPTED) {
+            _executeProposal(coreProposalId);
+        }
+
+        agora.finalizeProposal(coreProposalId, msg.sender, voteResult);
+    }
+
+    /**
+     * @notice Execute a financing proposal.
+     * @param coreProposalId The proposal id.
+     */
+    function _executeProposal(bytes32 coreProposalId) internal override {
+        super._executeProposal(coreProposalId);
+
+        Proposal memory proposal = proposals[_retrieveProposalId(coreProposalId)];
 
         _getBank().vaultTransfer(
             proposal.vaultId,
@@ -83,10 +111,6 @@ contract Financing is ProposerAdapter {
             proposal.applicant,
             uint128(proposal.amount)
         );
-    }
-
-    function finalizeProposal(bytes32 proposalId) external override onlyMember {
-        //TODO implementation
     }
 
     function _getBank() internal view returns (IBank) {
