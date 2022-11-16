@@ -184,7 +184,6 @@ contract Voting is ProposerAdapter {
     /* //////////////////////////
                 GETTERS
     ////////////////////////// */
-
     function getConsultation(bytes28 proposalId)
         external
         view

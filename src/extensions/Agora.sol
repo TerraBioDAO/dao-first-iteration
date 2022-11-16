@@ -175,6 +175,9 @@ contract Agora is Extension, IAgora, Constants {
         return _votes[proposalId][voter];
     }
 
+    /* //////////////////////////
+        INTERNAL FUNCTIONS
+    ////////////////////////// */
     function _addVoteParam(
         bytes4 voteParamId,
         Consensus consensus,
@@ -263,34 +266,40 @@ contract Agora is Extension, IAgora, Constants {
         VoteParam memory voteParam_ = _voteParams[proposal_.voteParamId];
         uint256 timestamp = block.timestamp;
 
-        // pps exist?
+        // proposal exist?
         if (!proposal_.active) {
             return ProposalStatus.UNKNOWN;
         }
 
-        // is validated?
-        if (timestamp < proposal_.createdAt + voteParam_.adminValidationPeriod) {
-            if (!proposal_.adminApproved) {
-                return ProposalStatus.VALIDATION;
-            }
-        }
-
-        // has started
-        if (timestamp < proposal_.minStartTime) {
-            return ProposalStatus.STANDBY;
-        }
-
-        // is suspended
+        // is suspended?
         if (proposal_.suspended) {
             return ProposalStatus.SUSPENDED;
         }
 
-        // is in voting period
+        // is approved by admin?
+        if (!proposal_.adminApproved) {
+            uint256 endOfValidationPeriod = proposal_.createdAt + voteParam_.adminValidationPeriod;
+            if (timestamp < endOfValidationPeriod) {
+                return ProposalStatus.VALIDATION;
+            } else {
+                // virtualy postpone the `minStartTime`
+                if (proposal_.minStartTime < endOfValidationPeriod) {
+                    proposal_.minStartTime = uint32(endOfValidationPeriod);
+                }
+            }
+        }
+
+        // has started?
+        if (timestamp < proposal_.minStartTime) {
+            return ProposalStatus.STANDBY;
+        }
+
+        // is in voting period?
         if (timestamp < proposal_.minStartTime + proposal_.shiftedTime + voteParam_.votingPeriod) {
             return ProposalStatus.ONGOING;
         }
 
-        // is in grace period
+        // is in grace period?
         if (
             timestamp <
             proposal_.minStartTime +
