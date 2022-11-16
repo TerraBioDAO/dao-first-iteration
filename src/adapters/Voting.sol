@@ -175,13 +175,6 @@ contract Voting is ProposerAdapter {
             0,
             0
         );
-<<<<<<< HEAD
-    }
-
-    function validateProposal(bytes32 proposalId) external onlyAdmin {
-        //
-=======
->>>>>>> e8c08b5 (Adapt contract layout and tests)
     }
 
     function validateProposal(bytes32 proposalId) external onlyAdmin {
