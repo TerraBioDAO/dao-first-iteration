@@ -87,7 +87,7 @@ contract Financing is ProposerAdapter {
 
         IAgora.VoteResult voteResult = agora.getVoteResult(coreProposalId);
 
-        delete proposals[_retrieveProposalId(coreProposalId)];
+        delete proposals[bytes28(coreProposalId << 32)];
 
         if (voteResult == IAgora.VoteResult.ACCEPTED) {
             _executeProposal(coreProposalId);
@@ -103,7 +103,7 @@ contract Financing is ProposerAdapter {
     function _executeProposal(bytes32 coreProposalId) internal override {
         super._executeProposal(coreProposalId);
 
-        Proposal memory proposal = proposals[_retrieveProposalId(coreProposalId)];
+        Proposal memory proposal = proposals[bytes28(coreProposalId << 32)];
 
         _getBank().vaultTransfer(
             proposal.vaultId,

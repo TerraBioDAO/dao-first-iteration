@@ -114,7 +114,7 @@ contract Agora is Extension, IAgora, Constants {
             proposal_.minStartTime = uint32(timestamp);
         }
     }
-    
+
     function suspendProposal(bytes32 proposalId) external onlyAdapter(Slot.VOTING) {
         ProposalStatus status = _evaluateProposalStatus(proposalId);
         require(
@@ -249,7 +249,7 @@ contract Agora is Extension, IAgora, Constants {
         Proposal memory proposal_ = _proposals[proposalId];
         Score memory score_ = proposal_.score;
         // how to integrate NOTA vote, should it be?
-        uint256 totalVote = score_.nbYes + score_.nbYes;
+        uint256 totalVote = score_.nbYes + score_.nbNo;
 
         if (
             totalVote != 0 &&
