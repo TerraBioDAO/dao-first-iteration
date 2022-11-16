@@ -114,7 +114,7 @@ contract Agora is Extension, IAgora, Constants {
             proposal_.minStartTime = uint32(timestamp);
         }
     }
-
+    
     function suspendProposal(bytes32 proposalId) external onlyAdapter(Slot.VOTING) {
         ProposalStatus status = _evaluateProposalStatus(proposalId);
         require(

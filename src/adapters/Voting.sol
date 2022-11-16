@@ -156,6 +156,7 @@ contract Voting is ProposerAdapter {
         uint32 adminValidationPeriod
     ) external onlyAdmin {
         bytes4 voteParamId = bytes4(keccak256(bytes(name)));
+
         IAgora(_slotAddress(Slot.AGORA)).changeVoteParams(
             voteParamId,
             consensus,
@@ -181,9 +182,11 @@ contract Voting is ProposerAdapter {
         //
     }
 
+
     /* //////////////////////////
                 GETTERS
     ////////////////////////// */
+
     function getConsultation(bytes28 proposalId)
         external
         view
