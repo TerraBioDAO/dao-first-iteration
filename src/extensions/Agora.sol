@@ -266,7 +266,7 @@ contract Agora is Extension, IAgora, Constants {
         VoteParam memory voteParam_ = _voteParams[proposal_.voteParamId];
         uint256 timestamp = block.timestamp;
 
-        // pps exist?
+        // proposal exist?
         if (!proposal_.active) {
             return ProposalStatus.UNKNOWN;
         }
