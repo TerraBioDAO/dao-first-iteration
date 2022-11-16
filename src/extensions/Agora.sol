@@ -8,6 +8,11 @@ import "../interfaces/IAgora.sol";
 import "../interfaces/IProposerAdapter.sol";
 import "../helpers/Constants.sol";
 
+/**
+ * @notice contract which store votes parameters, vote result,
+ * proposals and their status
+ */
+
 contract Agora is Extension, IAgora, Constants {
     using Slot for bytes28;
 
@@ -17,6 +22,18 @@ contract Agora is Extension, IAgora, Constants {
 
     constructor(address core) Extension(core, Slot.AGORA) {
         _addVoteParam(VOTE_STANDARD, Consensus.TOKEN, 7 days, 3 days, 8000, 7 days);
+    }
+
+    /* //////////////////////////
+            PUBLIC FUNCTIONS
+    ////////////////////////// */
+    function submitVote(
+        bytes32 proposalId,
+        address voter,
+        uint128 voteWeight,
+        uint256 value
+    ) external onlyAdapter(Slot.VOTING) {
+        _submitVote(proposalId, voter, voteWeight, value);
     }
 
     function submitProposal(
@@ -52,6 +69,16 @@ contract Agora is Extension, IAgora, Constants {
         emit ProposalSubmitted(slot, initiater, voteParamId, _proposalId);
     }
 
+    // Can be called by any member from VOTING adapter
+    function finalizeProposal(
+        bytes32 proposalId,
+        address finalizer,
+        VoteResult voteResult
+    ) external onlyAdapter(Slot.VOTING) {
+        _proposals[proposalId].proceeded = true;
+        emit ProposalFinalized(proposalId, finalizer, voteResult);
+    }
+
     function changeVoteParams(
         bytes4 voteParamId,
         Consensus consensus,
@@ -74,26 +101,100 @@ contract Agora is Extension, IAgora, Constants {
         }
     }
 
-    // Can be called by any member from VOTING adapter
-    function finalizeProposal(
-        bytes32 proposalId,
-        address finalizer,
-        VoteResult voteResult
-    ) external onlyAdapter(Slot.VOTING) {
-        _proposals[proposalId].proceeded = true;
-        emit ProposalFinalized(proposalId, finalizer, voteResult);
+    /* //////////////////////////
+                GETTERS
+    ////////////////////////// */
+    function getProposalStatus(bytes32 proposalId) external view returns (ProposalStatus) {
+        return _evaluateProposalStatus(proposalId);
     }
 
-    function submitVote(
+    function getVoteResult(bytes32 proposalId) external view returns (VoteResult) {
+        return _calculVoteResult(proposalId);
+    }
+
+    function getProposal(bytes32 proposalId) external view returns (Proposal memory) {
+        return _proposals[proposalId];
+    }
+
+    function getVoteParams(bytes4 voteParamId) external view returns (VoteParam memory) {
+        return _voteParams[voteParamId];
+    }
+
+    function getVotes(bytes32 proposalId, address voter) external view returns (bool) {
+        return _votes[proposalId][voter];
+    }
+
+    /* //////////////////////////
+        INTERNAL FUNCTIONS
+    ////////////////////////// */
+    function _addVoteParam(
+        bytes4 voteParamId,
+        Consensus consensus,
+        uint32 votingPeriod,
+        uint32 gracePeriod,
+        uint32 threshold,
+        uint32 adminValidationPeriod
+    ) internal {
+        VoteParam memory _voteParam = _voteParams[voteParamId];
+        require(_voteParam.consensus == Consensus.NO_VOTE, "Agora: cannot replace params");
+
+        require(votingPeriod > 0, "Agora: below min period");
+        require(threshold <= 10000, "Agora: wrong threshold or below min value");
+
+        _voteParam.consensus = consensus;
+        _voteParam.votingPeriod = votingPeriod;
+        _voteParam.gracePeriod = gracePeriod;
+        _voteParam.threshold = threshold;
+        _voteParam.adminValidationPeriod = adminValidationPeriod;
+
+        _voteParams[voteParamId] = _voteParam;
+
+        emit VoteParamsChanged(voteParamId, true);
+    }
+
+    function _removeVoteParam(bytes4 voteParamId) internal {
+        uint256 utilisation = _voteParams[voteParamId].utilisation;
+        require(utilisation == 0, "Agora: parameters still used");
+
+        delete _voteParams[voteParamId];
+        emit VoteParamsChanged(voteParamId, false);
+    }
+
+    function _submitVote(
         bytes32 proposalId,
         address voter,
         uint128 voteWeight,
         uint256 value
-    ) external onlyAdapter(Slot.VOTING) {
-        _submitVote(proposalId, voter, voteWeight, value);
+    ) internal {
+        require(
+            _evaluateProposalStatus(proposalId) == ProposalStatus.ONGOING,
+            "Agora: outside voting period"
+        );
+
+        require(!_votes[proposalId][voter], "Agora: proposal voted");
+        _votes[proposalId][voter] = true;
+
+        Proposal memory _proposal = _proposals[proposalId];
+
+        if (_voteParams[_proposal.voteParamId].consensus == Consensus.MEMBER) {
+            voteWeight = 1;
+        }
+
+        require(value <= 2, "Agora: neither (y), (n), (nota)");
+        ++_proposal.score.memberVoted;
+        if (value == 0) {
+            _proposal.score.nbYes += voteWeight;
+        } else if (value == 1) {
+            _proposal.score.nbNo += voteWeight;
+        } else {
+            _proposal.score.nbNota += voteWeight;
+        }
+
+        _proposals[proposalId] = _proposal;
+        emit MemberVoted(proposalId, voter, value, voteWeight);
     }
 
-    function calculVoteResult(bytes32 proposalId) internal view returns (VoteResult) {
+    function _calculVoteResult(bytes32 proposalId) internal view returns (VoteResult) {
         Proposal memory proposal = _proposals[proposalId];
         Score memory score = proposal.score;
         // how to integrate NOTA vote, should it be?
@@ -109,7 +210,7 @@ contract Agora is Extension, IAgora, Constants {
         }
     }
 
-    function evaluateProposalStatus(bytes32 proposalId) internal view returns (ProposalStatus) {
+    function _evaluateProposalStatus(bytes32 proposalId) internal view returns (ProposalStatus) {
         Proposal memory _proposal = _proposals[proposalId];
         VoteParam memory _voteParam = _voteParams[_proposal.voteParamId];
         uint256 timestamp = block.timestamp;
@@ -158,95 +259,5 @@ contract Agora is Extension, IAgora, Constants {
         } else {
             return ProposalStatus.ARCHIVED;
         }
-    }
-
-    // GETTERS
-    function getProposalStatus(bytes32 proposalId) external view returns (ProposalStatus) {
-        return evaluateProposalStatus(proposalId);
-    }
-
-    function getVoteResult(bytes32 proposalId) external view returns (VoteResult) {
-        return calculVoteResult(proposalId);
-    }
-
-    function getProposal(bytes32 proposalId) external view returns (Proposal memory) {
-        return _proposals[proposalId];
-    }
-
-    function getVoteParams(bytes4 voteParamId) external view returns (VoteParam memory) {
-        return _voteParams[voteParamId];
-    }
-
-    function getVotes(bytes32 proposalId, address voter) external view returns (bool) {
-        return _votes[proposalId][voter];
-    }
-
-    // INTERNAL FUNCTION
-
-    function _addVoteParam(
-        bytes4 voteParamId,
-        Consensus consensus,
-        uint32 votingPeriod,
-        uint32 gracePeriod,
-        uint32 threshold,
-        uint32 adminValidationPeriod
-    ) internal {
-        VoteParam memory _voteParam = _voteParams[voteParamId];
-        require(_voteParam.consensus == Consensus.NO_VOTE, "Agora: cannot replace params");
-
-        require(votingPeriod > 0, "Agora: below min period");
-        require(threshold <= 10000, "Agora: wrong threshold or below min value");
-
-        _voteParam.consensus = consensus;
-        _voteParam.votingPeriod = votingPeriod;
-        _voteParam.gracePeriod = gracePeriod;
-        _voteParam.threshold = threshold;
-        _voteParam.adminValidationPeriod = adminValidationPeriod;
-
-        _voteParams[voteParamId] = _voteParam;
-
-        emit VoteParamsChanged(voteParamId, true);
-    }
-
-    function _removeVoteParam(bytes4 voteParamId) internal {
-        uint256 utilisation = _voteParams[voteParamId].utilisation;
-        require(utilisation == 0, "Agora: parameters still used");
-
-        delete _voteParams[voteParamId];
-        emit VoteParamsChanged(voteParamId, false);
-    }
-
-    function _submitVote(
-        bytes32 proposalId,
-        address voter,
-        uint128 voteWeight,
-        uint256 value
-    ) internal {
-        require(
-            evaluateProposalStatus(proposalId) == ProposalStatus.ONGOING,
-            "Agora: outside voting period"
-        );
-
-        require(!_votes[proposalId][voter], "Agora: proposal voted");
-        _votes[proposalId][voter] = true;
-
-        Proposal memory _proposal = _proposals[proposalId];
-
-        if (_voteParams[_proposal.voteParamId].consensus == Consensus.MEMBER) {
-            voteWeight = 1;
-        }
-
-        require(value <= 2, "Agora: neither (y), (n), (nota)");
-        ++_proposal.score.memberVoted;
-        if (value == 0) {
-            _proposal.score.nbYes += voteWeight;
-        } else if (value == 1) {
-            _proposal.score.nbNo += voteWeight;
-        } else {
-            _proposal.score.nbNota += voteWeight;
-        }
-
-        _proposals[proposalId] = _proposal;
-        emit MemberVoted(proposalId, voter, value, voteWeight);
     }
 }

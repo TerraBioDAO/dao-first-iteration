@@ -62,7 +62,7 @@ contract DaoCore is Extension, IDaoCore, Constants {
         onlyAdapter(Slot.MANAGING)
     {
         require(slot != Slot.EMPTY, "Core: empty slot");
-        Entry memory e = entries[slot];
+        Entry memory entry_ = entries[slot];
 
         if (contractAddr == address(0)) {
             _removeSlotEntry(slot);
@@ -77,19 +77,19 @@ contract DaoCore is Extension, IDaoCore, Constants {
             }
             require(bytes4(slotIdData) == slot, "Core: slot & address not match");
 
-            if (e.slot == Slot.EMPTY) {
-                e.isExtension = ISlotEntry(contractAddr).isExtension();
-                _addSlotEntry(slot, contractAddr, e.isExtension);
+            if (entry_.slot == Slot.EMPTY) {
+                entry_.isExtension = ISlotEntry(contractAddr).isExtension();
+                _addSlotEntry(slot, contractAddr, entry_.isExtension);
             } else {
                 // replace => ext is ext!
                 bool isExt = ISlotEntry(contractAddr).isExtension();
-                require(e.isExtension == isExt, "Core: wrong entry setup");
-                e.isExtension = isExt; // for event
+                require(entry_.isExtension == isExt, "Core: wrong entry setup");
+                entry_.isExtension = isExt; // for event
                 _addSlotEntry(slot, contractAddr, isExt);
             }
         }
 
-        emit SlotEntryChanged(slot, e.isExtension, e.contractAddr, contractAddr);
+        emit SlotEntryChanged(slot, entry_.isExtension, entry_.contractAddr, contractAddr);
     }
 
     /* //////////////////////////

@@ -21,54 +21,10 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    address public immutable terraBioToken;
-    uint32 internal immutable MAX_TIMESTAMP;
-
-    event NewCommitment(
-        bytes32 indexed proposalId,
-        address indexed account,
-        uint256 indexed lockPeriod,
-        uint256 lockedAmount
-    );
-    event Deposit(address indexed account, uint256 amount);
-    event Withdrawn(address indexed account, uint256 amount);
-
-    event VaultCreated(bytes4 indexed vaultId);
-
-    event VaultTransfer(
-        bytes4 indexed vaultId,
-        address indexed tokenAddr,
-        address from,
-        address to,
-        uint128 amount
-    );
-
-    event VaultAmountCommitted(bytes4 indexed vaultId, address indexed tokenAddr, uint128 amount);
-
     struct User {
         Account account;
         mapping(bytes32 => Commitment) commitments;
         EnumerableSet.Bytes32Set commitmentsList;
-    }
-
-    struct Account {
-        uint128 availableBalance;
-        uint96 lockedBalance; // until 100_000 proposals
-        uint32 nextRetrieval;
-    }
-
-    /**
-     * @notice Max amount locked per proposal is 50_000
-     * With a x50 multiplier the voteWeight is at 2.5**24
-     * Which is less than 2**96 (uint96)
-     * lockPeriod and retrievalDate can be stored in uint32
-     * the retrieval date would overflow if it is set to 82 years
-     */
-    struct Commitment {
-        uint96 lockedAmount;
-        uint96 voteWeight;
-        uint32 lockPeriod;
-        uint32 retrievalDate;
     }
 
     struct Vault {
@@ -77,10 +33,8 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         mapping(address => Balance) balance;
     }
 
-    struct Balance {
-        uint128 availableBalance;
-        uint128 commitedBalance;
-    }
+    address public immutable terraBioToken;
+    uint32 internal immutable MAX_TIMESTAMP;
 
     mapping(address => User) private _users;
     mapping(bytes4 => Vault) private _vaults;
@@ -90,14 +44,9 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         MAX_TIMESTAMP = type(uint32).max;
     }
 
-    function advancedDeposit(address user, uint128 amount)
-        external
-        onlyAdapter(ISlotEntry(msg.sender).slotId())
-    {
-        _users[user].account.availableBalance += amount;
-        _depositTransfer(user, amount);
-    }
-
+    /* //////////////////////////
+            PUBLIC FUNCTIONS
+    ////////////////////////// */
     function newCommitment(
         address user,
         bytes32 proposalId,
@@ -160,6 +109,14 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         _users[user].account = _account;
         _withdrawTransfer(user, amount);
         emit Withdrawn(user, amount);
+    }
+
+    function advancedDeposit(address user, uint128 amount)
+        external
+        onlyAdapter(ISlotEntry(msg.sender).slotId())
+    {
+        _users[user].account.availableBalance += amount;
+        _depositTransfer(user, amount);
     }
 
     function vaultDeposit(
@@ -239,8 +196,9 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         return true;
     }
 
-    // GETTERS
-
+    /* //////////////////////////
+                GETTERS
+    ////////////////////////// */
     function getBalances(address user)
         external
         view
@@ -355,7 +313,9 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         return _vaults[vaultId].isExist;
     }
 
-    // INTERNAL FONCTION
+    /* //////////////////////////
+        INTERNAL FUNCTIONS
+    ////////////////////////// */
     function _depositTransfer(address account, uint256 amount) internal {
         if (amount > 0) {
             IERC20(terraBioToken).transferFrom(account, address(this), amount);

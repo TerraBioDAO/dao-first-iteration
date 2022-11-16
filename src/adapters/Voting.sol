@@ -37,6 +37,9 @@ contract Voting is ProposerAdapter {
 
     constructor(address core) Adapter(core, Slot.VOTING) {}
 
+    /* //////////////////////////
+            PUBLIC FUNCTIONS
+    ////////////////////////// */
     function submitVote(
         bytes32 proposalId,
         uint256 value,
@@ -45,7 +48,7 @@ contract Voting is ProposerAdapter {
         uint96 advancedDeposit
     ) external onlyMember {
         // get vote Weight
-        uint96 voteWeight = _getBank().newCommitment(
+        uint96 voteWeight = IBank(_slotAddress(Slot.BANK)).newCommitment(
             msg.sender,
             proposalId,
             deposit,
@@ -54,36 +57,22 @@ contract Voting is ProposerAdapter {
         );
 
         // submit vote
-        _getAgora().submitVote(proposalId, msg.sender, uint128(voteWeight), value);
+        IAgora(_slotAddress(Slot.AGORA)).submitVote(
+            proposalId,
+            msg.sender,
+            uint128(voteWeight),
+            value
+        );
     }
 
     function finalizeProposal(bytes32 proposalId) external override onlyMember {
-        IAgora agora = _getAgora();
+        (IAgora.VoteResult result, IAgora agora) = _checkProposalResult(proposalId);
 
-        require(
-            agora.getProposalStatus(proposalId) == IAgora.ProposalStatus.TO_FINALIZE,
-            "Voting -> Agora: proposal cannot be finalized"
-        );
-
-        IAgora.VoteResult voteResult = agora.getVoteResult(proposalId);
-
-        if (voteResult == IAgora.VoteResult.ACCEPTED) {
+        if (result == IAgora.VoteResult.ACCEPTED) {
             _executeProposal(proposalId);
         }
 
-        agora.finalizeProposal(proposalId, msg.sender, voteResult);
-    }
-
-    function changeVoteParam(VotingProposal memory votingProposal) internal {
-        ProposedVoteParam memory _proposedVoteParam = votingProposal.voteParam;
-        _getAgora().changeVoteParams(
-            _proposedVoteParam.voteParamId,
-            _proposedVoteParam.consensus,
-            _proposedVoteParam.votingPeriod,
-            _proposedVoteParam.gracePeriod,
-            _proposedVoteParam.threshold,
-            _proposedVoteParam.adminValidationPeriod
-        );
+        agora.finalizeProposal(proposalId, msg.sender, result);
     }
 
     function proposeNewVoteParams(
@@ -96,7 +85,7 @@ contract Voting is ProposerAdapter {
         uint32 adminValidationPeriod
     ) external onlyMember {
         bytes4 voteParamId = bytes4(keccak256(bytes(name)));
-        IAgora agora = _getAgora();
+        IAgora agora = IAgora(_slotAddress(Slot.AGORA));
         require(
             agora.getVoteParams(voteParamId).votingPeriod == 0,
             "Voting: cannot replace vote params"
@@ -137,7 +126,7 @@ contract Voting is ProposerAdapter {
             _emptyVoteParam
         );
         bytes28 proposalId = bytes28(keccak256(abi.encode(_proposal)));
-        _getAgora().submitProposal(
+        IAgora(_slotAddress(Slot.AGORA)).submitProposal(
             slotId,
             proposalId,
             true,
@@ -149,11 +138,11 @@ contract Voting is ProposerAdapter {
     }
 
     function withdrawAmount(uint128 amount) external onlyMember {
-        _getBank().withdrawAmount(msg.sender, amount);
+        IBank(_slotAddress(Slot.BANK)).withdrawAmount(msg.sender, amount);
     }
 
     function advanceDeposit(uint128 amount) external onlyMember {
-        _getBank().advancedDeposit(msg.sender, amount);
+        IBank(_slotAddress(Slot.BANK)).advancedDeposit(msg.sender, amount);
     }
 
     function addNewVoteParams(
@@ -165,7 +154,7 @@ contract Voting is ProposerAdapter {
         uint32 adminValidationPeriod
     ) external onlyAdmin {
         bytes4 voteParamId = bytes4(keccak256(bytes(name)));
-        _getAgora().changeVoteParams(
+        IAgora(_slotAddress(Slot.AGORA)).changeVoteParams(
             voteParamId,
             consensus,
             votingPeriod,
@@ -176,9 +165,19 @@ contract Voting is ProposerAdapter {
     }
 
     function removeVoteParams(bytes4 voteParamId) external onlyAdmin {
-        _getAgora().changeVoteParams(voteParamId, IAgora.Consensus.NO_VOTE, 0, 0, 0, 0);
+        IAgora(_slotAddress(Slot.AGORA)).changeVoteParams(
+            voteParamId,
+            IAgora.Consensus.NO_VOTE,
+            0,
+            0,
+            0,
+            0
+        );
     }
 
+    /* //////////////////////////
+                GETTERS
+    ////////////////////////// */
     function getConsultation(bytes28 proposalId)
         external
         view
@@ -197,23 +196,30 @@ contract Voting is ProposerAdapter {
         require(_voteParam.voteParamId != Slot.EMPTY, "Voting: no vote params");
     }
 
+    /* //////////////////////////
+        INTERNAL FUNCTIONS
+    ////////////////////////// */
+    function _changeVoteParam(VotingProposal memory votingProposal) internal {
+        ProposedVoteParam memory _proposedVoteParam = votingProposal.voteParam;
+        IAgora(_slotAddress(Slot.AGORA)).changeVoteParams(
+            _proposedVoteParam.voteParamId,
+            _proposedVoteParam.consensus,
+            _proposedVoteParam.votingPeriod,
+            _proposedVoteParam.gracePeriod,
+            _proposedVoteParam.threshold,
+            _proposedVoteParam.adminValidationPeriod
+        );
+    }
+
     function _executeProposal(bytes32 proposalId) internal override {
         super._executeProposal(proposalId);
 
         VotingProposal memory votingProposal = _votingProposals[bytes28(proposalId << 32)];
         if (ProposalType.VOTE_PARAMS == votingProposal.proposalType) {
-            changeVoteParam(votingProposal);
+            _changeVoteParam(votingProposal);
         }
         // TODO error should be handled here and other type of action function of type
 
         delete _votingProposals[bytes28(proposalId << 32)];
-    }
-
-    function _getBank() internal view returns (IBank) {
-        return IBank(IDaoCore(_core).getSlotContractAddr(Slot.BANK));
-    }
-
-    function _getAgora() internal view returns (IAgora) {
-        return IAgora(IDaoCore(_core).getSlotContractAddr(Slot.AGORA));
     }
 }
