@@ -6,22 +6,23 @@ import "../abstracts/Extension.sol";
 import "../interfaces/IDaoCore.sol";
 import "../helpers/Constants.sol";
 
-/**
- * @notice Main contract, keep states of the DAO
- */
-
 contract DaoCore is Extension, IDaoCore, Constants {
-    /// @notice The map to track all members of the DAO with their roles or credits
+    /// @notice track all members of the DAO with their roles
     mapping(address => mapping(bytes4 => bool)) public members;
-    /// @notice counter for existing members
+
+    /// @notice counter of existing members
     uint256 public override membersCount;
 
     /// @notice list of existing roles in the DAO
     bytes4[] private _roles;
 
-    /// @notice keeps track of Extensions and Adapters
+    /// @notice track of Extensions and Adapters
     mapping(bytes4 => Entry) public entries;
 
+    /**
+     * @notice `admin` become grant the role of MANAGING and ONBOARDING to add
+     * new member in the DAO and new Entries
+     */
     constructor(address admin) Extension(address(this), Slot.CORE) {
         _addAdmin(admin);
         _addSlotEntry(Slot.MANAGING, admin, false);
@@ -31,6 +32,29 @@ contract DaoCore is Extension, IDaoCore, Constants {
         _roles.push(ROLE_MEMBER);
         _roles.push(ROLE_ADMIN);
         _roles.push(ROLE_PROPOSER);
+    }
+
+    /* //////////////////////////
+            PUBLIC FUNCTIONS
+    ////////////////////////// */
+    function changeMemberStatus(
+        address account,
+        bytes4 role,
+        bool value
+    ) external onlyAdapter(Slot.ONBOARDING) {
+        require(account != address(0), "Core: zero address used");
+        if (role == ROLE_MEMBER && !value) {
+            _revokeMember(account);
+        } else {
+            _changeMemberStatus(account, role, value);
+        }
+        emit MemberStatusChanged(account, role, value);
+    }
+
+    function addNewAdmin(address account) external onlyAdapter(Slot.ONBOARDING) {
+        require(account != address(0), "Core: zero address used");
+        _addAdmin(account);
+        emit MemberStatusChanged(account, ROLE_ADMIN, true);
     }
 
     function changeSlotEntry(bytes4 slot, address contractAddr)
@@ -68,27 +92,9 @@ contract DaoCore is Extension, IDaoCore, Constants {
         emit SlotEntryChanged(slot, e.isExtension, e.contractAddr, contractAddr);
     }
 
-    function changeMemberStatus(
-        address account,
-        bytes4 role,
-        bool value
-    ) external onlyAdapter(Slot.ONBOARDING) {
-        require(account != address(0), "Core: zero address used");
-        if (role == ROLE_MEMBER && !value) {
-            _revokeMember(account);
-        } else {
-            _changeMemberStatus(account, role, value);
-        }
-        emit MemberStatusChanged(account, role, value);
-    }
-
-    function addNewAdmin(address account) external onlyAdapter(Slot.ONBOARDING) {
-        require(account != address(0), "Core: zero address used");
-        _addAdmin(account);
-        emit MemberStatusChanged(account, ROLE_ADMIN, true);
-    }
-
-    // GETTERS
+    /* //////////////////////////
+                GETTERS
+    ////////////////////////// */
     function hasRole(address account, bytes4 role) external view returns (bool) {
         return members[account][role];
     }
@@ -109,8 +115,9 @@ contract DaoCore is Extension, IDaoCore, Constants {
         return entries[slot].contractAddr;
     }
 
-    // INTERNAL FUNCTIONS
-
+    /* //////////////////////////
+        INTERNAL FUNCTIONS
+    ////////////////////////// */
     function _addAdmin(address account) internal {
         if (!members[account][ROLE_MEMBER]) {
             unchecked {

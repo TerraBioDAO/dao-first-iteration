@@ -44,4 +44,8 @@ abstract contract Adapter is SlotEntry, IAdapter, Constants {
     function eraseAdapter() external override onlyCore {
         selfdestruct(payable(_core));
     }
+
+    function _slotAddress(bytes4 slot) internal view returns (address) {
+        return IDaoCore(_core).getSlotContractAddr(slot);
+    }
 }

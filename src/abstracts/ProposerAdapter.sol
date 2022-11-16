@@ -5,6 +5,7 @@ pragma solidity 0.8.17;
 import "openzeppelin-contracts/utils/Counters.sol";
 
 import "../interfaces/IProposerAdapter.sol";
+import "../interfaces/IAgora.sol";
 import "./Adapter.sol";
 
 abstract contract ProposerAdapter is Adapter, IProposerAdapter {
@@ -18,12 +19,12 @@ abstract contract ProposerAdapter is Adapter, IProposerAdapter {
         _;
     }
 
-    function ongoingProposals() external view override returns (uint256) {
-        return _ongoingProposals.current();
-    }
-
     function pauseAdapter() external onlyAdmin {
         _paused = !_paused;
+    }
+
+    function ongoingProposals() external view override returns (uint256) {
+        return _ongoingProposals.current();
     }
 
     function _executeProposal(bytes32 proposalId) internal virtual {
@@ -31,7 +32,21 @@ abstract contract ProposerAdapter is Adapter, IProposerAdapter {
         _ongoingProposals.decrement();
     }
 
-    function _newProposal() private paused {
+    function _newProposal() internal paused {
         _ongoingProposals.increment();
+    }
+
+    function _checkProposalResult(bytes32 proposalId)
+        internal
+        view
+        returns (IAgora.VoteResult accepted, IAgora agora)
+    {
+        agora = IAgora(_slotAddress(Slot.AGORA));
+        require(
+            agora.getProposalStatus(proposalId) == IAgora.ProposalStatus.TO_FINALIZE,
+            "Agora: proposal cannot be finalized"
+        );
+
+        accepted = agora.getVoteResult(proposalId);
     }
 }
