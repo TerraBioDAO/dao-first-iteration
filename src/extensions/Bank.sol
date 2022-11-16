@@ -56,30 +56,30 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
     ) external onlyAdapter(Slot.VOTING) returns (uint96 voteWeight) {
         require(!_users[user].commitmentsList.contains(proposalId), "Bank: already committed");
 
-        Account memory _account = _users[user].account;
+        Account memory account_ = _users[user].account;
 
         // check for available balance
-        if (block.timestamp >= _account.nextRetrieval) {
-            _account = _updateUserAccount(_account, user);
+        if (block.timestamp >= account_.nextRetrieval) {
+            account_ = _updateUserAccount(account_, user);
         }
 
         // calcul amount to deposit in the contract
         uint256 toTransfer;
-        if (_account.availableBalance >= lockedAmount) {
-            _account.availableBalance -= lockedAmount;
+        if (account_.availableBalance >= lockedAmount) {
+            account_.availableBalance -= lockedAmount;
         } else {
-            toTransfer = lockedAmount - _account.availableBalance;
-            _account.availableBalance = 0;
+            toTransfer = lockedAmount - account_.availableBalance;
+            account_.availableBalance = 0;
         }
 
         _depositTransfer(user, toTransfer + advanceDeposit);
 
         uint32 retrievalDate = uint32(block.timestamp) + lockPeriod;
-        _account.availableBalance += advanceDeposit;
-        _account.lockedBalance += lockedAmount;
+        account_.availableBalance += advanceDeposit;
+        account_.lockedBalance += lockedAmount;
 
-        if (_account.nextRetrieval > retrievalDate) {
-            _account.nextRetrieval = retrievalDate;
+        if (account_.nextRetrieval > retrievalDate) {
+            account_.nextRetrieval = retrievalDate;
         }
 
         voteWeight = _calculVoteWeight(lockPeriod, lockedAmount);
@@ -92,21 +92,21 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
             lockPeriod,
             retrievalDate
         );
-        _users[user].account = _account;
+        _users[user].account = account_;
 
         emit NewCommitment(proposalId, user, lockPeriod, lockedAmount);
     }
 
     function withdrawAmount(address user, uint128 amount) external onlyAdapter(Slot.VOTING) {
-        Account memory _account = _users[user].account;
+        Account memory account_ = _users[user].account;
 
-        if (block.timestamp >= _account.nextRetrieval) {
-            _account = _updateUserAccount(_account, user);
+        if (block.timestamp >= account_.nextRetrieval) {
+            account_ = _updateUserAccount(account_, user);
         }
 
-        require(_account.availableBalance <= amount, "Bank: insuffisant available balance");
-        _account.availableBalance -= amount;
-        _users[user].account = _account;
+        require(account_.availableBalance <= amount, "Bank: insuffisant available balance");
+        account_.availableBalance -= amount;
+        _users[user].account = account_;
         _withdrawTransfer(user, amount);
         emit Withdrawn(user, amount);
     }
@@ -204,16 +204,18 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         view
         returns (uint128 availableBalance, uint128 lockedBalance)
     {
-        Account memory a = _users[user].account;
-        availableBalance = a.availableBalance;
-        lockedBalance = a.lockedBalance;
+        Account memory account_ = _users[user].account;
+        availableBalance = account_.availableBalance;
+        lockedBalance = account_.lockedBalance;
 
         uint256 timestamp = block.timestamp;
         for (uint256 i; i < _users[user].commitmentsList.length(); ) {
-            Commitment memory c = _users[user].commitments[_users[user].commitmentsList.at(i)];
-            if (timestamp >= c.retrievalDate) {
-                availableBalance += c.lockedAmount;
-                lockedBalance -= c.lockedAmount;
+            Commitment memory commitment_ = _users[user].commitments[
+                _users[user].commitmentsList.at(i)
+            ];
+            if (timestamp >= commitment_.retrievalDate) {
+                availableBalance += commitment_.lockedAmount;
+                lockedBalance -= commitment_.lockedAmount;
             }
 
             unchecked {
@@ -246,9 +248,14 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
             uint32
         )
     {
-        Commitment memory c = _users[user].commitments[proposalId];
-        require(c.lockedAmount > 0, "Bank: inexistant commitment");
-        return (c.lockedAmount, c.voteWeight, c.lockPeriod, c.retrievalDate);
+        Commitment memory commitment_ = _users[user].commitments[proposalId];
+        require(commitment_.lockedAmount > 0, "Bank: inexistant commitment");
+        return (
+            commitment_.lockedAmount,
+            commitment_.voteWeight,
+            commitment_.lockPeriod,
+            commitment_.retrievalDate
+        );
     }
 
     function getNextRetrievalDate(address user) external view returns (uint32 nextRetrievalDate) {
@@ -258,11 +265,13 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
             nextRetrievalDate = MAX_TIMESTAMP;
             uint256 timestamp = block.timestamp;
             for (uint256 i; i < _users[user].commitmentsList.length(); ) {
-                Commitment memory c = _users[user].commitments[_users[user].commitmentsList.at(i)];
+                Commitment memory commitment_ = _users[user].commitments[
+                    _users[user].commitmentsList.at(i)
+                ];
 
-                if (c.retrievalDate > timestamp) {
-                    if (c.retrievalDate < nextRetrievalDate) {
-                        nextRetrievalDate = c.retrievalDate;
+                if (commitment_.retrievalDate > timestamp) {
+                    if (commitment_.retrievalDate < nextRetrievalDate) {
+                        nextRetrievalDate = commitment_.retrievalDate;
                     }
                 }
 
@@ -285,8 +294,8 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
     {
         //require(this.isVaultExist(vaultId), "Bank: non-existent vaultId");
         //require(this.isTokenInVaultTokenList(vaultId, tokenAddr), "Bank: token not in vault list");
-        Balance memory b = _vaults[vaultId].balance[tokenAddr];
-        return (b.availableBalance, b.commitedBalance);
+        Balance memory balance_ = _vaults[vaultId].balance[tokenAddr];
+        return (balance_.availableBalance, balance_.commitedBalance);
     }
 
     function getVaultTokenList(bytes4 vaultId) external view returns (address[] memory) {
@@ -340,18 +349,18 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         // read each time? => _users[user].commitmentsList.length();
         for (uint256 i; i < _users[user].commitmentsList.length(); ) {
             bytes32 proposalId = _users[user].commitmentsList.at(i);
-            Commitment memory c = _users[user].commitments[proposalId];
+            Commitment memory commitment_ = _users[user].commitments[proposalId];
 
             // is over?
-            if (timestamp >= c.retrievalDate) {
-                account.availableBalance += c.lockedAmount;
-                account.lockedBalance -= c.lockedAmount;
+            if (timestamp >= commitment_.retrievalDate) {
+                account.availableBalance += commitment_.lockedAmount;
+                account.lockedBalance -= commitment_.lockedAmount;
                 delete _users[user].commitments[proposalId];
                 _users[user].commitmentsList.remove(proposalId);
             } else {
                 // store the next retrieval
-                if (nextRetrievalDate > c.retrievalDate) {
-                    nextRetrievalDate = c.retrievalDate;
+                if (nextRetrievalDate > commitment_.retrievalDate) {
+                    nextRetrievalDate = commitment_.retrievalDate;
                 }
             }
 

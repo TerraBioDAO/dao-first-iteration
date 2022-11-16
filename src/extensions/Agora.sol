@@ -44,29 +44,28 @@ contract Agora is Extension, IAgora, Constants {
         uint32 minStartTime,
         address initiater
     ) external onlyAdapter(slot) {
-        bytes32 _proposalId = adapterProposalId.concatWithSlot(slot);
-        Proposal memory _proposal = _proposals[_proposalId];
-        require(!_proposal.active, "Agora: proposal already exist");
+        bytes32 proposalId = adapterProposalId.concatWithSlot(slot);
+        Proposal memory proposal_ = _proposals[proposalId];
+        require(!proposal_.active, "Agora: proposal already exist");
 
-        VoteParam memory _voteParam = _voteParams[voteParamId];
-        require(_voteParam.votingPeriod > 0, "Agora: unknown vote params");
+        require(_voteParams[voteParamId].votingPeriod > 0, "Agora: unknown vote params");
 
         uint32 timestamp = uint32(block.timestamp);
 
         if (minStartTime == 0) minStartTime = timestamp;
         require(minStartTime >= timestamp, "Agora: wrong starting time");
 
-        _proposal.active = true;
-        _proposal.adminApproved = adminApproved;
-        _proposal.createdAt = timestamp;
-        _proposal.minStartTime = minStartTime;
-        _proposal.initiater = initiater;
-        _proposal.voteParamId = voteParamId;
+        proposal_.active = true;
+        proposal_.adminApproved = adminApproved;
+        proposal_.createdAt = timestamp;
+        proposal_.minStartTime = minStartTime;
+        proposal_.initiater = initiater;
+        proposal_.voteParamId = voteParamId;
 
-        _proposals[_proposalId] = _proposal;
+        _proposals[proposalId] = proposal_;
         ++_voteParams[voteParamId].utilisation;
 
-        emit ProposalSubmitted(slot, initiater, voteParamId, _proposalId);
+        emit ProposalSubmitted(slot, initiater, voteParamId, proposalId);
     }
 
     // Can be called by any member from VOTING adapter
@@ -135,19 +134,19 @@ contract Agora is Extension, IAgora, Constants {
         uint32 threshold,
         uint32 adminValidationPeriod
     ) internal {
-        VoteParam memory _voteParam = _voteParams[voteParamId];
-        require(_voteParam.consensus == Consensus.NO_VOTE, "Agora: cannot replace params");
+        VoteParam memory voteParam_ = _voteParams[voteParamId];
+        require(voteParam_.consensus == Consensus.NO_VOTE, "Agora: cannot replace params");
 
         require(votingPeriod > 0, "Agora: below min period");
         require(threshold <= 10000, "Agora: wrong threshold or below min value");
 
-        _voteParam.consensus = consensus;
-        _voteParam.votingPeriod = votingPeriod;
-        _voteParam.gracePeriod = gracePeriod;
-        _voteParam.threshold = threshold;
-        _voteParam.adminValidationPeriod = adminValidationPeriod;
+        voteParam_.consensus = consensus;
+        voteParam_.votingPeriod = votingPeriod;
+        voteParam_.gracePeriod = gracePeriod;
+        voteParam_.threshold = threshold;
+        voteParam_.adminValidationPeriod = adminValidationPeriod;
 
-        _voteParams[voteParamId] = _voteParam;
+        _voteParams[voteParamId] = voteParam_;
 
         emit VoteParamsChanged(voteParamId, true);
     }
@@ -174,35 +173,35 @@ contract Agora is Extension, IAgora, Constants {
         require(!_votes[proposalId][voter], "Agora: proposal voted");
         _votes[proposalId][voter] = true;
 
-        Proposal memory _proposal = _proposals[proposalId];
+        Proposal memory proposal_ = _proposals[proposalId];
 
-        if (_voteParams[_proposal.voteParamId].consensus == Consensus.MEMBER) {
+        if (_voteParams[proposal_.voteParamId].consensus == Consensus.MEMBER) {
             voteWeight = 1;
         }
 
         require(value <= 2, "Agora: neither (y), (n), (nota)");
-        ++_proposal.score.memberVoted;
+        ++proposal_.score.memberVoted;
         if (value == 0) {
-            _proposal.score.nbYes += voteWeight;
+            proposal_.score.nbYes += voteWeight;
         } else if (value == 1) {
-            _proposal.score.nbNo += voteWeight;
+            proposal_.score.nbNo += voteWeight;
         } else {
-            _proposal.score.nbNota += voteWeight;
+            proposal_.score.nbNota += voteWeight;
         }
 
-        _proposals[proposalId] = _proposal;
+        _proposals[proposalId] = proposal_;
         emit MemberVoted(proposalId, voter, value, voteWeight);
     }
 
     function _calculVoteResult(bytes32 proposalId) internal view returns (VoteResult) {
-        Proposal memory proposal = _proposals[proposalId];
-        Score memory score = proposal.score;
+        Proposal memory proposal_ = _proposals[proposalId];
+        Score memory score_ = proposal_.score;
         // how to integrate NOTA vote, should it be?
-        uint256 totalVote = score.nbYes + score.nbYes;
+        uint256 totalVote = score_.nbYes + score_.nbYes;
 
         if (
             totalVote != 0 &&
-            (score.nbYes * 10000) / totalVote >= _voteParams[proposal.voteParamId].threshold
+            (score_.nbYes * 10000) / totalVote >= _voteParams[proposal_.voteParamId].threshold
         ) {
             return VoteResult.ACCEPTED;
         } else {
@@ -211,50 +210,50 @@ contract Agora is Extension, IAgora, Constants {
     }
 
     function _evaluateProposalStatus(bytes32 proposalId) internal view returns (ProposalStatus) {
-        Proposal memory _proposal = _proposals[proposalId];
-        VoteParam memory _voteParam = _voteParams[_proposal.voteParamId];
+        Proposal memory proposal_ = _proposals[proposalId];
+        VoteParam memory voteParam_ = _voteParams[proposal_.voteParamId];
         uint256 timestamp = block.timestamp;
 
         // pps exist?
-        if (!_proposal.active) {
+        if (!proposal_.active) {
             return ProposalStatus.UNKNOWN;
         }
 
         // is validated?
-        if (timestamp < _proposal.createdAt + _voteParam.adminValidationPeriod) {
-            if (!_proposal.adminApproved) {
+        if (timestamp < proposal_.createdAt + voteParam_.adminValidationPeriod) {
+            if (!proposal_.adminApproved) {
                 return ProposalStatus.VALIDATION;
             }
         }
 
         // has started
-        if (timestamp < _proposal.minStartTime) {
+        if (timestamp < proposal_.minStartTime) {
             return ProposalStatus.STANDBY;
         }
 
         // is suspended
-        if (_proposal.suspended) {
+        if (proposal_.suspended) {
             return ProposalStatus.SUSPENDED;
         }
 
         // is in voting period
-        if (timestamp < _proposal.minStartTime + _proposal.shiftedTime + _voteParam.votingPeriod) {
+        if (timestamp < proposal_.minStartTime + proposal_.shiftedTime + voteParam_.votingPeriod) {
             return ProposalStatus.ONGOING;
         }
 
         // is in grace period
         if (
             timestamp <
-            _proposal.minStartTime +
-                _proposal.shiftedTime +
-                _voteParam.votingPeriod +
-                _voteParam.gracePeriod
+            proposal_.minStartTime +
+                proposal_.shiftedTime +
+                voteParam_.votingPeriod +
+                voteParam_.gracePeriod
         ) {
             return ProposalStatus.CLOSED;
         }
 
         // is finalized
-        if (!_proposal.proceeded) {
+        if (!proposal_.proceeded) {
             return ProposalStatus.TO_FINALIZE;
         } else {
             return ProposalStatus.ARCHIVED;
