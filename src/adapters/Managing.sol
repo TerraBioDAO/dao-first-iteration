@@ -67,9 +67,15 @@ contract Managing is ProposerAdapter {
     }
 
     /**
-     * @notice change a slot entry without vote
-     * should add a VETO by others admin?
-     * add commitment logic?
+     * @notice change a slot entry without vote, useful for
+     * quick add of Slot
+     *
+     * NOTE consider disable this function when the DAO reach a certain
+     * size to let only member decide as admin can abuse of it. But can
+     * be useful in ermergency situation
+     *
+     * NOTE a commitment logic can be implemented to let another admin check
+     * the new contract
      */
     function manageSlotEntry(bytes4 entrySlot, address contractAddr) external onlyAdmin {
         IDaoCore(_core).changeSlotEntry(entrySlot, contractAddr);

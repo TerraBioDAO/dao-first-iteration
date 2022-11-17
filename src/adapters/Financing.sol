@@ -12,8 +12,12 @@ import "../interfaces/IAgora.sol";
 contract Financing is ProposerAdapter {
     using Slot for bytes28;
 
-    // MAY BE Create an `event` as a receipt?
+    // MAY BE: Create an `event` as a receipt?
 
+    /**
+     * @notice Financing proposals are request for transaction
+     * from an existing vault on {Bank} to an address
+     */
     struct TransactionRequest {
         address applicant; // the proposal applicant address
         uint256 amount; // the amount requested for funding => uint128? (no space gained)
@@ -29,14 +33,15 @@ contract Financing is ProposerAdapter {
             PUBLIC FUNCTIONS
     ////////////////////////// */
     /**
-     * @notice Creates financing proposal. Only PROPOSER role can create a financing proposal.
+     * @notice Creates financing proposal, proposal must be validated by
+     * an admin
      * @param voteId vote parameters id
      * @param amount of the proposal
      * @param applicant of the proposal
      * @param vaultId vault id
      * @param tokenAddr token address
      * requirements :
-     * - Only PROPOSER role can create a financing proposal.
+     * - Only MEMBER role can create a financing proposal.
      * - Requested amount must be greater than zero.
      */
     function submitTransactionRequest(
@@ -92,7 +97,6 @@ contract Financing is ProposerAdapter {
 
     /**
      * @notice Create a vault
-     * @dev Only admin can create a Vault.
      * @param vaultId vault id
      * @param tokenList array of token addresses
      * requirements :
