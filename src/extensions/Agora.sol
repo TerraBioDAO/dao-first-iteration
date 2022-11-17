@@ -68,12 +68,20 @@ contract Agora is Extension, IAgora, Constants {
         emit ProposalSubmitted(slot, initiater, voteParamId, proposalId);
     }
 
-    // Can be called by any member from VOTING adapter
+    /**
+     * @notice function used to flag that a proposal hase been
+     * procedeed. Proposal are still in the storage of the contract.
+     * @dev can be called by any adapter, allowing to implement restriction
+     * on it if needed.
+     *
+     * TODO add logic to delete proposal once the corresponding the
+     * maximal locking period is reached (< 1 year)
+     */
     function finalizeProposal(
         bytes32 proposalId,
         address finalizer,
         VoteResult voteResult
-    ) external onlyAdapter(Slot.VOTING) {
+    ) external onlyAdapter(bytes4(proposalId)) {
         _proposals[proposalId].proceeded = true;
         emit ProposalFinalized(proposalId, finalizer, voteResult);
     }

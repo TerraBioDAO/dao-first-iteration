@@ -22,7 +22,12 @@ interface IBank {
         uint128 amount
     );
 
-    event VaultAmountCommitted(bytes4 indexed vaultId, address indexed tokenAddr, uint128 amount);
+    event VaultAmountCommitted(
+        bytes4 indexed vaultId,
+        address indexed tokenAddr,
+        address indexed destinationAddr,
+        uint128 amount
+    );
 
     struct Account {
         uint128 availableBalance;
@@ -64,6 +69,14 @@ interface IBank {
     function vaultCommit(
         bytes4 vaultId,
         address tokenAddr,
+        address destinationAddr,
+        uint128 amount
+    ) external;
+
+    function vaultDeposit(
+        bytes4 vaultId,
+        address tokenAddr,
+        address tokenOwner,
         uint128 amount
     ) external;
 

@@ -194,6 +194,7 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
     function vaultCommit(
         bytes4 vaultId,
         address tokenAddr,
+        address destinationAddr,
         uint128 amount
     ) external onlyAdapter(Slot.FINANCING) {
         require(_vaults[vaultId].isExist, "Bank: inexistant vaultId");
@@ -205,7 +206,7 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         _vaults[vaultId].balance[tokenAddr].availableBalance -= amount;
         _vaults[vaultId].balance[tokenAddr].commitedBalance += amount;
 
-        emit VaultAmountCommitted(vaultId, tokenAddr, amount);
+        emit VaultAmountCommitted(vaultId, tokenAddr, destinationAddr, amount);
     }
 
     /**

@@ -12,6 +12,8 @@ import "../interfaces/IAgora.sol";
 contract Financing is ProposerAdapter {
     using Slot for bytes28;
 
+    // MAY BE Create an `event` as a receipt?
+
     struct TransactionRequest {
         address applicant; // the proposal applicant address
         uint256 amount; // the amount requested for funding => uint128? (no space gained)
@@ -57,7 +59,7 @@ contract Financing is ProposerAdapter {
 
         _requests[proposalId] = proposal;
 
-        IBank(_slotAddress(Slot.BANK)).vaultCommit(vaultId, tokenAddr, uint128(amount));
+        IBank(_slotAddress(Slot.BANK)).vaultCommit(vaultId, tokenAddr, applicant, uint128(amount));
         IAgora(_slotAddress(Slot.AGORA)).submitProposal(
             Slot.FINANCING,
             proposalId,
@@ -72,7 +74,6 @@ contract Financing is ProposerAdapter {
 
     /**
      * @notice finalize proposal
-     * @dev Only admin can create a Vault.
      * @param proposalId proposal id (bytes32)
      * requirements :
      * - Only Member can finalize a proposal.
@@ -102,6 +103,19 @@ contract Financing is ProposerAdapter {
      */
     function createVault(bytes4 vaultId, address[] memory tokenList) external onlyAdmin {
         IBank(_slotAddress(Slot.BANK)).createVault(vaultId, tokenList);
+    }
+
+    /**
+     * @notice allow anyone to deposit in a specific vault in the DAO
+     * @dev users cannot deposit for another address because it open a
+     * risk of a misuse of the Bank approval
+     */
+    function vaultDeposit(
+        bytes4 vaultId,
+        address tokenAddr,
+        uint128 amount
+    ) external {
+        IBank(_slotAddress(Slot.BANK)).vaultDeposit(vaultId, tokenAddr, msg.sender, amount);
     }
 
     /* //////////////////////////
