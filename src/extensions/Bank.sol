@@ -47,6 +47,14 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
     /* //////////////////////////
             PUBLIC FUNCTIONS
     ////////////////////////// */
+    /**
+     * @notice allow users to lock TBIO in several period of time in the contract,
+     * and receive a vote weight for a specific proposal
+     *
+     * User can commit only once, without cancelation, the contract check if the
+     * user have already TBIO in his account, otherwise the contract take from
+     * owner's balance (Bank must be approved).
+     */
     function newCommitment(
         address user,
         bytes32 proposalId,
@@ -97,6 +105,10 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         emit NewCommitment(proposalId, user, lockPeriod, lockedAmount);
     }
 
+    /**
+     * @notice allow member to withdraw available balance of TBIO, only from
+     * owner's account.
+     */
     function withdrawAmount(address user, uint128 amount) external onlyAdapter(Slot.VOTING) {
         Account memory account_ = _users[user].account;
 
@@ -111,6 +123,12 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         emit Withdrawn(user, amount);
     }
 
+    /**
+     * @notice allows member to deposit TBIO in their account, enable
+     * deposit for several vote.
+     *
+     * NOTE users can also do an `advancedDeposit` when they call `newCommitment`
+     */
     function advancedDeposit(address user, uint128 amount)
         external
         onlyAdapter(ISlotEntry(msg.sender).slotId())
@@ -119,6 +137,14 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         _depositTransfer(user, amount);
     }
 
+    /**
+     * @notice used to deposit funds in a specific vault, funds are
+     * stored on the Bank contract, from a specific address (which has
+     * approved Bank)
+     *
+     * SECURITY! any member who has approved the Bank can be attacked
+     * a security check should be implemented here or in `Financing`
+     */
     function vaultDeposit(
         bytes4 vaultId,
         address tokenAddr,
@@ -133,6 +159,13 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         emit VaultTransfer(vaultId, tokenAddr, tokenOwner, address(this), amount);
     }
 
+    /**
+     * @notice allow admin to create a vault in the Bank,
+     * with an associated tokenList.
+     *
+     * address(0) is used to manage blockchain native token, checking
+     * if tokenAddr is an ERC20 is not 100% useful, only prevent mistake
+     */
     function createVault(bytes4 vaultId, address[] memory tokenList)
         external
         onlyAdapter(Slot.FINANCING)
@@ -150,16 +183,24 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         emit VaultCreated(vaultId);
     }
 
+    /**
+     * @notice called when a transaction request on a vault is done.
+     * Funds are commited to prevent an overcommitment for member and thus
+     * block the transaction request
+     *
+     * TODO funds committed must return available when the transaction request
+     * is rejected
+     */
     function vaultCommit(
         bytes4 vaultId,
         address tokenAddr,
         uint128 amount
     ) external onlyAdapter(Slot.FINANCING) {
-        //require(_vaults[vaultId].isExist, "Bank: inexistant vaultId");
-        /*require(
+        require(_vaults[vaultId].isExist, "Bank: inexistant vaultId");
+        require(
             _vaults[vaultId].balance[tokenAddr].availableBalance >= amount,
             "Bank: not enough in the vault"
-        );*/
+        );
 
         _vaults[vaultId].balance[tokenAddr].availableBalance -= amount;
         _vaults[vaultId].balance[tokenAddr].commitedBalance += amount;
@@ -167,6 +208,10 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         emit VaultAmountCommitted(vaultId, tokenAddr, amount);
     }
 
+    /**
+     * @notice called when a transaction request is accepted,
+     * funds are transferred to the destination address
+     */
     function vaultTransfer(
         bytes4 vaultId,
         address tokenAddr,

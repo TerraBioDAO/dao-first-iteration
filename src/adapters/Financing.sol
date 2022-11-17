@@ -12,14 +12,9 @@ import "../interfaces/IAgora.sol";
 contract Financing is ProposerAdapter {
     using Slot for bytes28;
 
-    address public applicant; // the proposal applicant address
-    uint256 public amount; // the amount requested for funding
-    bytes4 public vaultId; // the vault to fund
-    address public tokenAddr; // the address of the token related to amount
-
     struct TransactionRequest {
         address applicant; // the proposal applicant address
-        uint256 amount; // the amount requested for funding
+        uint256 amount; // the amount requested for funding => uint128? (no space gained)
         bytes4 vaultId; // the vault to fund
         address tokenAddr; // the address of the token related to amount
     }
