@@ -24,6 +24,9 @@ contract Managing is ProposerAdapter {
 
     constructor(address core) Adapter(core, Slot.MANAGING) {}
 
+    /* //////////////////////////
+            PUBLIC FUNCTIONS
+    ////////////////////////// */
     /**
      * @notice allow member to propose a new entry to the DAO
      * Propositions need an approval from the admin
@@ -72,6 +75,9 @@ contract Managing is ProposerAdapter {
         IDaoCore(_core).changeSlotEntry(entrySlot, contractAddr);
     }
 
+    /* //////////////////////////
+        INTERNAL FUNCTIONS
+    ////////////////////////// */
     function _executeProposal(bytes32 proposalId) internal override {
         super._executeProposal(proposalId);
 

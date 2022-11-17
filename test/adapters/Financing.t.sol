@@ -208,7 +208,7 @@ contract Financing_test is BaseDaoTest {
             abi.encodeWithSelector(core.hasRole.selector, NOT_PROPOSER, ROLE_PROPOSER),
             abi.encode(false)
         );
-        Financing.Proposal memory proposal = Financing.Proposal(
+        Financing.TransactionRequest memory proposal = Financing.TransactionRequest(
             APPLICANT,
             AMOUNT,
             TREASURY,
@@ -220,12 +220,13 @@ contract Financing_test is BaseDaoTest {
             abi.encodeWithSelector(core.hasRole.selector, NOT_PROPOSER, ROLE_PROPOSER)
         );
         vm.expectRevert("Adapter: not a proposer");
-        financing.submitProposal(
+        financing.submitTransactionRequest(
             TREASURY,
             proposal.amount,
             proposal.applicant,
             TREASURY,
-            TOKEN_ADDRESS
+            TOKEN_ADDRESS,
+            0
         );
     }
 
@@ -237,7 +238,7 @@ contract Financing_test is BaseDaoTest {
             abi.encodeWithSelector(core.hasRole.selector, PROPOSER, ROLE_PROPOSER),
             abi.encode(true)
         );
-        Financing.Proposal memory proposal = Financing.Proposal(
+        Financing.TransactionRequest memory proposal = Financing.TransactionRequest(
             APPLICANT,
             0,
             TREASURY,
@@ -250,12 +251,13 @@ contract Financing_test is BaseDaoTest {
         );
 
         vm.expectRevert("Financing: invalid requested amount");
-        financing.submitProposal(
+        financing.submitTransactionRequest(
             TREASURY,
             proposal.amount,
             proposal.applicant,
             TREASURY,
-            TOKEN_ADDRESS
+            TOKEN_ADDRESS,
+            0
         );
     }
 
@@ -267,7 +269,7 @@ contract Financing_test is BaseDaoTest {
             abi.encodeWithSelector(core.hasRole.selector, PROPOSER, ROLE_PROPOSER),
             abi.encode(true)
         );
-        Financing.Proposal memory proposal = Financing.Proposal(
+        Financing.TransactionRequest memory proposal = Financing.TransactionRequest(
             APPLICANT,
             AMOUNT,
             TREASURY,
@@ -321,12 +323,13 @@ contract Financing_test is BaseDaoTest {
         ///////////////////////
 
         vm.prank(PROPOSER);
-        financing.submitProposal(
+        financing.submitTransactionRequest(
             VOTE_STANDARD,
             proposal.amount,
             proposal.applicant,
             TREASURY,
-            TOKEN_ADDRESS
+            TOKEN_ADDRESS,
+            0
         );
 
         // check value with calculated slot
@@ -397,7 +400,14 @@ contract Financing_test is BaseDaoTest {
         );
 
         vm.prank(PROPOSER);
-        financing.submitProposal(VOTE_STANDARD, AMOUNT, APPLICANT, TREASURY, TOKEN_ADDRESS);
+        financing.submitTransactionRequest(
+            VOTE_STANDARD,
+            AMOUNT,
+            APPLICANT,
+            TREASURY,
+            TOKEN_ADDRESS,
+            0
+        );
     }
 
     function testFinalizeProposal_onlyMember_revert() public {
@@ -463,7 +473,7 @@ contract Financing_test is BaseDaoTest {
 
         ///////////////////////
         // Initial state
-        Financing.Proposal memory proposal = Financing.Proposal(
+        Financing.TransactionRequest memory proposal = Financing.TransactionRequest(
             APPLICANT,
             AMOUNT,
             TREASURY,
@@ -559,7 +569,7 @@ contract Financing_test is BaseDaoTest {
 
         ///////////////////////
         // Initial state
-        Financing.Proposal memory proposal = Financing.Proposal(
+        Financing.TransactionRequest memory proposal = Financing.TransactionRequest(
             APPLICANT,
             AMOUNT,
             TREASURY,
