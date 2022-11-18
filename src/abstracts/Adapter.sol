@@ -33,6 +33,7 @@ abstract contract Adapter is SlotEntry, IAdapter, Constants {
         _;
     }
 
+    /// NOTE consider using `hasRole(bytes4)` for future role in the DAO => AccessControl.sol
     modifier onlyMember() {
         require(IDaoCore(_core).hasRole(msg.sender, ROLE_MEMBER), "Adapter: not a member");
         _;

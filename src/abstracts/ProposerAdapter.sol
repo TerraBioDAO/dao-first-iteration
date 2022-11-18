@@ -78,6 +78,8 @@ abstract contract ProposerAdapter is Adapter, IProposerAdapter {
     /**
      * @notice extend the {Adapter} method to check if
      * there is current archive in the contract
+     *
+     * NOTE should be called automatically when last archive is deleted
      */
     function eraseAdapter() public override {
         require(_state.desactived() && _state.currentArchive() == 0, "Proposer: cannot erase");
