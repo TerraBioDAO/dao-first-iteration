@@ -59,11 +59,11 @@ contract Financing is ProposerAdapter {
             vaultId,
             tokenAddr
         );
-
         bytes28 proposalId = bytes28(keccak256(abi.encode(proposal)));
 
-        _requests[proposalId] = proposal;
+        _newProposal();
 
+        _requests[proposalId] = proposal;
         IBank(_slotAddress(Slot.BANK)).vaultCommit(vaultId, tokenAddr, applicant, uint128(amount));
         IAgora(_slotAddress(Slot.AGORA)).submitProposal(
             Slot.FINANCING,
@@ -73,26 +73,6 @@ contract Financing is ProposerAdapter {
             minStartTime,
             msg.sender
         );
-
-        _newProposal();
-    }
-
-    /**
-     * @notice finalize proposal
-     * @param proposalId proposal id (bytes32)
-     * requirements :
-     * - Only Member can finalize a proposal.
-     * - Proposal status must be TO_FINALIZE
-     */
-    function finalizeProposal(bytes32 proposalId) external override onlyMember {
-        (IAgora.VoteResult result, IAgora agora) = _checkProposalResult(proposalId);
-
-        if (result == IAgora.VoteResult.ACCEPTED) {
-            _executeProposal(proposalId);
-        }
-
-        delete _requests[bytes28(proposalId << 32)];
-        agora.finalizeProposal(proposalId, msg.sender, result);
     }
 
     /**
@@ -130,9 +110,7 @@ contract Financing is ProposerAdapter {
      * @param proposalId The proposal id.
      */
     function _executeProposal(bytes32 proposalId) internal override {
-        super._executeProposal(proposalId);
-
-        TransactionRequest memory proposal_ = _requests[bytes28(proposalId << 32)];
+        TransactionRequest memory proposal_ = _requests[_readProposalId(proposalId)];
 
         IBank(_slotAddress(Slot.BANK)).vaultTransfer(
             proposal_.vaultId,
