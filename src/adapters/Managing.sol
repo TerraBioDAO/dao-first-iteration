@@ -44,6 +44,10 @@ contract Managing is ProposerAdapter {
         EntryProposal memory entryProposal_ = EntryProposal(entrySlot, isExt, contractAddr);
         bytes28 proposalId = bytes28(keccak256(abi.encode(entryProposal_)));
 
+        // store proposal data and check adapter state
+        _newProposal();
+        _proposals[proposalId] = entryProposal_;
+
         // send to Agora
         IAgora(_slotAddress(Slot.AGORA)).submitProposal(
             entrySlot,
@@ -53,17 +57,6 @@ contract Managing is ProposerAdapter {
             minStartTime,
             msg.sender
         );
-        _newProposal();
-    }
-
-    function finalizeProposal(bytes32 proposalId) external override onlyMember {
-        (IAgora.VoteResult result, IAgora agora) = _checkProposalResult(proposalId);
-
-        if (uint256(result) == 0) {
-            _executeProposal(proposalId);
-        }
-
-        agora.finalizeProposal(proposalId, msg.sender, result);
     }
 
     /**
@@ -85,9 +78,7 @@ contract Managing is ProposerAdapter {
         INTERNAL FUNCTIONS
     ////////////////////////// */
     function _executeProposal(bytes32 proposalId) internal override {
-        super._executeProposal(proposalId);
-
-        EntryProposal memory entryProposal_ = _proposals[bytes28(proposalId << 32)];
+        EntryProposal memory entryProposal_ = _proposals[_readProposalId(proposalId)];
         IDaoCore(_core).changeSlotEntry(entryProposal_.slot, entryProposal_.contractAddr);
     }
 }

@@ -2,8 +2,7 @@
 
 pragma solidity 0.8.17;
 
-import "openzeppelin-contracts/utils/Counters.sol";
-
+import "../helpers/ProposalState.sol";
 import "../interfaces/IProposerAdapter.sol";
 import "../interfaces/IAgora.sol";
 import "./Adapter.sol";
@@ -16,55 +15,102 @@ import "./Adapter.sol";
  * risk mitigation
  */
 abstract contract ProposerAdapter is Adapter, IProposerAdapter {
-    using Counters for Counters.Counter;
+    using ProposalState for ProposalState.State;
 
-    /// @dev consider using Pausable.sol from OZ
-    bool private _paused;
-
-    Counters.Counter private _ongoingProposals;
+    ProposalState.State private _state;
 
     modifier paused() {
-        require(!_paused, "Adapter: paused");
+        require(!_state.paused(), "Adapter: paused");
         _;
     }
 
     /**
-     * @notice allow an admin to pause and unpause the adapter
+     * @notice called to finalize and archive a proposal
+     * {_executeProposal} if accepted, this latter
+     * function must be overrided in adapter implementation
+     * with the logic of the adapter
+     *
+     * NOTE This function shouldn't be overrided (virtual), but maybe
+     * it would be an option
      */
-    function pauseAdapter() external onlyAdmin {
-        _paused = !_paused;
+    function finalizeProposal(bytes32 proposalId) external onlyMember {
+        (IAgora.VoteResult result, IAgora agora) = _checkProposalResult(proposalId);
+
+        if (result == IAgora.VoteResult.ACCEPTED) {
+            _executeProposal(proposalId);
+        }
+
+        _archiveProposal();
+        agora.finalizeProposal(proposalId, msg.sender, result);
     }
 
     /**
-     * @notice getter for current numbers proposal
+     * @notice allow an admin to pause and unpause the adapter
+     * @dev inverse the current pause state
      */
-    function ongoingProposals() external view override returns (uint256) {
-        return _ongoingProposals.current();
+    function pauseAdapter() external onlyAdmin {
+        if (_state.paused()) {
+            _state.unpause();
+        } else {
+            _state.pause();
+        }
+    }
+
+    /**
+     * @notice desactivate the adapter
+     * @dev CAUTION this function is not reversible,
+     * only triggerable when there is no ongoing proposal
+     */
+    function desactive() external onlyAdmin {
+        require(_state.currentOngoing() == 0, "Proposer: still ongoing proposals");
+        _state.desactivate();
+    }
+
+    /**
+     * @notice getter for current numbers of ongoing proposal
+     */
+    function ongoingProposals() external view returns (uint256) {
+        return _state.currentOngoing();
+    }
+
+    /**
+     * @notice getter for current numbers of archived proposal
+     */
+    function archivedProposals() external view returns (uint256) {
+        return _state.currentArchive();
+    }
+
+    function isPaused() external view returns (bool) {
+        return _state.paused();
+    }
+
+    function isDesactived() external view returns (bool) {
+        return _state.desactived();
     }
 
     /* //////////////////////////
         INTERNAL FUNCTIONS
     ////////////////////////// */
     /**
-     * @notice function to override, manage to decrement proposal
-     * counter on proposal execution
+     * @notice decrement ongoing proposal and increment
+     * archived proposal counter
      *
-     * NOTE This should be called anytime a proposal is finalized,
-     * not matter the vote result, consider changing the name for more
-     * lisibility
+     * NOTE should be used when {Adapter::finalizeProposal}
      */
-    function _executeProposal(bytes32 proposalId) internal virtual {
-        require(bytes4(proposalId) == slotId, "Adapter: wrong proposalId"); // is useful? will be too late at this time
-        _ongoingProposals.decrement();
+    function _archiveProposal() internal paused {
+        _state.decrementOngoing();
+        _state.incrementArchive();
     }
 
     /**
      * @notice called after a proposal is submitted to Agora.
-     * @dev will increase the proposal counter and check if the
-     * adapter has not been paused.
+     * @dev will increase the proposal counter, check if the
+     * adapter has not been paused and check also if the
+     * adapter has not been desactived
      */
     function _newProposal() internal paused {
-        _ongoingProposals.increment();
+        require(!_state.desactived(), "Proposer: adapter desactived");
+        _state.incrementOngoing();
     }
 
     /**
@@ -91,5 +137,16 @@ abstract contract ProposerAdapter is Adapter, IProposerAdapter {
         );
 
         accepted = agora.getVoteResult(proposalId);
+    }
+
+    /**
+     * @notice this function is used as a hook to execute the
+     * adapter logic when a proposal has been accepted.
+     * @dev triggered by {finalizeProposal}
+     */
+    function _executeProposal(bytes32 proposalId) internal virtual {}
+
+    function _readProposalId(bytes32 proposalId) internal pure returns (bytes28) {
+        return bytes28(proposalId << 32);
     }
 }

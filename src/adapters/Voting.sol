@@ -65,16 +65,6 @@ contract Voting is ProposerAdapter {
         );
     }
 
-    function finalizeProposal(bytes32 proposalId) external override onlyMember {
-        (IAgora.VoteResult result, IAgora agora) = _checkProposalResult(proposalId);
-
-        if (result == IAgora.VoteResult.ACCEPTED) {
-            _executeProposal(proposalId);
-        }
-
-        agora.finalizeProposal(proposalId, msg.sender, result);
-    }
-
     function proposeNewVoteParams(
         string calldata name,
         IAgora.Consensus consensus,
@@ -91,7 +81,8 @@ contract Voting is ProposerAdapter {
             "Voting: cannot replace vote params"
         );
 
-        ProposedVoteParam memory _voteParam = ProposedVoteParam(
+        // proposal construction
+        ProposedVoteParam memory voteParam_ = ProposedVoteParam(
             voteParamId,
             consensus,
             votingPeriod,
@@ -100,17 +91,17 @@ contract Voting is ProposerAdapter {
             adminValidationPeriod
         );
         Consultation memory emptyConsultation;
-
-        VotingProposal memory _proposal = VotingProposal(
+        VotingProposal memory proposal_ = VotingProposal(
             ProposalType.VOTE_PARAMS,
             emptyConsultation,
-            _voteParam
+            voteParam_
         );
-        bytes28 proposalId = bytes28(keccak256(abi.encode(_proposal)));
+        bytes28 proposalId = bytes28(keccak256(abi.encode(proposal_)));
+
+        _newProposal();
+        _votingProposals[proposalId] = proposal_;
 
         agora.submitProposal(slotId, proposalId, false, VOTE_STANDARD, minStartTime, msg.sender);
-        _votingProposals[proposalId] = _proposal;
-        _newProposal(); // better at the end or begining?
     }
 
     function proposeConsultation(
@@ -118,15 +109,19 @@ contract Voting is ProposerAdapter {
         string calldata description,
         uint32 minStartTime
     ) external onlyMember {
-        Consultation memory _consultation = Consultation(title, description, msg.sender);
-        ProposedVoteParam memory _emptyVoteParam;
+        Consultation memory consultation_ = Consultation(title, description, msg.sender);
+        ProposedVoteParam memory emptyVoteParam;
 
-        VotingProposal memory _proposal = VotingProposal(
+        VotingProposal memory proposal_ = VotingProposal(
             ProposalType.CONSULTATION,
-            _consultation,
-            _emptyVoteParam
+            consultation_,
+            emptyVoteParam
         );
-        bytes28 proposalId = bytes28(keccak256(abi.encode(_proposal)));
+        bytes28 proposalId = bytes28(keccak256(abi.encode(proposal_)));
+
+        _newProposal();
+        _votingProposals[proposalId] = proposal_;
+
         IAgora(_slotAddress(Slot.AGORA)).submitProposal(
             slotId,
             proposalId,
@@ -135,8 +130,6 @@ contract Voting is ProposerAdapter {
             minStartTime,
             msg.sender
         );
-        _votingProposals[proposalId] = _proposal;
-        _newProposal();
     }
 
     function withdrawAmount(uint128 amount) external onlyMember {
@@ -182,7 +175,6 @@ contract Voting is ProposerAdapter {
         //
     }
 
-
     /* //////////////////////////
                 GETTERS
     ////////////////////////// */
@@ -221,14 +213,12 @@ contract Voting is ProposerAdapter {
     }
 
     function _executeProposal(bytes32 proposalId) internal override {
-        super._executeProposal(proposalId);
-
-        VotingProposal memory votingProposal = _votingProposals[bytes28(proposalId << 32)];
+        VotingProposal memory votingProposal = _votingProposals[_readProposalId(proposalId)];
         if (ProposalType.VOTE_PARAMS == votingProposal.proposalType) {
             _changeVoteParam(votingProposal);
         }
         // TODO error should be handled here and other type of action function of type
 
-        delete _votingProposals[bytes28(proposalId << 32)];
+        // => do nothing if consultation is accepted or add flag in struct Consultation
     }
 }
