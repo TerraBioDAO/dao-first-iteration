@@ -8,10 +8,32 @@ import "src/extensions/Agora.sol";
 import "src/interfaces/IAgora.sol";
 import "src/adapters/Voting.sol";
 
+contract AgoraToTest is Agora {
+    constructor(address core) Agora(core) {}
+
+    function addVoteParam(
+        bytes4 voteId,
+        IAgora.Consensus consensus,
+        uint32 votingPeriod,
+        uint32 gracePeriod,
+        uint32 threshold,
+        uint32 adminValidationPeriod
+    ) public {
+        _addVoteParam(
+            voteId,
+            consensus,
+            votingPeriod,
+            gracePeriod,
+            threshold,
+            adminValidationPeriod
+        );
+    }
+}
+
 contract Agora_test is BaseDaoTest {
     using Slot for bytes28;
 
-    Agora public agora;
+    AgoraToTest public agora;
 
     address public AGORA;
     address public VOTING;
@@ -23,7 +45,7 @@ contract Agora_test is BaseDaoTest {
 
     function setUp() public {
         _deployDao(address(501));
-        agora = new Agora(address(dao));
+        agora = new AgoraToTest(address(dao));
         AGORA = address(agora);
         _branch(Slot.AGORA, AGORA);
         VOTING = _branchMock(Slot.VOTING, false);
@@ -171,6 +193,46 @@ contract Agora_test is BaseDaoTest {
             gracePeriod,
             threshold,
             adminValidationPeriod
+        );
+
+        IAgora.VoteParam memory storedParam = agora.getVoteParams(voteId);
+
+        assertEq(uint256(storedParam.consensus), uint256(param.consensus));
+        assertEq(storedParam.votingPeriod, param.votingPeriod);
+        assertEq(storedParam.gracePeriod, param.gracePeriod);
+        assertEq(storedParam.threshold, param.threshold);
+        assertEq(storedParam.adminValidationPeriod, param.adminValidationPeriod);
+        assertEq(storedParam.utilisation, param.utilisation);
+    }
+
+    function testAddVoteParam_new(
+        bytes4 voteId,
+        uint8 consensus,
+        uint32 votingPeriod,
+        uint32 gracePeriod,
+        uint32 threshold,
+        uint32 adminValidationPeriod
+    ) public {
+        vm.assume(voteId != bytes4(0) && voteId != VOTE_STANDARD);
+
+        vm.prank(VOTING);
+
+        IAgora.VoteParam memory param = IAgora.VoteParam(
+            IAgora.Consensus(uint8(bound(consensus, 1, 2))),
+            uint32(bound(votingPeriod, 1, type(uint256).max)),
+            gracePeriod,
+            uint32(bound(threshold, 0, 10000)),
+            adminValidationPeriod,
+            0
+        );
+
+        agora.addVoteParam(
+            voteId,
+            param.consensus,
+            param.votingPeriod,
+            param.gracePeriod,
+            param.threshold,
+            param.adminValidationPeriod
         );
 
         IAgora.VoteParam memory storedParam = agora.getVoteParams(voteId);
