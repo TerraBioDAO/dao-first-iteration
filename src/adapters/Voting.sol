@@ -140,6 +140,10 @@ contract Voting is ProposerAdapter {
         IBank(_slotAddress(Slot.BANK)).advancedDeposit(msg.sender, amount);
     }
 
+    function requestDeleteArchive(bytes32 proposalId) external onlyMember {
+        IAgora(_slotAddress(Slot.AGORA)).deleteArchive(proposalId, msg.sender);
+    }
+
     function addNewVoteParams(
         string memory name,
         IAgora.Consensus consensus,

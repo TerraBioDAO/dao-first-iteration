@@ -16,9 +16,15 @@ import "../helpers/Constants.sol";
 contract Agora is Extension, IAgora, Constants {
     using Slot for bytes28;
 
+    struct Archive {
+        uint32 archivedAt;
+        address dataAddr;
+    }
+
     mapping(bytes32 => Proposal) private _proposals;
     mapping(bytes4 => VoteParam) private _voteParams;
     mapping(bytes32 => mapping(address => bool)) private _votes;
+    mapping(bytes32 => Archive) private _archives;
 
     constructor(address core) Extension(core, Slot.AGORA) {
         _addVoteParam(VOTE_STANDARD, Consensus.TOKEN, 7 days, 3 days, 8000, 7 days);
@@ -83,7 +89,27 @@ contract Agora is Extension, IAgora, Constants {
         VoteResult voteResult
     ) external onlyAdapter(bytes4(proposalId)) {
         _proposals[proposalId].proceeded = true;
+        _archives[proposalId] = Archive(uint32(block.timestamp), msg.sender);
         emit ProposalFinalized(proposalId, finalizer, voteResult);
+    }
+
+    /**
+     * @notice delete archive (if more than one year of existance)
+     * in Agora and then datas in the Adapter
+     *
+     * NOTE This function could be called by another adapter, like
+     * an adapter related to reputation and rewards, the second argument
+     * is for a future utilisation of the rewarding users for maintaining
+     * the DAO. BTW this function could be in another extensions
+     */
+    function deleteArchive(bytes32 proposalId, address) external onlyAdapter(Slot.VOTING) {
+        Archive memory archive_ = _archives[proposalId];
+        require(archive_.archivedAt > 0, "Agora: not an archive");
+        require(block.timestamp >= archive_.archivedAt + 365 days, "Agora: not archivable");
+        IProposerAdapter(archive_.dataAddr).deleteArchive(proposalId);
+        delete _archives[proposalId];
+
+        // reward user here
     }
 
     function changeVoteParams(
