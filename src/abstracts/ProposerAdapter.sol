@@ -45,6 +45,15 @@ abstract contract ProposerAdapter is Adapter, IProposerAdapter {
     }
 
     /**
+     * @notice delete the archive after one year, Agora
+     * store and do check before calling this function
+     */
+    function deleteArchive(bytes32) external virtual onlyExtension(Slot.AGORA) {
+        // implement logic here
+        _state.decrementArchive();
+    }
+
+    /**
      * @notice allow an admin to pause and unpause the adapter
      * @dev inverse the current pause state
      */
@@ -64,6 +73,15 @@ abstract contract ProposerAdapter is Adapter, IProposerAdapter {
     function desactive() external onlyAdmin {
         require(_state.currentOngoing() == 0, "Proposer: still ongoing proposals");
         _state.desactivate();
+    }
+
+    /**
+     * @notice extend the {Adapter} method to check if
+     * there is current archive in the contract
+     */
+    function eraseAdapter() public override {
+        require(_state.desactived() && _state.currentArchive() == 0, "Proposer: cannot erase");
+        super.eraseAdapter(); // is onlyExt check work?
     }
 
     /**
