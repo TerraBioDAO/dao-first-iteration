@@ -6,22 +6,23 @@ import "../abstracts/Extension.sol";
 import "../interfaces/IDaoCore.sol";
 import "../helpers/Constants.sol";
 
-/**
- * @notice Main contract, keep states of the DAO
- */
-
 contract DaoCore is Extension, IDaoCore, Constants {
-    /// @notice The map to track all members of the DAO with their roles or credits
+    /// @notice track all members of the DAO with their roles
     mapping(address => mapping(bytes4 => bool)) public members;
-    /// @notice counter for existing members
+
+    /// @notice counter of existing members
     uint256 public override membersCount;
 
     /// @notice list of existing roles in the DAO
     bytes4[] private _roles;
 
-    /// @notice keeps track of Extensions and Adapters
+    /// @notice track of Extensions and Adapters
     mapping(bytes4 => Entry) public entries;
 
+    /**
+     * @notice `admin` become grant the role of MANAGING and ONBOARDING to add
+     * new member in the DAO and new Entries
+     */
     constructor(address admin) Extension(address(this), Slot.CORE) {
         _addAdmin(admin);
         _addSlotEntry(Slot.MANAGING, admin, false);
@@ -33,41 +34,9 @@ contract DaoCore is Extension, IDaoCore, Constants {
         _roles.push(ROLE_PROPOSER);
     }
 
-    function changeSlotEntry(bytes4 slot, address contractAddr)
-        external
-        onlyAdapter(Slot.MANAGING)
-    {
-        require(slot != Slot.EMPTY, "Core: empty slot");
-        Entry memory e = entries[slot];
-
-        if (contractAddr == address(0)) {
-            _removeSlotEntry(slot);
-        } else {
-            // low level call "try/catch" => https://github.com/dragonfly-xyz/useful-solidity-patterns/tree/main/patterns/error-handling#low-level-calls
-            (, bytes memory slotIdData) = address(contractAddr).staticcall(
-                // Encode the call data (function on someContract to call + arguments)
-                abi.encodeCall(ISlotEntry.slotId, ())
-            );
-            if (slotIdData.length != 32) {
-                revert("Core: inexistant slotId() impl");
-            }
-            require(bytes4(slotIdData) == slot, "Core: slot & address not match");
-
-            if (e.slot == Slot.EMPTY) {
-                e.isExtension = ISlotEntry(contractAddr).isExtension();
-                _addSlotEntry(slot, contractAddr, e.isExtension);
-            } else {
-                // replace => ext is ext!
-                bool isExt = ISlotEntry(contractAddr).isExtension();
-                require(e.isExtension == isExt, "Core: wrong entry setup");
-                e.isExtension = isExt; // for event
-                _addSlotEntry(slot, contractAddr, isExt);
-            }
-        }
-
-        emit SlotEntryChanged(slot, e.isExtension, e.contractAddr, contractAddr);
-    }
-
+    /* //////////////////////////
+            PUBLIC FUNCTIONS
+    ////////////////////////// */
     function changeMemberStatus(
         address account,
         bytes4 role,
@@ -88,7 +57,44 @@ contract DaoCore is Extension, IDaoCore, Constants {
         emit MemberStatusChanged(account, ROLE_ADMIN, true);
     }
 
-    // GETTERS
+    function changeSlotEntry(bytes4 slot, address contractAddr)
+        external
+        onlyAdapter(Slot.MANAGING)
+    {
+        require(slot != Slot.EMPTY, "Core: empty slot");
+        Entry memory entry_ = entries[slot];
+
+        if (contractAddr == address(0)) {
+            _removeSlotEntry(slot);
+        } else {
+            // low level call "try/catch" => https://github.com/dragonfly-xyz/useful-solidity-patterns/tree/main/patterns/error-handling#low-level-calls
+            (, bytes memory slotIdData) = address(contractAddr).staticcall(
+                // Encode the call data (function on someContract to call + arguments)
+                abi.encodeCall(ISlotEntry.slotId, ())
+            );
+            if (slotIdData.length != 32) {
+                revert("Core: inexistant slotId() impl");
+            }
+            require(bytes4(slotIdData) == slot, "Core: slot & address not match");
+
+            if (entry_.slot == Slot.EMPTY) {
+                entry_.isExtension = ISlotEntry(contractAddr).isExtension();
+                _addSlotEntry(slot, contractAddr, entry_.isExtension);
+            } else {
+                // replace => ext is ext!
+                bool isExt = ISlotEntry(contractAddr).isExtension();
+                require(entry_.isExtension == isExt, "Core: wrong entry setup");
+                entry_.isExtension = isExt; // for event
+                _addSlotEntry(slot, contractAddr, isExt);
+            }
+        }
+
+        emit SlotEntryChanged(slot, entry_.isExtension, entry_.contractAddr, contractAddr);
+    }
+
+    /* //////////////////////////
+                GETTERS
+    ////////////////////////// */
     function hasRole(address account, bytes4 role) external view returns (bool) {
         return members[account][role];
     }
@@ -109,8 +115,9 @@ contract DaoCore is Extension, IDaoCore, Constants {
         return entries[slot].contractAddr;
     }
 
-    // INTERNAL FUNCTIONS
-
+    /* //////////////////////////
+        INTERNAL FUNCTIONS
+    ////////////////////////// */
     function _addAdmin(address account) internal {
         if (!members[account][ROLE_MEMBER]) {
             unchecked {

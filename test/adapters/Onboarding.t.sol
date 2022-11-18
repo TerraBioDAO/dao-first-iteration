@@ -2,28 +2,25 @@
 
 pragma solidity 0.8.17;
 
+import "test/base/BaseDaoTest.sol";
 import "src/core/DaoCore.sol";
 import "src/adapters/Onboarding.sol";
-import "test/base/BaseDaoTest.sol";
 
 contract Onboarding_test is BaseDaoTest {
     Onboarding public onboarding;
 
-    address public constant OWNER = address(0xAD);
-    address public constant USER = address(502);
     address public ONBOARDING;
     address public ENTRY = address(503);
 
     function setUp() public {
-        dao = new DaoCore(OWNER);
-        onboarding = new Onboarding(address(dao));
-
-        vm.prank(OWNER);
-        dao.changeSlotEntry(Slot.ONBOARDING, address(onboarding));
+        _deployDao(address(501));
+        onboarding = new Onboarding(DAO);
+        ONBOARDING = address(onboarding);
+        _branch(Slot.ONBOARDING, ONBOARDING);
     }
 
     function testJoinDao(address user) public {
-        vm.assume(user != address(0) && user != OWNER);
+        vm.assume(user != address(0) && user != ADMIN);
         vm.prank(user);
         onboarding.joinDao();
 
@@ -32,7 +29,7 @@ contract Onboarding_test is BaseDaoTest {
     }
 
     function testQuitDao(address user) public {
-        vm.assume(user != address(0) && user != OWNER);
+        vm.assume(user != address(0) && user != ADMIN);
         vm.startPrank(user);
         onboarding.joinDao();
 
@@ -43,8 +40,8 @@ contract Onboarding_test is BaseDaoTest {
     }
 
     function testAddNewAdminMember(address user) public {
-        vm.assume(user != address(0) && user != OWNER);
-        vm.prank(OWNER);
+        vm.assume(user != address(0) && user != ADMIN);
+        vm.prank(ADMIN);
         onboarding.setAdminMember(user, true);
 
         assertEq(dao.membersCount(), 2);
@@ -53,11 +50,11 @@ contract Onboarding_test is BaseDaoTest {
     }
 
     function testSetAdminMember(address user) public {
-        vm.assume(user != address(0) && user != OWNER);
+        vm.assume(user != address(0) && user != ADMIN);
         vm.prank(user);
         onboarding.joinDao();
 
-        vm.prank(OWNER);
+        vm.prank(ADMIN);
         onboarding.setAdminMember(user, true);
 
         assertEq(dao.membersCount(), 2);
@@ -66,21 +63,21 @@ contract Onboarding_test is BaseDaoTest {
     }
 
     function testCannotSetAdminMember(address user) public {
-        vm.assume(user != address(0) && user != OWNER);
+        vm.assume(user != address(0) && user != ADMIN);
         vm.expectRevert("Adapter: not an admin");
         onboarding.setAdminMember(user, true);
     }
 
     function testRemoveAdminMember(address user) public {
-        vm.assume(user != address(0) && user != OWNER);
-        vm.prank(OWNER);
+        vm.assume(user != address(0) && user != ADMIN);
+        vm.prank(ADMIN);
         onboarding.setAdminMember(user, true);
 
         vm.prank(user);
-        onboarding.setAdminMember(OWNER, false);
+        onboarding.setAdminMember(ADMIN, false);
 
         assertEq(dao.membersCount(), 2);
-        assertTrue(dao.hasRole(OWNER, ROLE_MEMBER));
-        assertFalse(dao.hasRole(OWNER, ROLE_ADMIN));
+        assertTrue(dao.hasRole(ADMIN, ROLE_MEMBER));
+        assertFalse(dao.hasRole(ADMIN, ROLE_ADMIN));
     }
 }

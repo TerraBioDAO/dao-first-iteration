@@ -410,7 +410,7 @@ contract Agora_test is BaseDaoTest {
         // 6. TO_FINALIZE
         assertEq(uint8(agora.getProposalStatus(proposalId)), 6);
 
-        vm.prank(VOTING);
+        vm.prank(ADAPTER_ADDR);
         agora.finalizeProposal(proposalId, USER, IAgora.VoteResult.ACCEPTED);
 
         // 7. ARCHIVED

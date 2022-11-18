@@ -21,54 +21,10 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    address public immutable terraBioToken;
-    uint32 internal immutable MAX_TIMESTAMP;
-
-    event NewCommitment(
-        bytes32 indexed proposalId,
-        address indexed account,
-        uint256 indexed lockPeriod,
-        uint256 lockedAmount
-    );
-    event Deposit(address indexed account, uint256 amount);
-    event Withdrawn(address indexed account, uint256 amount);
-
-    event VaultCreated(bytes4 indexed vaultId);
-
-    event VaultTransfer(
-        bytes4 indexed vaultId,
-        address indexed tokenAddr,
-        address from,
-        address to,
-        uint128 amount
-    );
-
-    event VaultAmountCommitted(bytes4 indexed vaultId, address indexed tokenAddr, uint128 amount);
-
     struct User {
         Account account;
         mapping(bytes32 => Commitment) commitments;
         EnumerableSet.Bytes32Set commitmentsList;
-    }
-
-    struct Account {
-        uint128 availableBalance;
-        uint96 lockedBalance; // until 100_000 proposals
-        uint32 nextRetrieval;
-    }
-
-    /**
-     * @notice Max amount locked per proposal is 50_000
-     * With a x50 multiplier the voteWeight is at 2.5**24
-     * Which is less than 2**96 (uint96)
-     * lockPeriod and retrievalDate can be stored in uint32
-     * the retrieval date would overflow if it is set to 82 years
-     */
-    struct Commitment {
-        uint96 lockedAmount;
-        uint96 voteWeight;
-        uint32 lockPeriod;
-        uint32 retrievalDate;
     }
 
     struct Vault {
@@ -77,10 +33,8 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         mapping(address => Balance) balance;
     }
 
-    struct Balance {
-        uint128 availableBalance;
-        uint128 commitedBalance;
-    }
+    address public immutable terraBioToken;
+    uint32 internal immutable MAX_TIMESTAMP;
 
     mapping(address => User) private _users;
     mapping(bytes4 => Vault) private _vaults;
@@ -90,14 +44,17 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         MAX_TIMESTAMP = type(uint32).max;
     }
 
-    function advancedDeposit(address user, uint128 amount)
-        external
-        onlyAdapter(ISlotEntry(msg.sender).slotId())
-    {
-        _users[user].account.availableBalance += amount;
-        _depositTransfer(user, amount);
-    }
-
+    /* //////////////////////////
+            PUBLIC FUNCTIONS
+    ////////////////////////// */
+    /**
+     * @notice allow users to lock TBIO in several period of time in the contract,
+     * and receive a vote weight for a specific proposal
+     *
+     * User can commit only once, without cancelation, the contract check if the
+     * user have already TBIO in his account, otherwise the contract take from
+     * owner's balance (Bank must be approved).
+     */
     function newCommitment(
         address user,
         bytes32 proposalId,
@@ -107,30 +64,30 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
     ) external onlyAdapter(Slot.VOTING) returns (uint96 voteWeight) {
         require(!_users[user].commitmentsList.contains(proposalId), "Bank: already committed");
 
-        Account memory _account = _users[user].account;
+        Account memory account_ = _users[user].account;
 
         // check for available balance
-        if (block.timestamp >= _account.nextRetrieval) {
-            _account = _updateUserAccount(_account, user);
+        if (block.timestamp >= account_.nextRetrieval) {
+            account_ = _updateUserAccount(account_, user);
         }
 
         // calcul amount to deposit in the contract
         uint256 toTransfer;
-        if (_account.availableBalance >= lockedAmount) {
-            _account.availableBalance -= lockedAmount;
+        if (account_.availableBalance >= lockedAmount) {
+            account_.availableBalance -= lockedAmount;
         } else {
-            toTransfer = lockedAmount - _account.availableBalance;
-            _account.availableBalance = 0;
+            toTransfer = lockedAmount - account_.availableBalance;
+            account_.availableBalance = 0;
         }
 
         _depositTransfer(user, toTransfer + advanceDeposit);
 
         uint32 retrievalDate = uint32(block.timestamp) + lockPeriod;
-        _account.availableBalance += advanceDeposit;
-        _account.lockedBalance += lockedAmount;
+        account_.availableBalance += advanceDeposit;
+        account_.lockedBalance += lockedAmount;
 
-        if (_account.nextRetrieval > retrievalDate) {
-            _account.nextRetrieval = retrievalDate;
+        if (account_.nextRetrieval > retrievalDate) {
+            account_.nextRetrieval = retrievalDate;
         }
 
         voteWeight = _calculVoteWeight(lockPeriod, lockedAmount);
@@ -143,25 +100,51 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
             lockPeriod,
             retrievalDate
         );
-        _users[user].account = _account;
+        _users[user].account = account_;
 
         emit NewCommitment(proposalId, user, lockPeriod, lockedAmount);
     }
 
+    /**
+     * @notice allow member to withdraw available balance of TBIO, only from
+     * owner's account.
+     */
     function withdrawAmount(address user, uint128 amount) external onlyAdapter(Slot.VOTING) {
-        Account memory _account = _users[user].account;
+        Account memory account_ = _users[user].account;
 
-        if (block.timestamp >= _account.nextRetrieval) {
-            _account = _updateUserAccount(_account, user);
+        if (block.timestamp >= account_.nextRetrieval) {
+            account_ = _updateUserAccount(account_, user);
         }
 
-        require(_account.availableBalance <= amount, "Bank: insuffisant available balance");
-        _account.availableBalance -= amount;
-        _users[user].account = _account;
+        require(account_.availableBalance <= amount, "Bank: insuffisant available balance");
+        account_.availableBalance -= amount;
+        _users[user].account = account_;
         _withdrawTransfer(user, amount);
         emit Withdrawn(user, amount);
     }
 
+    /**
+     * @notice allows member to deposit TBIO in their account, enable
+     * deposit for several vote.
+     *
+     * NOTE users can also do an `advancedDeposit` when they call `newCommitment`
+     */
+    function advancedDeposit(address user, uint128 amount)
+        external
+        onlyAdapter(ISlotEntry(msg.sender).slotId())
+    {
+        _users[user].account.availableBalance += amount;
+        _depositTransfer(user, amount);
+    }
+
+    /**
+     * @notice used to deposit funds in a specific vault, funds are
+     * stored on the Bank contract, from a specific address (which has
+     * approved Bank)
+     *
+     * SECURITY! any member who has approved the Bank can be attacked
+     * a security check should be implemented here or in `Financing`
+     */
     function vaultDeposit(
         bytes4 vaultId,
         address tokenAddr,
@@ -176,6 +159,13 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         emit VaultTransfer(vaultId, tokenAddr, tokenOwner, address(this), amount);
     }
 
+    /**
+     * @notice allow admin to create a vault in the Bank,
+     * with an associated tokenList.
+     *
+     * address(0) is used to manage blockchain native token, checking
+     * if tokenAddr is an ERC20 is not 100% useful, only prevent mistake
+     */
     function createVault(bytes4 vaultId, address[] memory tokenList)
         external
         onlyAdapter(Slot.FINANCING)
@@ -193,23 +183,36 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         emit VaultCreated(vaultId);
     }
 
+    /**
+     * @notice called when a transaction request on a vault is done.
+     * Funds are commited to prevent an overcommitment for member and thus
+     * block the transaction request
+     *
+     * TODO funds committed must return available when the transaction request
+     * is rejected
+     */
     function vaultCommit(
         bytes4 vaultId,
         address tokenAddr,
+        address destinationAddr,
         uint128 amount
     ) external onlyAdapter(Slot.FINANCING) {
-        //require(_vaults[vaultId].isExist, "Bank: inexistant vaultId");
-        /*require(
+        require(_vaults[vaultId].isExist, "Bank: inexistant vaultId");
+        require(
             _vaults[vaultId].balance[tokenAddr].availableBalance >= amount,
             "Bank: not enough in the vault"
-        );*/
+        );
 
         _vaults[vaultId].balance[tokenAddr].availableBalance -= amount;
         _vaults[vaultId].balance[tokenAddr].commitedBalance += amount;
 
-        emit VaultAmountCommitted(vaultId, tokenAddr, amount);
+        emit VaultAmountCommitted(vaultId, tokenAddr, destinationAddr, amount);
     }
 
+    /**
+     * @notice called when a transaction request is accepted,
+     * funds are transferred to the destination address
+     */
     function vaultTransfer(
         bytes4 vaultId,
         address tokenAddr,
@@ -239,23 +242,26 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         return true;
     }
 
-    // GETTERS
-
+    /* //////////////////////////
+                GETTERS
+    ////////////////////////// */
     function getBalances(address user)
         external
         view
         returns (uint128 availableBalance, uint128 lockedBalance)
     {
-        Account memory a = _users[user].account;
-        availableBalance = a.availableBalance;
-        lockedBalance = a.lockedBalance;
+        Account memory account_ = _users[user].account;
+        availableBalance = account_.availableBalance;
+        lockedBalance = account_.lockedBalance;
 
         uint256 timestamp = block.timestamp;
         for (uint256 i; i < _users[user].commitmentsList.length(); ) {
-            Commitment memory c = _users[user].commitments[_users[user].commitmentsList.at(i)];
-            if (timestamp >= c.retrievalDate) {
-                availableBalance += c.lockedAmount;
-                lockedBalance -= c.lockedAmount;
+            Commitment memory commitment_ = _users[user].commitments[
+                _users[user].commitmentsList.at(i)
+            ];
+            if (timestamp >= commitment_.retrievalDate) {
+                availableBalance += commitment_.lockedAmount;
+                lockedBalance -= commitment_.lockedAmount;
             }
 
             unchecked {
@@ -288,9 +294,14 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
             uint32
         )
     {
-        Commitment memory c = _users[user].commitments[proposalId];
-        require(c.lockedAmount > 0, "Bank: inexistant commitment");
-        return (c.lockedAmount, c.voteWeight, c.lockPeriod, c.retrievalDate);
+        Commitment memory commitment_ = _users[user].commitments[proposalId];
+        require(commitment_.lockedAmount > 0, "Bank: inexistant commitment");
+        return (
+            commitment_.lockedAmount,
+            commitment_.voteWeight,
+            commitment_.lockPeriod,
+            commitment_.retrievalDate
+        );
     }
 
     function getNextRetrievalDate(address user) external view returns (uint32 nextRetrievalDate) {
@@ -300,11 +311,13 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
             nextRetrievalDate = MAX_TIMESTAMP;
             uint256 timestamp = block.timestamp;
             for (uint256 i; i < _users[user].commitmentsList.length(); ) {
-                Commitment memory c = _users[user].commitments[_users[user].commitmentsList.at(i)];
+                Commitment memory commitment_ = _users[user].commitments[
+                    _users[user].commitmentsList.at(i)
+                ];
 
-                if (c.retrievalDate > timestamp) {
-                    if (c.retrievalDate < nextRetrievalDate) {
-                        nextRetrievalDate = c.retrievalDate;
+                if (commitment_.retrievalDate > timestamp) {
+                    if (commitment_.retrievalDate < nextRetrievalDate) {
+                        nextRetrievalDate = commitment_.retrievalDate;
                     }
                 }
 
@@ -327,8 +340,8 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
     {
         //require(this.isVaultExist(vaultId), "Bank: non-existent vaultId");
         //require(this.isTokenInVaultTokenList(vaultId, tokenAddr), "Bank: token not in vault list");
-        Balance memory b = _vaults[vaultId].balance[tokenAddr];
-        return (b.availableBalance, b.commitedBalance);
+        Balance memory balance_ = _vaults[vaultId].balance[tokenAddr];
+        return (balance_.availableBalance, balance_.commitedBalance);
     }
 
     function getVaultTokenList(bytes4 vaultId) external view returns (address[] memory) {
@@ -355,7 +368,9 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         return _vaults[vaultId].isExist;
     }
 
-    // INTERNAL FONCTION
+    /* //////////////////////////
+        INTERNAL FUNCTIONS
+    ////////////////////////// */
     function _depositTransfer(address account, uint256 amount) internal {
         if (amount > 0) {
             IERC20(terraBioToken).transferFrom(account, address(this), amount);
@@ -380,18 +395,18 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         // read each time? => _users[user].commitmentsList.length();
         for (uint256 i; i < _users[user].commitmentsList.length(); ) {
             bytes32 proposalId = _users[user].commitmentsList.at(i);
-            Commitment memory c = _users[user].commitments[proposalId];
+            Commitment memory commitment_ = _users[user].commitments[proposalId];
 
             // is over?
-            if (timestamp >= c.retrievalDate) {
-                account.availableBalance += c.lockedAmount;
-                account.lockedBalance -= c.lockedAmount;
+            if (timestamp >= commitment_.retrievalDate) {
+                account.availableBalance += commitment_.lockedAmount;
+                account.lockedBalance -= commitment_.lockedAmount;
                 delete _users[user].commitments[proposalId];
                 _users[user].commitmentsList.remove(proposalId);
             } else {
                 // store the next retrieval
-                if (nextRetrievalDate > c.retrievalDate) {
-                    nextRetrievalDate = c.retrievalDate;
+                if (nextRetrievalDate > commitment_.retrievalDate) {
+                    nextRetrievalDate = commitment_.retrievalDate;
                 }
             }
 

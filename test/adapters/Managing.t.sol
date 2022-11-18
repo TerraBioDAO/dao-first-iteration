@@ -2,39 +2,21 @@
 
 pragma solidity 0.8.17;
 
-import "forge-std/Test.sol";
+import "test/base/BaseDaoTest.sol";
 import "src/core/DaoCore.sol";
 import "src/adapters/Managing.sol";
 
-contract FakeEntry {
-    bytes4 public slotId;
-    bool public isExtension;
-
-    constructor(bytes4 slot, bool isExt) {
-        slotId = slot;
-        isExtension = isExt;
-    }
-}
-
-contract Managing_test is Test {
-    DaoCore public dao;
+contract Managing_test is BaseDaoTest {
     Managing public managing;
 
-    address public constant ADMIN = address(0xAD);
-    address public constant USER = address(502);
     address public MANAGING;
     address public ENTRY = address(503);
 
-    function _newEntry(bytes4 slot, bool isExt) internal returns (address entry) {
-        entry = address(new FakeEntry(slot, isExt));
-    }
-
     function setUp() public {
-        dao = new DaoCore(ADMIN);
-        managing = new Managing(address(dao));
-
-        vm.prank(ADMIN);
-        dao.changeSlotEntry(Slot.MANAGING, address(managing));
+        _deployDao(address(501));
+        managing = new Managing(DAO);
+        MANAGING = address(managing);
+        _branch(Slot.MANAGING, MANAGING);
     }
 
     function testManageSlotEntry(bytes4 slot) public {

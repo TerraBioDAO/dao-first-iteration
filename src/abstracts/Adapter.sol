@@ -9,9 +9,16 @@ import "../interfaces/IAdapter.sol";
 import "../interfaces/IDaoCore.sol";
 import "../helpers/Constants.sol";
 
+/**
+ * @notice abstract contract for Adapters, add guard modifier
+ * to restrict access for only DAO members or contracts
+ */
 abstract contract Adapter is SlotEntry, IAdapter, Constants {
     constructor(address core, bytes4 slot) SlotEntry(core, slot, false) {}
 
+    /* //////////////////////////
+            MODIFIER
+    ////////////////////////// */
     modifier onlyCore() {
         require(msg.sender == _core, "Adapter: not the core");
         _;
@@ -41,11 +48,28 @@ abstract contract Adapter is SlotEntry, IAdapter, Constants {
         _;
     }
 
+    /* //////////////////////////
+            FUNCTIONS
+    ////////////////////////// */
+    /**
+     * @notice this function is a proposition for the end
+     * of life of an adapters.
+     * `selfdestruct` is not perfect, the adapter can
+     * be desactived instead
+     *
+     * TODO set a general processus when an adapter is unplugged
+     * from the DaoCore
+     */
     function eraseAdapter() external override onlyCore {
         selfdestruct(payable(_core));
     }
 
-    function _retrieveProposalId(bytes32 coreProposalId) internal pure returns (bytes28) {
-        return bytes28(coreProposalId << 32);
+    /**
+     * @notice internal getter
+     * @return actual contract address associated with `slot`, return
+     * address(0) if there is no contract address
+     */
+    function _slotAddress(bytes4 slot) internal view returns (address) {
+        return IDaoCore(_core).getSlotContractAddr(slot);
     }
 }
