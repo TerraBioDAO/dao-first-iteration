@@ -6,7 +6,6 @@ import "../abstracts/Extension.sol";
 import "../helpers/Constants.sol";
 import "../interfaces/IAgora.sol";
 import "../interfaces/IProposerAdapter.sol";
-import "../helpers/Constants.sol";
 
 /**
  * @notice contract which store votes parameters, vote result,
