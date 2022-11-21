@@ -60,26 +60,27 @@ contract Deployment_test is Test {
 
     MockERC20 internal tbio;
 
+    string internal _deployment = "deployment";
+
     function setUp() public {
         // read JSON file
         string memory file = vm.readFile("test/deployUtils.json");
         Json memory json = abi.decode(vm.parseJson(file), (Json));
-        Network memory network = json.networks[1]; // ==> Choose network here <==
+        Network memory network = json.networks[0]; // ==> Choose network here <==
 
         // fork network config
-        // 0. LOCAL => no change
-        // 1. ANVIL
-        vm.createSelectFork(network.name);
-        // 2. SEPOLIA
-        emit log_named_string("Connected on: ", network.name);
+        if (keccak256(bytes(network.name)) != keccak256("local")) {
+            // no fork on local
+            vm.createSelectFork(network.name);
+        }
+
+        emit log_named_string("Connected on", network.name);
 
         // address input
         ADMINS = network.admins;
         MEMBERS = network.members;
         DEPLOYER = network.deployer;
         TBIO = network.tokenTBIO;
-
-        emit log_uint(DEPLOYER.balance);
 
         // deploy TBIO if needed
         if (TBIO == address(0)) {
