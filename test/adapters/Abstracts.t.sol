@@ -155,6 +155,15 @@ contract Abstracts_test is BaseDaoTest {
         }
     }
 
+    function testCannotNewProposal() public {
+        _branch(proposerImpl.slot(), PROPOSER_IMPL);
+        vm.prank(ADMIN);
+        proposerImpl.desactive();
+
+        vm.expectRevert("Proposer: adapter desactived");
+        proposerImpl.newProposal();
+    }
+
     function testFinalizeProposal(bool isAccepted) public {
         _branch(proposerImpl.slot(), PROPOSER_IMPL);
         bytes32 proposalId = proposerImpl.newProposal();
