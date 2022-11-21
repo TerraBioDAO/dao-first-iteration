@@ -8,5 +8,9 @@ fs_permissions = [{ access = true, path = "./"}]
 [fmt]
 line_length = 75
 
+[rpc_endpoints]
+anvil = "http://localhost:8545/"
+sepolia = "https://sepolia.infura.io/v3/${INFURA_API_KEY}"
+
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
