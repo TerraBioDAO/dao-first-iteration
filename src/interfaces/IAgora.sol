@@ -36,7 +36,7 @@ interface IAgora {
     }
 
     enum Consensus {
-        NO_VOTE,
+        UNKNOWN_PARAM,
         TOKEN, // take vote weigth
         MEMBER // 1 address = 1 vote
     }
@@ -44,6 +44,11 @@ interface IAgora {
     enum VoteResult {
         ACCEPTED,
         REJECTED
+    }
+
+    enum VoteParamAction {
+        ADD,
+        REMOVE
     }
 
     struct Score {
@@ -60,7 +65,7 @@ interface IAgora {
         uint32 gracePeriod;
         uint32 threshold; // 0 to 10000
         uint32 adminValidationPeriod;
-        uint256 utilisation; // to fit
+        uint256 usesCount; // to fit
     }
 
     struct Proposal {
@@ -86,7 +91,8 @@ interface IAgora {
         address initiater
     ) external;
 
-    function changeVoteParams(
+    function changeVoteParam(
+        VoteParamAction action,
         bytes4 voteParamId,
         Consensus consensus,
         uint32 votingPeriod,

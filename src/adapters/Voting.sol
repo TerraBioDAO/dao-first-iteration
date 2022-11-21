@@ -154,7 +154,8 @@ contract Voting is ProposerAdapter {
     ) external onlyAdmin {
         bytes4 voteParamId = bytes4(keccak256(bytes(name)));
 
-        IAgora(_slotAddress(Slot.AGORA)).changeVoteParams(
+        IAgora(_slotAddress(Slot.AGORA)).changeVoteParam(
+            IAgora.VoteParamAction.ADD,
             voteParamId,
             consensus,
             votingPeriod,
@@ -165,9 +166,10 @@ contract Voting is ProposerAdapter {
     }
 
     function removeVoteParams(bytes4 voteParamId) external onlyAdmin {
-        IAgora(_slotAddress(Slot.AGORA)).changeVoteParams(
+        IAgora(_slotAddress(Slot.AGORA)).changeVoteParam(
+            IAgora.VoteParamAction.REMOVE,
             voteParamId,
-            IAgora.Consensus.NO_VOTE,
+            IAgora.Consensus.UNKNOWN_PARAM,
             0,
             0,
             0,
@@ -204,9 +206,11 @@ contract Voting is ProposerAdapter {
     /* //////////////////////////
         INTERNAL FUNCTIONS
     ////////////////////////// */
+    // Useful ?
     function _changeVoteParam(VotingProposal memory votingProposal) internal {
         ProposedVoteParam memory _proposedVoteParam = votingProposal.voteParam;
-        IAgora(_slotAddress(Slot.AGORA)).changeVoteParams(
+        IAgora(_slotAddress(Slot.AGORA)).changeVoteParam(
+            IAgora.VoteParamAction.ADD,
             _proposedVoteParam.voteParamId,
             _proposedVoteParam.consensus,
             _proposedVoteParam.votingPeriod,

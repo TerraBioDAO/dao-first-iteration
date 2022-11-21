@@ -124,7 +124,7 @@ contract Voting_test is BaseDaoTest {
         assertEq(storedParam.gracePeriod, param.gracePeriod);
         assertEq(storedParam.threshold, param.threshold);
         assertEq(storedParam.adminValidationPeriod, param.adminValidationPeriod);
-        assertEq(storedParam.utilisation, param.utilisation);
+        assertEq(storedParam.usesCount, param.usesCount);
     }
 
     function testRemoveVoteParams() public {
@@ -175,7 +175,7 @@ contract Voting_test is BaseDaoTest {
         assertEq(uint256(proposedVoteParam.consensus), uint256(IAgora.Consensus.MEMBER));
 
         IAgora.VoteParam memory voteParam = agora.getVoteParams(VOTE_STANDARD_RAW_VALUE);
-        assertEq(voteParam.utilisation, 1);
+        assertEq(voteParam.usesCount, 1);
 
         IAgora.Proposal memory proposal = agora.getProposal(registeredProposalId);
 
@@ -212,7 +212,7 @@ contract Voting_test is BaseDaoTest {
         assertEq(uint256(proposedVoteParam.consensus), uint256(IAgora.Consensus.TOKEN));
 
         IAgora.VoteParam memory voteParam = agora.getVoteParams(VOTE_STANDARD_RAW_VALUE);
-        assertEq(voteParam.utilisation, 1);
+        assertEq(voteParam.usesCount, 1);
 
         IAgora.Proposal memory proposal = agora.getProposal(registeredProposalId);
 

@@ -8,7 +8,7 @@ import "src/extensions/Agora.sol";
 import "src/interfaces/IAgora.sol";
 import "src/adapters/Voting.sol";
 
-contract AgoraToTest is Agora {
+contract Agora_ is Agora {
     constructor(address core) Agora(core) {}
 
     function addVoteParam(
@@ -65,7 +65,7 @@ contract Agora_test is BaseDaoTest {
 
     using Slot for bytes28;
 
-    AgoraToTest public agora;
+    Agora_ public agora;
 
     address public AGORA;
     address public VOTING;
@@ -77,15 +77,31 @@ contract Agora_test is BaseDaoTest {
 
     function setUp() public {
         _deployDao(address(501));
-        agora = new AgoraToTest(address(dao));
+        agora = new Agora_(address(dao));
         AGORA = address(agora);
         _branch(Slot.AGORA, AGORA);
         VOTING = _branchMock(Slot.VOTING, false);
         ADAPTER_ADDR = _branchMock(ADAPTER_SLOT, false);
 
         vm.startPrank(VOTING);
-        agora.changeVoteParams(VOTE_DEFAULT, IAgora.Consensus(1), 86400, 86400, 8000, 86400);
-        agora.changeVoteParams(VOTE_MEMBER, IAgora.Consensus(2), 86400, 86400, 8000, 86400);
+        agora.changeVoteParam(
+            IAgora.VoteParamAction.ADD,
+            VOTE_DEFAULT,
+            IAgora.Consensus(1),
+            86400,
+            86400,
+            8000,
+            86400
+        );
+        agora.changeVoteParam(
+            IAgora.VoteParamAction.ADD,
+            VOTE_MEMBER,
+            IAgora.Consensus(2),
+            86400,
+            86400,
+            8000,
+            86400
+        );
         vm.stopPrank();
     }
 
@@ -151,7 +167,7 @@ contract Agora_test is BaseDaoTest {
         assertEq(storedParam.gracePeriod, 3 days);
         assertEq(storedParam.threshold, 8000);
         assertEq(storedParam.adminValidationPeriod, 7 days);
-        assertEq(storedParam.utilisation, 0);
+        assertEq(storedParam.usesCount, 0);
     }
 
     /* ////////////////////////////////
@@ -197,7 +213,7 @@ contract Agora_test is BaseDaoTest {
         assertEq(storedParam.gracePeriod, param.gracePeriod);
         assertEq(storedParam.threshold, param.threshold);
         assertEq(storedParam.adminValidationPeriod, param.adminValidationPeriod);
-        assertEq(storedParam.utilisation, param.utilisation);
+        assertEq(storedParam.usesCount, param.usesCount);
     }
 
     function testCannotAddNewVoteParam() public {
@@ -217,13 +233,13 @@ contract Agora_test is BaseDaoTest {
         );
 
         // Another vote param
-        // requirement to change param : consensus must to be NO_VOTE
+        // requirement to change param : consensus must to be UNKNOWN_PARAM
         VOTE_PARAM = bytes4(keccak256("another-vote-param"));
-        agora.addVoteParam(VOTE_PARAM, IAgora.Consensus.NO_VOTE, 50, 50, 7500, 700);
+        agora.addVoteParam(VOTE_PARAM, IAgora.Consensus.UNKNOWN_PARAM, 50, 50, 7500, 700);
         vm.expectRevert("Agora: below min period");
         agora.addVoteParam(
             VOTE_PARAM,
-            IAgora.Consensus.NO_VOTE,
+            IAgora.Consensus.UNKNOWN_PARAM,
             BAD_VOTING_PERIOD,
             123,
             BAD_THRESHOLD,
@@ -231,7 +247,7 @@ contract Agora_test is BaseDaoTest {
         );
 
         vm.expectRevert("Agora: wrong threshold or below min value");
-        agora.addVoteParam(VOTE_PARAM, IAgora.Consensus.NO_VOTE, 50, 123, BAD_THRESHOLD, 456);
+        agora.addVoteParam(VOTE_PARAM, IAgora.Consensus.UNKNOWN_PARAM, 50, 123, BAD_THRESHOLD, 456);
     }
 
     /* ////////////////////////////////
@@ -274,7 +290,7 @@ contract Agora_test is BaseDaoTest {
         assertEq(storedParam.gracePeriod, 0);
         assertEq(storedParam.threshold, 0);
         assertEq(storedParam.adminValidationPeriod, 0);
-        assertEq(storedParam.utilisation, 0);
+        assertEq(storedParam.usesCount, 0);
     }
 
     function testCannotRemoveVoteParam() public {
@@ -284,6 +300,38 @@ contract Agora_test is BaseDaoTest {
 
         vm.expectRevert("Agora: parameters still used");
         agora.removeVoteParam(VOTE_PARAM_ID);
+    }
+
+    /* ////////////////////////////////
+            changeVoteParam()
+    ////////////////////////////////*/
+    function _changeVoteParam(IAgora.VoteParamAction action, bool isEventExpected) internal {
+        bytes4 VOTE_PARAM_ID = bytes4(keccak256("a-vote-param"));
+        if (isEventExpected) {
+            vm.expectEmit(true, true, false, false, AGORA);
+            emit VoteParamsChanged(VOTE_PARAM_ID, true);
+        }
+        agora.changeVoteParam(
+            action,
+            VOTE_PARAM_ID,
+            IAgora.Consensus.MEMBER,
+            1 days,
+            2 days,
+            7500,
+            7 days
+        );
+    }
+
+    function testChangeVoteParam_Add() public {
+        vm.prank(VOTING);
+        _changeVoteParam(IAgora.VoteParamAction.ADD, true);
+
+        vm.prank(VOTING);
+        vm.expectRevert("Agora: cannot replace params");
+        _changeVoteParam(IAgora.VoteParamAction.ADD, false);
+
+        vm.prank(VOTING);
+        _changeVoteParam(IAgora.VoteParamAction.REMOVE, false);
     }
 
     /* ////////////////////////////////
@@ -311,7 +359,7 @@ contract Agora_test is BaseDaoTest {
         assertEq(agora.getProposal(proposalId).createdAt, block.timestamp, "created at");
         assertEq(agora.getProposal(proposalId).minStartTime, minStartTime, "min start time");
         assertEq(agora.getProposal(proposalId).initiater, USER, "initiater");
-        assertEq(agora.getVoteParams(VOTE_STANDARD).utilisation, 1);
+        assertEq(agora.getVoteParams(VOTE_STANDARD).usesCount, 1);
     }
 
     function testCannotSubmitProposal() public {
@@ -410,6 +458,7 @@ contract Agora_test is BaseDaoTest {
     }
 
     /* ////////////////////////////////
+              _submitVote()
               submitVote()
     ////////////////////////////////*/
     function testSubmitVote(uint8 value, uint128 voteWeight) public {
@@ -512,6 +561,10 @@ contract Agora_test is BaseDaoTest {
         // add default member vote at `bytes4("1")`
     }
 
+    /* ////////////////////////////////
+              _calculateVoteResult()
+              getVoteResult()
+    ////////////////////////////////*/
     function testGetVoteResult() private {
         // play with threshold
     }
