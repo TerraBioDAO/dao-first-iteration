@@ -7,7 +7,7 @@ interface IProposerAdapter {
 
     function deleteArchive(bytes32 proposalId) external;
 
-    function pauseAdapter() external;
+    function pauseToggleAdapter() external;
 
     function desactive() external;
 

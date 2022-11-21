@@ -57,12 +57,8 @@ abstract contract ProposerAdapter is Adapter, IProposerAdapter {
      * @notice allow an admin to pause and unpause the adapter
      * @dev inverse the current pause state
      */
-    function pauseAdapter() external onlyAdmin {
-        if (_state.paused()) {
-            _state.unpause();
-        } else {
-            _state.pause();
-        }
+    function pauseToggleAdapter() external onlyAdmin {
+        _state.pauseToggle();
     }
 
     /**

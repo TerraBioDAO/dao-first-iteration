@@ -34,12 +34,8 @@ library ProposalState {
         return state.isPaused;
     }
 
-    function pause(State storage state) internal {
-        state.isPaused = true;
-    }
-
-    function unpause(State storage state) internal {
-        state.isPaused = false;
+    function pauseToggle(State storage state) internal {
+        state.isPaused = state.isPaused ? false : true;
     }
 
     function desactivate(State storage state) internal {

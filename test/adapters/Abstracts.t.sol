@@ -147,7 +147,7 @@ contract Abstracts_test is BaseDaoTest {
     function testPassPaused(bool isPaused) public {
         if (isPaused) {
             vm.prank(ADMIN);
-            proposerImpl.pauseAdapter();
+            proposerImpl.pauseToggleAdapter();
             vm.expectRevert("Adapter: paused");
             proposerImpl.pausedMock();
         } else {
