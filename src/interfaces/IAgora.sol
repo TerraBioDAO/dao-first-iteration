@@ -108,6 +108,8 @@ interface IAgora {
         VoteResult voteResult
     ) external;
 
+    function deleteArchive(bytes32 proposalId, address user) external;
+
     // GETTERS
     function getProposalStatus(bytes32 proposalId) external view returns (ProposalStatus);
 

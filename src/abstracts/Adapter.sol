@@ -33,6 +33,7 @@ abstract contract Adapter is SlotEntry, IAdapter, Constants {
         _;
     }
 
+    /// NOTE consider using `hasRole(bytes4)` for future role in the DAO => AccessControl.sol
     modifier onlyMember() {
         require(IDaoCore(_core).hasRole(msg.sender, ROLE_MEMBER), "Adapter: not a member");
         _;
@@ -52,15 +53,19 @@ abstract contract Adapter is SlotEntry, IAdapter, Constants {
             FUNCTIONS
     ////////////////////////// */
     /**
-     * @notice this function is a proposition for the end
-     * of life of an adapters.
-     * `selfdestruct` is not perfect, the adapter can
-     * be desactived instead
+     * @notice delete storage and destruct the contract,
+     * calls can still happen and ethers sended there are lost
+     * for ever.
      *
-     * TODO set a general processus when an adapter is unplugged
-     * from the DaoCore
+     * @dev only callable when the contract is unplugged from DaoCore
+     *
+     * NOTE this operation is quite useless as the contract as not state
      */
-    function eraseAdapter() external override onlyCore {
+    function eraseAdapter() public virtual override onlyExtension(Slot.AGORA) {
+        require(
+            IDaoCore(_core).getSlotContractAddr(slotId) != address(this),
+            "Adapter: unplug from DaoCore"
+        );
         selfdestruct(payable(_core));
     }
 
