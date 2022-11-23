@@ -2,9 +2,9 @@ name: test
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 env:
   FOUNDRY_PROFILE: ci
@@ -39,5 +39,6 @@ jobs:
 
       - name: Run Forge tests
         run: |
+          source .env.exemple
           forge test -vvv
         id: test
