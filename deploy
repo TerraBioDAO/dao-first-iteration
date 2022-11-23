@@ -1,0 +1,20 @@
+--watch
+deploy with --verify (try)
+
+# can be save in env
+
+cast abi-encode "constructor(address)" 0x... > ./ca
+verify-contract DaoCore --chain goerli --constructor-args-path ca
+
+TODO
+
+write script instead? with a txt
+ask for writeFile to how its work
+
+deploy only one contract
+=> have and modular and complete déployment with a base
+how to deploy global system => check gas usage
+deploy using forge
+verify using forge & cast
+
+write docs for that

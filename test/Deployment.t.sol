@@ -66,15 +66,16 @@ contract Deployment_test is Test {
         // read JSON file
         string memory file = vm.readFile("test/deployUtils.json");
         Json memory json = abi.decode(vm.parseJson(file), (Json));
-        Network memory network = json.networks[0]; // ==> Choose network here <==
+        Network memory network = json.networks[2]; // ==> Choose network here <==
 
         // fork network config
         if (keccak256(bytes(network.name)) != keccak256("local")) {
             // no fork on local
-            vm.createSelectFork(network.name);
+            vm.createSelectFork("goerli");
         }
-
         emit log_named_string("Connected on", network.name);
+
+        emit log_bytes32(Slot.ONBOARDING);
 
         // address input
         ADMINS = network.admins;
@@ -113,6 +114,8 @@ contract Deployment_test is Test {
         dao.changeSlotEntry(Slot.FINANCING, FINANCING);
         dao.changeSlotEntry(Slot.ONBOARDING, ONBOARDING);
         dao.changeSlotEntry(Slot.MANAGING, MANAGING);
+
+        emit log_bytes32(bytes32(Slot.ONBOARDING));
 
         // assertEq(dao.getSlotContractAddr(Slot.AGORA), AGORA, "slot agora");
         // assertEq(dao.getSlotContractAddr(Slot.BANK), BANK);
