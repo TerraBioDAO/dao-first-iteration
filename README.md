@@ -69,7 +69,7 @@ forge script logs
 
 `script/logs.s.sol` is used to log any variables using [`forge-std/Test.sol`](https://book.getfoundry.sh/reference/ds-test#logging). Can be useful to ABI-encode complex arguments.
 
-Simulate system deployment:
+Simulate system deployment script:
 
 ```
 forge script deployer
@@ -77,9 +77,11 @@ forge script deployer
 
 The script run on local, it's useful to test the script.
 
+_This script deploy all contracts of the DAO at once, consider create another script to run more precise operation of deployment or contract interaction_
+
 ## Run scripts on local blockchain
 
-Foundry provide a local blockhain like Ganache from Truffle), named [Anvil](https://book.getfoundry.sh/reference/anvil/)
+Foundry provide a local blockhain like Ganache from Truffle, named [Anvil](https://book.getfoundry.sh/reference/anvil/)
 
 Start local blockchain:
 
@@ -136,7 +138,7 @@ Gas price and gas limit should set properly in the config or in the command.
 
 # Interact with contracts with CLI
 
-Foundry provide a tool, [Cast](https://book.getfoundry.sh/cast/), to interact with deployed contract on anvil or any forked network.
+Foundry provide a tool, [Cast](https://book.getfoundry.sh/cast/), to interact with deployed contract on anvil or any **forked** network (you cannot send real transaction with Cast).
 
 Run a blockchain locally:
 
@@ -197,10 +199,11 @@ forge script deployer --rpc-url anvil --broadcast
 Then you take variable from environment:
 
 ```
+forge script printEnv --chain goerli
 source .goerli
 ```
 
-The script do not differentiate the forked network and the real one. _Need improvment_
+_The script do not differentiate the forked network and the real one. => Need improvment_
 
 ```
 cast call $DAO "membersCount()"
