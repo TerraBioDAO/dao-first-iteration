@@ -32,6 +32,13 @@ contract Agora_ is Agora {
     function removeVoteParam(bytes4 voteParamId) public {
         _removeVoteParam(voteParamId);
     }
+
+    function emitEvents() public {
+        emit VoteParamsChanged(bytes4("1"), true);
+        emit ProposalSubmitted(bytes4("2"), address(111), bytes4("3"), bytes32("123456"));
+        emit ProposalFinalized(bytes32("123456"), address(222), IAgora.VoteResult.ACCEPTED);
+        emit MemberVoted(bytes32("123456"), address(333), 0, 567);
+    }
 }
 
 contract Agora_test is BaseDaoTest {
@@ -39,6 +46,7 @@ contract Agora_test is BaseDaoTest {
          Rewrite Events in IAgora
     not available in the current scope
               COPY / PASTE
+              and adjust emitEvents()
     ////////////////////////////////*/
     event VoteParamsChanged(bytes4 indexed voteParamId, bool indexed added); // add consensus?
 
@@ -256,6 +264,21 @@ contract Agora_test is BaseDaoTest {
         assertEq(storedParam.threshold, 8000);
         assertEq(storedParam.adminValidationPeriod, 7 days);
         assertEq(storedParam.usesCount, 0);
+    }
+
+    /* ////////////////////////////////
+        test Events copied from interface
+    ////////////////////////////////*/
+    function testEvents() public {
+        vm.expectEmit(true, true, false, false, AGORA);
+        emit VoteParamsChanged(bytes4("1"), true);
+        vm.expectEmit(true, true, true, true, AGORA);
+        emit ProposalSubmitted(bytes4("2"), address(111), bytes4("3"), bytes32("123456"));
+        vm.expectEmit(true, true, true, false, AGORA);
+        emit ProposalFinalized(bytes32("123456"), address(222), IAgora.VoteResult.ACCEPTED);
+        vm.expectEmit(true, true, true, true, AGORA);
+        emit MemberVoted(bytes32("123456"), address(333), 0, 567);
+        agora.emitEvents();
     }
 
     /* ////////////////////////////////
