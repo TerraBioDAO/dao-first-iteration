@@ -18,3 +18,9 @@ deploy using forge
 verify using forge & cast
 
 write docs for that
+
+forge verify-contract $MANAGING Managing --chain goerli --constructor-args 0000000000000000000000003e8d55ec9aae810460d5e9605024707f16bb0160 $ETHERSCAN_KEY --watch
+forge verify-contract $ONBOARDING Onboarding --chain goerli --constructor-args 0000000000000000000000003e8d55ec9aae810460d5e9605024707f16bb0160 $ETHERSCAN_KEY --watch
+forge verify-contract $VOTING Voting --chain goerli --constructor-args 0000000000000000000000003e8d55ec9aae810460d5e9605024707f16bb0160 $ETHERSCAN_KEY --watch
+forge verify-contract $FINANCING Financing --chain goerli --constructor-args 0000000000000000000000003e8d55ec9aae810460d5e9605024707f16bb0160 $ETHERSCAN_KEY --watch
+forge verify-contract $TOKEN MockERC20 --chain goerli $ETHERSCAN_KEY --watch
