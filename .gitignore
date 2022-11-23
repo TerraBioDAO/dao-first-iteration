@@ -18,4 +18,5 @@ broadcast/
 node_modules
 
 #deployment env
-.deployed
+.anvil
+.goerli

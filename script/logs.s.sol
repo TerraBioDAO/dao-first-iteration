@@ -10,9 +10,7 @@ contract logs is Script, Test {
     using stdJson for string;
 
     function run() public {
-        // address deployer = address(501);
-        // string memory json = "obj";
-        // json = json.serialize("deployer", deployer);
-        // json.write("./script/utils/output.json");
+        emit log_string("Hello Dao builder!");
+        // logs something here
     }
 }
