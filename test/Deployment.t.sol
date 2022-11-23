@@ -66,7 +66,7 @@ contract Deployment_test is Test {
         // read JSON file
         string memory file = vm.readFile("test/deployUtils.json");
         Json memory json = abi.decode(vm.parseJson(file), (Json));
-        Network memory network = json.networks[2]; // ==> Choose network here <==
+        Network memory network = json.networks[0]; // ==> Choose network here <==
 
         // fork network config
         if (keccak256(bytes(network.name)) != keccak256("local")) {
