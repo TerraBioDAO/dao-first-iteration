@@ -22,7 +22,7 @@ contract Agora is Extension, IAgora, Constants {
 
     mapping(bytes32 => Proposal) private _proposals;
     mapping(bytes4 => VoteParam) private _voteParams;
-    mapping(bytes32 => mapping(address => bool)) private _votes;
+    mapping(bytes32 => mapping(address => bool)) private _haveVoted;
     mapping(bytes32 => Archive) private _archives;
 
     constructor(address core) Extension(core, Slot.AGORA) {
@@ -111,6 +111,18 @@ contract Agora is Extension, IAgora, Constants {
         // reward user here
     }
 
+    /**
+     * @notice to change vote parameters
+     * @dev can be called by Voting adapter only
+     * @param action : To ADD or REMOVE parameters
+     * @param consensus : vote consensus
+     * @param votingPeriod : voting period
+     * @param gracePeriod : grace period
+     * @param threshold : threshold from which the vote is validated(in per ten thousand i.e. percent cents)
+     * @param adminValidationPeriod : admin validation period
+     * Requirements:
+     *  - can be called by Voting adapter only
+     */
     function changeVoteParam(
         VoteParamAction action,
         bytes4 voteParamId,
@@ -206,13 +218,17 @@ contract Agora is Extension, IAgora, Constants {
         return _voteParams[voteParamId];
     }
 
-    function getVotes(bytes32 proposalId, address voter) external view returns (bool) {
-        return _votes[proposalId][voter];
+    function hasVoted(bytes32 proposalId, address voter) external view returns (bool) {
+        return _haveVoted[proposalId][voter];
     }
 
     /* //////////////////////////
         INTERNAL FUNCTIONS
     ////////////////////////// */
+    /**
+     * @dev internal
+     * @param threshold : threshold from which the vote is validated(in per ten thousand i.e. percent cents)
+     */
     function _addVoteParam(
         bytes4 voteParamId,
         Consensus consensus,
@@ -238,6 +254,11 @@ contract Agora is Extension, IAgora, Constants {
         emit VoteParamsChanged(voteParamId, true);
     }
 
+    /**
+     * @dev internal
+     * requirements :
+     *  - vote parameters must not be in use.
+     */
     function _removeVoteParam(bytes4 voteParamId) internal {
         uint256 usesCount = _voteParams[voteParamId].usesCount;
         require(usesCount == 0, "Agora: parameters still used");
@@ -257,8 +278,8 @@ contract Agora is Extension, IAgora, Constants {
             "Agora: outside voting period"
         );
 
-        require(!_votes[proposalId][voter], "Agora: proposal voted");
-        _votes[proposalId][voter] = true;
+        require(!_haveVoted[proposalId][voter], "Agora: proposal voted");
+        _haveVoted[proposalId][voter] = true;
 
         Proposal memory proposal_ = _proposals[proposalId];
 

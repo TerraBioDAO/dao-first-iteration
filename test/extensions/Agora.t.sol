@@ -75,6 +75,11 @@ contract Agora_test is BaseDaoTest {
     bytes4 public constant VOTE_MEMBER = bytes4(keccak256("member"));
     bytes4 public constant VOTE_DEFAULT = bytes4(0);
 
+    // presets
+    bytes4 public constant VOTE_STANDARD_COPY = bytes4(keccak256("vote-standard-copy"));
+    bytes4 public constant VOTE_MEMBER_COPY = bytes4(keccak256("vote-member-copy"));
+    bytes32 proposalId_AdminApproved_VoteStandard_User;
+
     function setUp() public {
         _deployDao(address(501));
         agora = new Agora_(address(dao));
@@ -83,11 +88,12 @@ contract Agora_test is BaseDaoTest {
         VOTING = _branchMock(Slot.VOTING, false);
         ADAPTER_ADDR = _branchMock(ADAPTER_SLOT, false);
 
+        // Preset Some configurations
         vm.startPrank(VOTING);
         agora.changeVoteParam(
             IAgora.VoteParamAction.ADD,
             VOTE_DEFAULT,
-            IAgora.Consensus(1),
+            IAgora.Consensus.TOKEN,
             86400,
             86400,
             8000,
@@ -96,13 +102,41 @@ contract Agora_test is BaseDaoTest {
         agora.changeVoteParam(
             IAgora.VoteParamAction.ADD,
             VOTE_MEMBER,
-            IAgora.Consensus(2),
+            IAgora.Consensus.MEMBER,
             86400,
             86400,
             8000,
             86400
         );
+        agora.changeVoteParam(
+            IAgora.VoteParamAction.ADD,
+            VOTE_STANDARD_COPY,
+            IAgora.Consensus.TOKEN,
+            7 days,
+            3 days,
+            8000,
+            7 days
+        );
+        agora.changeVoteParam(
+            IAgora.VoteParamAction.ADD,
+            VOTE_MEMBER_COPY,
+            IAgora.Consensus.MEMBER,
+            7 days,
+            3 days,
+            8000,
+            7 days
+        );
+
         vm.stopPrank();
+
+        proposalId_AdminApproved_VoteStandard_User = _submitProposal(
+            bytes4(keccak256("a slot for proposalId_AdminApproved_VoteStandard_User")),
+            bytes28(keccak256("proposalId_AdminApproved_VoteStandard_User")),
+            true, //adminApproval
+            uint32(1000), //minStartTime
+            VOTE_STANDARD_COPY, // Consensus.TOKEN, 7 days, 3 days, 8000, 7 days
+            USER
+        );
     }
 
     /* ///////////////////////////////
@@ -461,30 +495,32 @@ contract Agora_test is BaseDaoTest {
               _submitVote()
               submitVote()
     ////////////////////////////////*/
-    function testSubmitVote(uint8 value, uint128 voteWeight) public {
-        vm.assume(value <= 2 && voteWeight > 0 && voteWeight <= 50 * 50_000e18);
+    function testSubmitVote(uint8 value_, uint128 voteWeight_) public {
         vm.warp(1000);
-        bytes32 ppsId = _submitProposal(
+        bytes32 proposalId = _submitProposal(
             ADAPTER_SLOT,
-            bytes28("1"),
-            true,
-            uint32(block.timestamp),
+            bytes28(keccak256("a-proposal-id")),
+            true, //adminApproval
+            uint32(block.timestamp), //minStartTime
             VOTE_STANDARD,
             USER
         );
 
+        uint8 value = uint8(bound(value_, 0, 2));
+        uint128 voteWeight = uint128(bound(voteWeight_, 0, type(uint128).max));
+
         vm.warp(2000);
         vm.prank(VOTING);
-        agora.submitVote(ppsId, USER, voteWeight, value);
+        agora.submitVote(proposalId, USER, voteWeight, value);
 
-        assertTrue(agora.getVotes(ppsId, USER));
-        assertEq(_score(ppsId).memberVoted, 1, "members");
+        assertTrue(agora.hasVoted(proposalId, USER));
+        assertEq(_score(proposalId).memberVoted, 1, "members");
         if (value == 0) {
-            assertEq(_score(ppsId).nbYes, voteWeight, "yes");
+            assertEq(_score(proposalId).nbYes, voteWeight, "yes");
         } else if (value == 1) {
-            assertEq(_score(ppsId).nbNo, voteWeight, "no");
+            assertEq(_score(proposalId).nbNo, voteWeight, "no");
         } else {
-            assertEq(_score(ppsId).nbNota, voteWeight, "nota");
+            assertEq(_score(proposalId).nbNota, voteWeight, "nota");
         }
     }
 
@@ -553,11 +589,11 @@ contract Agora_test is BaseDaoTest {
         agora.suspendProposal(proposalId);
     }
 
-    function testCannotSubmitVote() private {
+    function testCannotSubmitVote() public {
         // outside voting period
     }
 
-    function testSubmitMemberVote() private {
+    function testSubmitMemberVote() public {
         // add default member vote at `bytes4("1")`
     }
 
@@ -565,8 +601,74 @@ contract Agora_test is BaseDaoTest {
               _calculateVoteResult()
               getVoteResult()
     ////////////////////////////////*/
-    function testGetVoteResult() private {
+    function testGetVoteResult(
+        uint256 nonce,
+        uint32 voteParamId_,
+        uint8 votesCount_,
+        uint8 consensus_,
+        uint8 thresholdPercent
+    ) public {
         // play with threshold
+
+        bytes4 voteParamId = bytes4(uint32(bound(voteParamId_, 16, type(uint32).max)));
+        uint32 threshold = uint32(bound(thresholdPercent, 1, 100) * 100);
+        IAgora.Consensus consensus = IAgora.Consensus(bound(consensus_, 1, 2));
+        uint8 votesCount = uint8(bound(votesCount_, 10, 999));
+
+        vm.warp(1000);
+        vm.prank(VOTING);
+        agora.changeVoteParam(
+            IAgora.VoteParamAction.ADD,
+            voteParamId,
+            consensus,
+            7 days,
+            3 days,
+            threshold,
+            7 days
+        );
+
+        bytes32 proposalId = _submitProposal(
+            ADAPTER_SLOT,
+            bytes28(keccak256(abi.encodePacked("a-proposal-id", nonce))),
+            true, //adminApproval
+            uint32(block.timestamp), //minStartTime
+            VOTE_STANDARD_COPY,
+            USER
+        );
+
+        vm.startPrank(VOTING);
+
+        uint128 voteWeight = 1;
+        uint8 i;
+        while (i < votesCount) {
+            if (consensus == IAgora.Consensus.TOKEN) {
+                voteWeight = uint128(
+                    bound(uint256(keccak256(abi.encodePacked(voteWeight, i))), 1, type(uint64).max)
+                );
+            }
+
+            // new user for each vote
+            // consensus_ : random number
+            address aUser = address(uint160(uint256(keccak256(abi.encodePacked(consensus_, i)))));
+
+            if (agora.hasVoted(proposalId, aUser)) {
+                continue;
+            }
+
+            vm.warp(2000 + i);
+            // consensus_: random value
+            uint8 value = uint8(bound(uint256(keccak256(abi.encodePacked(consensus_, i))), 0, 2));
+            agora.submitVote(proposalId, aUser, voteWeight, value);
+
+            i++;
+        }
+
+        IAgora.VoteResult voteResult = agora.getVoteResult(proposalId);
+        assertTrue(
+            voteResult == IAgora.VoteResult.ACCEPTED || voteResult == IAgora.VoteResult.REJECTED
+        );
+
+        vm.stopPrank();
     }
 
     function testFinalizeProposal() private {
