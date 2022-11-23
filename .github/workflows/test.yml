@@ -39,6 +39,5 @@ jobs:
 
       - name: Run Forge tests
         run: |
-          source .env.exemple
           forge test -vvv
         id: test
