@@ -15,7 +15,7 @@ interface IAgora {
     event ProposalFinalized(
         bytes32 indexed proposalId,
         address indexed finalizer,
-        VoteResult indexed result
+        bool indexed accepted
     );
 
     event MemberVoted(
@@ -36,19 +36,9 @@ interface IAgora {
     }
 
     enum Consensus {
-        UNKNOWN_PARAM,
-        TOKEN, // take vote weigth
+        UNINITIATED,
+        TOKEN, // take vote weight
         MEMBER // 1 address = 1 vote
-    }
-
-    enum VoteResult {
-        ACCEPTED,
-        REJECTED
-    }
-
-    enum VoteParamAction {
-        ADD,
-        REMOVE
     }
 
     struct Score {
@@ -92,7 +82,7 @@ interface IAgora {
     ) external;
 
     function changeVoteParam(
-        VoteParamAction action,
+        bool isToAdd,
         bytes4 voteParamId,
         Consensus consensus,
         uint32 votingPeriod,
@@ -111,7 +101,7 @@ interface IAgora {
     function finalizeProposal(
         bytes32 proposalId,
         address finalizer,
-        VoteResult voteResult
+        bool accepted
     ) external;
 
     function deleteArchive(bytes32 proposalId, address user) external;
@@ -119,7 +109,7 @@ interface IAgora {
     // GETTERS
     function getProposalStatus(bytes32 proposalId) external view returns (ProposalStatus);
 
-    function getVoteResult(bytes32 proposalId) external view returns (VoteResult);
+    function getVoteResult(bytes32 proposalId) external view returns (bool);
 
     function getProposal(bytes32 proposalId) external view returns (Proposal memory);
 

@@ -34,14 +34,14 @@ abstract contract ProposerAdapter is Adapter, IProposerAdapter {
      * it would be an option
      */
     function finalizeProposal(bytes32 proposalId) external onlyMember {
-        (IAgora.VoteResult result, IAgora agora) = _checkProposalResult(proposalId);
+        (bool accepted, IAgora agora) = _checkProposalResult(proposalId);
 
-        if (result == IAgora.VoteResult.ACCEPTED) {
+        if (accepted) {
             _executeProposal(proposalId);
         }
 
         _archiveProposal();
-        agora.finalizeProposal(proposalId, msg.sender, result);
+        agora.finalizeProposal(proposalId, msg.sender, accepted);
     }
 
     /**
@@ -144,7 +144,7 @@ abstract contract ProposerAdapter is Adapter, IProposerAdapter {
     function _checkProposalResult(bytes32 proposalId)
         internal
         view
-        returns (IAgora.VoteResult accepted, IAgora agora)
+        returns (bool accepted, IAgora agora)
     {
         agora = IAgora(_slotAddress(Slot.AGORA));
         require(

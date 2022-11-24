@@ -87,7 +87,7 @@ contract Abstracts_test is BaseDaoTest {
 
         vm.prank(VOTING);
         agora.changeVoteParam(
-            IAgora.VoteParamAction.ADD,
+            true, // isToAdd
             ONE_SECOND_VOTE,
             IAgora.Consensus.MEMBER,
             1,

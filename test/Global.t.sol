@@ -156,7 +156,7 @@ contract Global is BaseDaoTest {
 
         // 0 ACCEPTED
         // _printScore(proposalId);
-        assertEq(uint256(agora.getVoteResult(proposalId)), 0, "result");
+        assertEq(agora.getVoteResult(proposalId), true, "accepted");
 
         // Execute proposal
         vm.warp(
