@@ -10,8 +10,8 @@ line_length = 75
 
 [rpc_endpoints]
 anvil = "http://localhost:8545/"
-sepolia = "https://sepolia.infura.io/v3/${INFURA_API_KEY}"
-goerli = "https://goerli.infura.io/v3/${INFURA_API_KEY}"
+goerli = "https://ethereum-goerli-rpc.allthatnode.com"
+sepolia = "https://ethereum-sepolia-rpc.allthatnode.com"
 
 [etherscan]
 goerli = { key = "${ETHERSCAN_KEY}" }
