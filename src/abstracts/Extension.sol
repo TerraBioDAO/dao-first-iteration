@@ -31,7 +31,10 @@ abstract contract Extension is SlotEntry {
     modifier onlyManaging() {
         address expectedAddr = IDaoCore(_core).getSlotContractAddr(Slot.MANAGING);
         address legacyAddr = IDaoCore(_core).legacyManaging();
-        require(msg.sender == expectedAddr || msg.sender == legacyAddr, "Cores: not Managing");
+        require(
+            msg.sender == expectedAddr || msg.sender == legacyAddr,
+            "Cores: not Managing contract"
+        );
         _;
     }
 

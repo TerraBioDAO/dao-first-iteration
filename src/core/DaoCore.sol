@@ -204,7 +204,7 @@ contract DaoCore is Extension, IDaoCore, Constants {
         bool candidateSlotType = ISlotEntry(contractAddr).isExtension();
         if (entry.slot != Slot.EMPTY) {
             require(entry.isExtension == candidateSlotType, "Core: slot type mismatch");
-            if (slot == Slot.MANAGING) _legacyManaging == entry.contractAddr;
+            if (slot == Slot.MANAGING) _legacyManaging = entry.contractAddr;
         }
 
         // store new slot

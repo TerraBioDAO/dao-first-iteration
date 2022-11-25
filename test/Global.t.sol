@@ -50,7 +50,9 @@ contract Global is BaseDaoTest {
         VOTING = address(voting);
 
         vm.prank(ADMIN);
-        dao.addNewAdmin(ADMIN2);
+        dao.changeMemberStatus(ADMIN2, ROLE_MEMBER, true);
+        vm.prank(ADMIN);
+        dao.changeMemberStatus(ADMIN2, ROLE_ADMIN, true);
 
         _branch(Slot.AGORA, AGORA);
         _branch(Slot.BANK, BANK);
