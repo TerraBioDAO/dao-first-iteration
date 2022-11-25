@@ -8,7 +8,7 @@ import "../helpers/Constants.sol";
 
 contract DaoCore is Extension, IDaoCore, Constants {
     /// @notice track all members of the DAO with their roles
-    mapping(address => mapping(bytes4 => bool)) public members;
+    mapping(address => mapping(bytes4 => bool)) private _members;
 
     /// @notice counter of existing members
     uint256 public override membersCount;
@@ -17,7 +17,10 @@ contract DaoCore is Extension, IDaoCore, Constants {
     bytes4[] private _roles;
 
     /// @notice track of Extensions and Adapters
-    mapping(bytes4 => Entry) public entries;
+    mapping(bytes4 => Entry) private _entries;
+
+    /// @notice address of the legacy managing adapter
+    address private _legacyManaging;
 
     /**
      * @notice `admin` become grant the role of MANAGING and ONBOARDING to add
@@ -31,7 +34,6 @@ contract DaoCore is Extension, IDaoCore, Constants {
         // push roles
         _roles.push(ROLE_MEMBER);
         _roles.push(ROLE_ADMIN);
-        _roles.push(ROLE_PROPOSER);
     }
 
     /* //////////////////////////
@@ -57,12 +59,9 @@ contract DaoCore is Extension, IDaoCore, Constants {
         emit MemberStatusChanged(account, ROLE_ADMIN, true);
     }
 
-    function changeSlotEntry(bytes4 slot, address contractAddr)
-        external
-        onlyAdapter(Slot.MANAGING)
-    {
+    function changeSlotEntry(bytes4 slot, address contractAddr) external onlyManaging {
         require(slot != Slot.EMPTY, "Core: empty slot");
-        Entry memory entry_ = entries[slot];
+        Entry memory entry_ = _entries[slot];
 
         if (contractAddr == address(0)) {
             _removeSlotEntry(slot);
@@ -92,11 +91,15 @@ contract DaoCore is Extension, IDaoCore, Constants {
         emit SlotEntryChanged(slot, entry_.isExtension, entry_.contractAddr, contractAddr);
     }
 
+    function resetManaging() external onlyAdapter(Slot.MANAGING) {
+        //
+    }
+
     /* //////////////////////////
                 GETTERS
     ////////////////////////// */
     function hasRole(address account, bytes4 role) external view returns (bool) {
-        return members[account][role];
+        return _members[account][role];
     }
 
     function getRolesList() external view returns (bytes4[] memory) {
@@ -104,36 +107,40 @@ contract DaoCore is Extension, IDaoCore, Constants {
     }
 
     function isSlotActive(bytes4 slot) external view returns (bool) {
-        return entries[slot].slot != Slot.EMPTY;
+        return _entries[slot].slot != Slot.EMPTY;
     }
 
     function isSlotExtension(bytes4 slot) external view returns (bool) {
-        return entries[slot].isExtension;
+        return _entries[slot].isExtension;
     }
 
     function getSlotContractAddr(bytes4 slot) external view returns (address) {
-        return entries[slot].contractAddr;
+        return _entries[slot].contractAddr;
+    }
+
+    function legacyManaging() external view returns (address) {
+        return _legacyManaging;
     }
 
     /* //////////////////////////
         INTERNAL FUNCTIONS
     ////////////////////////// */
     function _addAdmin(address account) internal {
-        if (!members[account][ROLE_MEMBER]) {
+        if (!_members[account][ROLE_MEMBER]) {
             unchecked {
                 ++membersCount;
             }
-            members[account][ROLE_MEMBER] = true;
+            _members[account][ROLE_MEMBER] = true;
         }
-        require(!members[account][ROLE_ADMIN], "Core: already an admin");
-        members[account][ROLE_ADMIN] = true;
+        require(!_members[account][ROLE_ADMIN], "Core: already an admin");
+        _members[account][ROLE_ADMIN] = true;
     }
 
     function _revokeMember(address account) internal {
         bytes4[] memory rolesList = _roles;
 
         for (uint256 i; i < rolesList.length; ) {
-            delete members[account][rolesList[i]];
+            delete _members[account][rolesList[i]];
             unchecked {
                 ++i;
             }
@@ -148,13 +155,13 @@ contract DaoCore is Extension, IDaoCore, Constants {
         bytes4 role,
         bool value
     ) internal {
-        require(members[account][role] != value, "Core: role not changing");
+        require(_members[account][role] != value, "Core: role not changing");
         if (role == ROLE_MEMBER && value) {
             unchecked {
                 ++membersCount;
             }
         }
-        members[account][role] = value;
+        _members[account][role] = value;
     }
 
     function _addSlotEntry(
@@ -162,10 +169,10 @@ contract DaoCore is Extension, IDaoCore, Constants {
         address newContractAddr,
         bool isExt
     ) internal {
-        entries[slot] = Entry(slot, isExt, newContractAddr);
+        _entries[slot] = Entry(slot, isExt, newContractAddr);
     }
 
     function _removeSlotEntry(bytes4 slot) internal {
-        delete entries[slot];
+        delete _entries[slot];
     }
 }

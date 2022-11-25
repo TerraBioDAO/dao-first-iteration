@@ -43,4 +43,6 @@ interface IDaoCore {
     function isSlotExtension(bytes4 slot) external view returns (bool);
 
     function getSlotContractAddr(bytes4 slot) external view returns (address);
+
+    function legacyManaging() external view returns (address);
 }
