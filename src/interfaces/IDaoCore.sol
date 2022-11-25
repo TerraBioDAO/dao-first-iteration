@@ -22,9 +22,15 @@ interface IDaoCore {
         address contractAddr;
     }
 
-    function changeSlotEntry(bytes4 slot, address contractAddr) external;
+    function batchChangeMembersStatus(
+        address[] memory accounts,
+        bytes4[] memory roles,
+        bool[] memory values
+    ) external;
 
-    function addNewAdmin(address account) external;
+    function batchChangeSlotEntries(bytes4[] memory slots, address[] memory contractsAddr) external;
+
+    function changeSlotEntry(bytes4 slot, address contractAddr) external;
 
     function changeMemberStatus(
         address account,

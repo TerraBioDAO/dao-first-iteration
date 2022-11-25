@@ -27,9 +27,11 @@ contract DaoCore is Extension, IDaoCore, Constants {
      * new member in the DAO and new Entries
      */
     constructor(address admin) Extension(address(this), Slot.CORE) {
-        _addAdmin(admin);
-        _addSlotEntry(Slot.MANAGING, admin, false);
-        _addSlotEntry(Slot.ONBOARDING, admin, false);
+        _changeMemberStatus(admin, ROLE_MEMBER, true);
+        _changeMemberStatus(admin, ROLE_ADMIN, true);
+
+        _entries[Slot.MANAGING] = Entry(Slot.MANAGING, false, admin);
+        _entries[Slot.ONBOARDING] = Entry(Slot.ONBOARDING, false, admin);
 
         // push roles
         _roles.push(ROLE_MEMBER);
@@ -39,60 +41,66 @@ contract DaoCore is Extension, IDaoCore, Constants {
     /* //////////////////////////
             PUBLIC FUNCTIONS
     ////////////////////////// */
+
+    /**
+     * @notice Change members status by batch
+     *
+     * TODO check the limit max of list length and check
+     * gas saving
+     */
+    function batchChangeMembersStatus(
+        address[] memory accounts,
+        bytes4[] memory roles,
+        bool[] memory values
+    ) external onlyAdapter(Slot.ONBOARDING) {
+        require(
+            accounts.length == roles.length && accounts.length == values.length,
+            "Core: list mismatch"
+        );
+
+        for (uint256 i; i < accounts.length; ) {
+            _changeMemberStatus(accounts[i], roles[i], values[i]);
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /**
+     * @notice Change slot entries by batch
+     *
+     * TODO check the limit max of list length and check
+     * gas saving
+     */
+    function batchChangeSlotEntries(bytes4[] memory slots, address[] memory contractsAddr)
+        external
+        onlyManaging
+    {
+        require(slots.length == contractsAddr.length, "Core: list mismatch");
+        for (uint256 i; i < slots.length; ) {
+            _changeSlotEntry(slots[i], contractsAddr[i]);
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /**
+     * @notice Change one member status
+     */
     function changeMemberStatus(
         address account,
         bytes4 role,
         bool value
     ) external onlyAdapter(Slot.ONBOARDING) {
-        require(account != address(0), "Core: zero address used");
-        if (role == ROLE_MEMBER && !value) {
-            _revokeMember(account);
-        } else {
-            _changeMemberStatus(account, role, value);
-        }
-        emit MemberStatusChanged(account, role, value);
+        _changeMemberStatus(account, role, value);
     }
 
-    function addNewAdmin(address account) external onlyAdapter(Slot.ONBOARDING) {
-        require(account != address(0), "Core: zero address used");
-        _addAdmin(account);
-        emit MemberStatusChanged(account, ROLE_ADMIN, true);
-    }
-
+    /**
+     * @notice change slot entry
+     */
     function changeSlotEntry(bytes4 slot, address contractAddr) external onlyManaging {
-        require(slot != Slot.EMPTY, "Core: empty slot");
-        Entry memory entry_ = _entries[slot];
-
-        if (contractAddr == address(0)) {
-            _removeSlotEntry(slot);
-        } else {
-            // low level call "try/catch" => https://github.com/dragonfly-xyz/useful-solidity-patterns/tree/main/patterns/error-handling#low-level-calls
-            (, bytes memory slotIdData) = address(contractAddr).staticcall(
-                // Encode the call data (function on someContract to call + arguments)
-                abi.encodeCall(ISlotEntry.slotId, ())
-            );
-            if (slotIdData.length != 32) {
-                revert("Core: inexistant slotId() impl");
-            }
-            require(bytes4(slotIdData) == slot, "Core: slot & address not match");
-
-            if (entry_.slot == Slot.EMPTY) {
-                entry_.isExtension = ISlotEntry(contractAddr).isExtension();
-                _addSlotEntry(slot, contractAddr, entry_.isExtension);
-            } else {
-                // replace => ext is ext!
-                bool isExt = ISlotEntry(contractAddr).isExtension();
-                require(entry_.isExtension == isExt, "Core: wrong entry setup");
-                entry_.isExtension = isExt; // for event
-                _addSlotEntry(slot, contractAddr, isExt);
-            }
-        }
-
-        emit SlotEntryChanged(slot, entry_.isExtension, entry_.contractAddr, contractAddr);
-    }
-
-    function resetManaging() external onlyAdapter(Slot.MANAGING) {
-        //
+        _changeSlotEntry(slot, contractAddr);
     }
 
     /* //////////////////////////
@@ -114,6 +122,9 @@ contract DaoCore is Extension, IDaoCore, Constants {
         return _entries[slot].isExtension;
     }
 
+    /**
+     * TODO remove from struct and check gas opt has called often
+     */
     function getSlotContractAddr(bytes4 slot) external view returns (address) {
         return _entries[slot].contractAddr;
     }
@@ -125,20 +136,37 @@ contract DaoCore is Extension, IDaoCore, Constants {
     /* //////////////////////////
         INTERNAL FUNCTIONS
     ////////////////////////// */
-    function _addAdmin(address account) internal {
-        if (!_members[account][ROLE_MEMBER]) {
-            unchecked {
-                ++membersCount;
+    /**
+     * @notice internal function to change role account
+     * roles existance is not checked
+     */
+    function _changeMemberStatus(
+        address account,
+        bytes4 role,
+        bool value
+    ) private {
+        require(account != address(0), "Core: zero address used");
+        require(_members[account][role] != value, "Core: role not affected");
+        if (role == ROLE_MEMBER) {
+            if (value) {
+                unchecked {
+                    ++membersCount;
+                }
+            } else {
+                _revokeMember(account);
             }
-            _members[account][ROLE_MEMBER] = true;
         }
-        require(!_members[account][ROLE_ADMIN], "Core: already an admin");
-        _members[account][ROLE_ADMIN] = true;
+
+        _members[account][role] = value;
+        emit MemberStatusChanged(account, role, value);
     }
 
+    /**
+     * @notice delete all registered roles in the DAO
+     * and decrease the members counter
+     */
     function _revokeMember(address account) internal {
         bytes4[] memory rolesList = _roles;
-
         for (uint256 i; i < rolesList.length; ) {
             delete _members[account][rolesList[i]];
             unchecked {
@@ -150,29 +178,52 @@ contract DaoCore is Extension, IDaoCore, Constants {
         }
     }
 
-    function _changeMemberStatus(
-        address account,
-        bytes4 role,
-        bool value
-    ) internal {
-        require(_members[account][role] != value, "Core: role not changing");
-        if (role == ROLE_MEMBER && value) {
-            unchecked {
-                ++membersCount;
-            }
+    /**
+     * @notice add, replace or remove slot entry
+     *
+     * NOTE At deployment, after the deployer/admin replace Managing
+     * he becomes the `legacyManaging`, assuming this address cannot be
+     * corrupt or cheat
+     */
+    function _changeSlotEntry(bytes4 slot, address contractAddr) private {
+        require(slot != Slot.EMPTY, "Core: empty slot");
+        Entry memory entry = _entries[slot];
+
+        // remove contract
+        if (contractAddr == address(0)) {
+            require(slot != Slot.MANAGING, "Core: cannot remove Managing");
+            emit SlotEntryChanged(slot, entry.isExtension, entry.contractAddr, address(0));
+            delete _entries[slot];
+            return;
         }
-        _members[account][role] = value;
+
+        // check if contract implement `slotId`
+        require(slot == _getSlotFromCandidate(contractAddr), "Core: slot & address not match");
+
+        // check if replacement is valid
+        bool candidateSlotType = ISlotEntry(contractAddr).isExtension();
+        if (entry.slot != Slot.EMPTY) {
+            require(entry.isExtension == candidateSlotType, "Core: slot type mismatch");
+            if (slot == Slot.MANAGING) _legacyManaging == entry.contractAddr;
+        }
+
+        // store new slot
+        _entries[slot] = Entry(slot, candidateSlotType, contractAddr);
+        emit SlotEntryChanged(slot, candidateSlotType, entry.contractAddr, contractAddr);
     }
 
-    function _addSlotEntry(
-        bytes4 slot,
-        address newContractAddr,
-        bool isExt
-    ) internal {
-        _entries[slot] = Entry(slot, isExt, newContractAddr);
-    }
-
-    function _removeSlotEntry(bytes4 slot) internal {
-        delete _entries[slot];
+    /**
+     * @notice This function check the validity of the new contract
+     * by trying to call `ISlotEntry.slotId()` and check if a `bytes4`
+     * is returned
+     */
+    function _getSlotFromCandidate(address contractAddr) private view returns (bytes4) {
+        // low level call "try/catch" => https://github.com/dragonfly-xyz/useful-solidity-patterns/tree/main/patterns/error-handling#low-level-calls
+        (, bytes memory slotIdData) = address(contractAddr).staticcall(
+            // Encode the call data (function on someContract to call + arguments)
+            abi.encodeCall(ISlotEntry.slotId, ())
+        );
+        require(slotIdData.length == 32, "Core: inexistant slotId() impl");
+        return bytes4(slotIdData);
     }
 }
