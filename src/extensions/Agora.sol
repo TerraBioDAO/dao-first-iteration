@@ -6,7 +6,6 @@ import "../abstracts/Extension.sol";
 import "../helpers/Constants.sol";
 import "../interfaces/IAgora.sol";
 import "../interfaces/IProposerAdapter.sol";
-import "../helpers/Constants.sol";
 
 /**
  * @notice contract which store votes parameters, vote result,
@@ -23,7 +22,7 @@ contract Agora is Extension, IAgora, Constants {
 
     mapping(bytes32 => Proposal) private _proposals;
     mapping(bytes4 => VoteParam) private _voteParams;
-    mapping(bytes32 => mapping(address => bool)) private _votes;
+    mapping(bytes32 => mapping(address => bool)) private _haveVoted;
     mapping(bytes32 => Archive) private _archives;
 
     constructor(address core) Extension(core, Slot.AGORA) {
@@ -69,7 +68,7 @@ contract Agora is Extension, IAgora, Constants {
         proposal_.voteParamId = voteParamId;
 
         _proposals[proposalId] = proposal_;
-        ++_voteParams[voteParamId].utilisation;
+        ++_voteParams[voteParamId].usesCount;
 
         emit ProposalSubmitted(slot, initiater, voteParamId, proposalId);
     }
@@ -86,11 +85,11 @@ contract Agora is Extension, IAgora, Constants {
     function finalizeProposal(
         bytes32 proposalId,
         address finalizer,
-        VoteResult voteResult
+        bool accepted
     ) external onlyAdapter(bytes4(proposalId)) {
         _proposals[proposalId].proceeded = true;
         _archives[proposalId] = Archive(uint32(block.timestamp), msg.sender);
-        emit ProposalFinalized(proposalId, finalizer, voteResult);
+        emit ProposalFinalized(proposalId, finalizer, accepted);
     }
 
     /**
@@ -112,7 +111,20 @@ contract Agora is Extension, IAgora, Constants {
         // reward user here
     }
 
-    function changeVoteParams(
+    /**
+     * @notice to change vote parameters
+     * @dev can be called by Voting adapter only
+     * @param isToAdd : To ADD or REMOVE parameters
+     * @param consensus : vote consensus
+     * @param votingPeriod : voting period
+     * @param gracePeriod : grace period
+     * @param threshold : threshold from which the vote is validated(in per ten thousand i.e. percent cents)
+     * @param adminValidationPeriod : admin validation period
+     * Requirements:
+     *  - can be called by Voting adapter only
+     */
+    function changeVoteParam(
+        bool isToAdd,
         bytes4 voteParamId,
         Consensus consensus,
         uint32 votingPeriod,
@@ -120,9 +132,7 @@ contract Agora is Extension, IAgora, Constants {
         uint32 threshold,
         uint32 adminValidationPeriod
     ) external onlyAdapter(Slot.VOTING) {
-        if (consensus == Consensus.NO_VOTE) {
-            _removeVoteParam(voteParamId);
-        } else {
+        if (isToAdd) {
             _addVoteParam(
                 voteParamId,
                 consensus,
@@ -131,7 +141,10 @@ contract Agora is Extension, IAgora, Constants {
                 threshold,
                 adminValidationPeriod
             );
+            return;
         }
+
+        _removeVoteParam(voteParamId);
     }
 
     function validateProposal(bytes32 proposalId) external onlyAdapter(Slot.VOTING) {
@@ -193,8 +206,8 @@ contract Agora is Extension, IAgora, Constants {
         return _evaluateProposalStatus(proposalId);
     }
 
-    function getVoteResult(bytes32 proposalId) external view returns (VoteResult) {
-        return _calculVoteResult(proposalId);
+    function getVoteResult(bytes32 proposalId) external view returns (bool accepted) {
+        return _calculateVoteResult(proposalId);
     }
 
     function getProposal(bytes32 proposalId) external view returns (Proposal memory) {
@@ -205,13 +218,17 @@ contract Agora is Extension, IAgora, Constants {
         return _voteParams[voteParamId];
     }
 
-    function getVotes(bytes32 proposalId, address voter) external view returns (bool) {
-        return _votes[proposalId][voter];
+    function hasVoted(bytes32 proposalId, address voter) external view returns (bool) {
+        return _haveVoted[proposalId][voter];
     }
 
     /* //////////////////////////
         INTERNAL FUNCTIONS
     ////////////////////////// */
+    /**
+     * @dev internal
+     * @param threshold : threshold from which the vote is validated(in per ten thousand i.e. percent cents)
+     */
     function _addVoteParam(
         bytes4 voteParamId,
         Consensus consensus,
@@ -221,8 +238,9 @@ contract Agora is Extension, IAgora, Constants {
         uint32 adminValidationPeriod
     ) internal {
         VoteParam memory voteParam_ = _voteParams[voteParamId];
-        require(voteParam_.consensus == Consensus.NO_VOTE, "Agora: cannot replace params");
+        require(voteParam_.consensus == Consensus.UNINITIATED, "Agora: cannot replace params");
 
+        require(consensus != Consensus.UNINITIATED, "Agora: bad consensus");
         require(votingPeriod > 0, "Agora: below min period");
         require(threshold <= 10000, "Agora: wrong threshold or below min value");
 
@@ -237,9 +255,14 @@ contract Agora is Extension, IAgora, Constants {
         emit VoteParamsChanged(voteParamId, true);
     }
 
+    /**
+     * @dev internal
+     * requirements :
+     *  - vote parameters must not be in use.
+     */
     function _removeVoteParam(bytes4 voteParamId) internal {
-        uint256 utilisation = _voteParams[voteParamId].utilisation;
-        require(utilisation == 0, "Agora: parameters still used");
+        uint256 usesCount = _voteParams[voteParamId].usesCount;
+        require(usesCount == 0, "Agora: parameters still used");
 
         delete _voteParams[voteParamId];
         emit VoteParamsChanged(voteParamId, false);
@@ -256,8 +279,8 @@ contract Agora is Extension, IAgora, Constants {
             "Agora: outside voting period"
         );
 
-        require(!_votes[proposalId][voter], "Agora: proposal voted");
-        _votes[proposalId][voter] = true;
+        require(!_haveVoted[proposalId][voter], "Agora: proposal voted");
+        _haveVoted[proposalId][voter] = true;
 
         Proposal memory proposal_ = _proposals[proposalId];
 
@@ -279,20 +302,15 @@ contract Agora is Extension, IAgora, Constants {
         emit MemberVoted(proposalId, voter, value, voteWeight);
     }
 
-    function _calculVoteResult(bytes32 proposalId) internal view returns (VoteResult) {
+    function _calculateVoteResult(bytes32 proposalId) internal view returns (bool accepted) {
         Proposal memory proposal_ = _proposals[proposalId];
         Score memory score_ = proposal_.score;
         // how to integrate NOTA vote, should it be?
         uint256 totalVote = score_.nbYes + score_.nbNo;
 
-        if (
+        return
             totalVote != 0 &&
-            (score_.nbYes * 10000) / totalVote >= _voteParams[proposal_.voteParamId].threshold
-        ) {
-            return VoteResult.ACCEPTED;
-        } else {
-            return VoteResult.REJECTED;
-        }
+            (score_.nbYes * 10000) / totalVote >= _voteParams[proposal_.voteParamId].threshold;
     }
 
     function _evaluateProposalStatus(bytes32 proposalId) internal view returns (ProposalStatus) {

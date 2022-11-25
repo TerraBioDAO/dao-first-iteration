@@ -154,7 +154,8 @@ contract Voting is ProposerAdapter {
     ) external onlyAdmin {
         bytes4 voteParamId = bytes4(keccak256(bytes(name)));
 
-        IAgora(_slotAddress(Slot.AGORA)).changeVoteParams(
+        IAgora(_slotAddress(Slot.AGORA)).changeVoteParam(
+            true, // isToAdd
             voteParamId,
             consensus,
             votingPeriod,
@@ -165,9 +166,10 @@ contract Voting is ProposerAdapter {
     }
 
     function removeVoteParams(bytes4 voteParamId) external onlyAdmin {
-        IAgora(_slotAddress(Slot.AGORA)).changeVoteParams(
+        IAgora(_slotAddress(Slot.AGORA)).changeVoteParam(
+            false,
             voteParamId,
-            IAgora.Consensus.NO_VOTE,
+            IAgora.Consensus.UNINITIATED,
             0,
             0,
             0,
@@ -204,9 +206,10 @@ contract Voting is ProposerAdapter {
     /* //////////////////////////
         INTERNAL FUNCTIONS
     ////////////////////////// */
-    function _changeVoteParam(VotingProposal memory votingProposal) internal {
+    function _addVoteParam(VotingProposal memory votingProposal) internal {
         ProposedVoteParam memory _proposedVoteParam = votingProposal.voteParam;
-        IAgora(_slotAddress(Slot.AGORA)).changeVoteParams(
+        IAgora(_slotAddress(Slot.AGORA)).changeVoteParam(
+            true,
             _proposedVoteParam.voteParamId,
             _proposedVoteParam.consensus,
             _proposedVoteParam.votingPeriod,
@@ -219,7 +222,7 @@ contract Voting is ProposerAdapter {
     function _executeProposal(bytes32 proposalId) internal override {
         VotingProposal memory votingProposal = _votingProposals[_readProposalId(proposalId)];
         if (ProposalType.VOTE_PARAMS == votingProposal.proposalType) {
-            _changeVoteParam(votingProposal);
+            _addVoteParam(votingProposal);
         }
         // TODO error should be handled here and other type of action function of type
 

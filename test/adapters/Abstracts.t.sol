@@ -86,7 +86,15 @@ contract Abstracts_test is BaseDaoTest {
         PROPOSER_IMPL = address(proposerImpl);
 
         vm.prank(VOTING);
-        agora.changeVoteParams(ONE_SECOND_VOTE, IAgora.Consensus.MEMBER, 1, 0, 10000, 0);
+        agora.changeVoteParam(
+            true, // isToAdd
+            ONE_SECOND_VOTE,
+            IAgora.Consensus.MEMBER,
+            1,
+            0,
+            10000,
+            0
+        );
     }
 
     /* //////////////////////////
