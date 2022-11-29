@@ -18,7 +18,7 @@ contract Constants {
     /**
      * @dev Collection of roles available for DAO users
      */
-    bytes4 internal constant ROLE_MEMBER = bytes4(keccak256("role-member"));
-    bytes4 internal constant ROLE_PROPOSER = bytes4(keccak256("role-proposer"));
-    bytes4 internal constant ROLE_ADMIN = bytes4(keccak256("role-admin"));
+    bytes32 internal constant ROLE_MEMBER = keccak256("role-member");
+    bytes32 internal constant ROLE_PROPOSER = keccak256("role-proposer");
+    bytes32 internal constant ROLE_ADMIN = keccak256("role-admin");
 }
