@@ -13,8 +13,7 @@ contract deployer is Script, DaoRecorder, Test {
         networkAlias = initPath();
 
         // import `.env` private key
-        uint256 pk = vm.envUint(string.concat("DEPLOYER_", networkAlias));
-        DEPLOYER = vm.addr(pk);
+        DEPLOYER = vm.envAddress(string.concat("DEPLOYER_", networkAlias));
 
         // logs info
         emit log_named_string("On network", string.concat(networkAlias));
@@ -24,8 +23,7 @@ contract deployer is Script, DaoRecorder, Test {
         emit log_named_uint("Balance", DEPLOYER.balance);
 
         // start deploying
-        vm.startBroadcast(pk);
-        delete pk;
+        vm.startBroadcast(DEPLOYER);
 
         _0_deployTBIO();
         _1_deployDaoCore(DEPLOYER);
