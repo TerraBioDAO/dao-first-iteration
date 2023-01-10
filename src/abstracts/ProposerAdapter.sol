@@ -9,7 +9,7 @@ import "./Adapter.sol";
 
 /**
  * @notice Extensions of abstract contract Adapters which implement
- * a proposal submission to Agora.
+ * proposals submissions to Agora.
  *
  * @dev Allow contract to manage proposals counters, check vote result and
  * risk mitigation
@@ -67,19 +67,8 @@ abstract contract ProposerAdapter is Adapter, IProposerAdapter {
      * only triggerable when there is no ongoing proposal
      */
     function desactive() external onlyAdmin {
-        require(_state.currentOngoing() == 0, "Proposer: still ongoing proposals");
+        require(_state.currentOngoing() == 0, "Proposer: ongoing proposals");
         _state.desactivate();
-    }
-
-    /**
-     * @notice extend the {Adapter} method to check if
-     * there is current archive in the contract
-     *
-     * NOTE should be called automatically when last archive is deleted
-     */
-    function eraseAdapter() public override {
-        require(_state.desactived() && _state.currentArchive() == 0, "Proposer: cannot erase");
-        super.eraseAdapter(); // is onlyExt check work?
     }
 
     /**

@@ -5,17 +5,17 @@ pragma solidity 0.8.17;
 import "openzeppelin-contracts/utils/Counters.sol";
 
 import "./SlotEntry.sol";
-import "../interfaces/IAdapter.sol";
 import "../interfaces/IDaoCore.sol";
 import "../helpers/Constants.sol";
 
 /**
  * @notice abstract contract for Adapters, add guard modifier
- * to restrict access for only DAO members or contracts
+ * to restrict access for only DAO members or contracts.
+ *
+ * NOTE This contract has no state, there is no need to reset it
+ * when the contract is desactived
  */
-abstract contract Adapter is SlotEntry, IAdapter, Constants {
-    constructor(address core, bytes4 slot) SlotEntry(core, slot, false) {}
-
+abstract contract Adapter is SlotEntry, Constants {
     /* //////////////////////////
             MODIFIER
     ////////////////////////// */
@@ -49,24 +49,10 @@ abstract contract Adapter is SlotEntry, IAdapter, Constants {
         _;
     }
 
-    /* //////////////////////////
-            FUNCTIONS
-    ////////////////////////// */
-    /**
-     * @notice delete storage and destruct the contract,
-     * calls can still happen and ethers sended there are lost
-     * for ever.
-     *
-     * @dev only callable when the contract is unplugged from DaoCore
-     *
-     * NOTE this operation is quite useless as the contract as not state
-     */
-    function eraseAdapter() public virtual override onlyExtension(Slot.AGORA) {
-        require(
-            IDaoCore(_core).getSlotContractAddr(slotId) != address(this),
-            "Adapter: unplug from DaoCore"
-        );
-        selfdestruct(payable(_core));
+    constructor(address core, bytes4 slot) SlotEntry(core, slot, false) {}
+
+    receive() external payable {
+        revert("Adapter: cannot receive funds");
     }
 
     /**

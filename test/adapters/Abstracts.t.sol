@@ -132,23 +132,6 @@ contract Abstracts_test is BaseDaoTest {
         adapterImpl.onlyAdminMock();
     }
 
-    function testEraseAdapter() public {
-        vm.deal(ADAPTER_IMPL, 50e18);
-        vm.prank(AGORA);
-        adapterImpl.eraseAdapter();
-
-        assertEq(ADAPTER_IMPL.balance, 0);
-        assertEq(DAO.balance, 50e18);
-    }
-
-    function testCannotEraseAdapter() public {
-        _branch(adapterImpl.slot(), ADAPTER_IMPL);
-
-        vm.expectRevert("Adapter: unplug from DaoCore");
-        vm.prank(AGORA);
-        adapterImpl.eraseAdapter();
-    }
-
     /* //////////////////////////
            PROPOSER ADAPTERS
     ////////////////////////// */
@@ -210,7 +193,7 @@ contract Abstracts_test is BaseDaoTest {
         vm.warp(100);
 
         vm.prank(ADMIN);
-        vm.expectRevert("Proposer: still ongoing proposals");
+        vm.expectRevert("Proposer: ongoing proposals");
         proposerImpl.desactive();
     }
 
@@ -224,44 +207,5 @@ contract Abstracts_test is BaseDaoTest {
         vm.prank(AGORA);
         proposerImpl.deleteArchive(bytes32(0));
         assertEq(proposerImpl.archivedProposals(), 0);
-    }
-
-    function testEraseProposerAdapter() public {
-        vm.deal(PROPOSER_IMPL, 50e18);
-        vm.prank(ADMIN);
-        proposerImpl.desactive();
-        vm.prank(AGORA);
-        proposerImpl.eraseAdapter();
-
-        assertEq(PROPOSER_IMPL.balance, 0);
-        assertEq(DAO.balance, 50e18);
-    }
-
-    function testCannotEraseProposerAdapter() public {
-        // not desactivated
-        vm.prank(AGORA);
-        vm.expectRevert("Proposer: cannot erase");
-        proposerImpl.eraseAdapter();
-
-        // add archive
-        _branch(proposerImpl.slot(), PROPOSER_IMPL);
-        bytes32 proposalId = proposerImpl.newProposal();
-        vm.warp(100);
-        vm.prank(ADMIN);
-        proposerImpl.finalizeProposal(proposalId);
-
-        vm.prank(ADMIN);
-        proposerImpl.desactive();
-
-        vm.prank(AGORA);
-        vm.expectRevert("Proposer: cannot erase");
-        proposerImpl.eraseAdapter();
-
-        // remove archive
-        vm.prank(AGORA);
-        proposerImpl.deleteArchive(bytes32(0));
-
-        vm.expectRevert("Adapter: wrong extension");
-        proposerImpl.eraseAdapter();
     }
 }
