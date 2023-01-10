@@ -12,7 +12,7 @@ interface IDaoCore {
 
     event MemberStatusChanged(
         address indexed member,
-        bytes4 indexed roles,
+        bytes32 indexed roles,
         bool indexed actualValue
     );
 
@@ -24,7 +24,7 @@ interface IDaoCore {
 
     function batchChangeMembersStatus(
         address[] memory accounts,
-        bytes4[] memory roles,
+        bytes32[] memory roles,
         bool[] memory values
     ) external;
 
@@ -34,15 +34,19 @@ interface IDaoCore {
 
     function changeMemberStatus(
         address account,
-        bytes4 role,
+        bytes32 role,
         bool value
     ) external;
 
     function membersCount() external returns (uint256);
 
-    function hasRole(address account, bytes4 role) external returns (bool);
+    function hasRole(address account, bytes32 role) external returns (bool);
 
-    function getRolesList() external returns (bytes4[] memory);
+    function getNumberOfRoles() external view returns (uint256);
+
+    function rolesActive(bytes32 role) external view returns (bool);
+
+    function getRolesByIndex(uint256 index) external view returns (bytes32);
 
     function isSlotActive(bytes4 slot) external view returns (bool);
 

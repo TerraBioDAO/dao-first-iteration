@@ -33,7 +33,7 @@ contract Onboarding is Adapter {
         if (!IDaoCore(_core).hasRole(account, ROLE_MEMBER) && setAsAdmin) {
             (
                 address[] memory accounts,
-                bytes4[] memory roles,
+                bytes32[] memory roles,
                 bool[] memory values
             ) = _getBatchParameter(2);
             accounts[0] = account;
@@ -54,12 +54,12 @@ contract Onboarding is Adapter {
         pure
         returns (
             address[] memory accounts,
-            bytes4[] memory roles,
+            bytes32[] memory roles,
             bool[] memory values
         )
     {
         accounts = new address[](length);
-        roles = new bytes4[](length);
+        roles = new bytes32[](length);
         values = new bool[](length);
     }
 }

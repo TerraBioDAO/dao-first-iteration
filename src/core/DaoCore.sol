@@ -2,19 +2,23 @@
 
 pragma solidity 0.8.17;
 
+import "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
+
 import "../abstracts/Extension.sol";
 import "../interfaces/IDaoCore.sol";
 import "../helpers/Constants.sol";
 
 contract DaoCore is Extension, IDaoCore, Constants {
+    using EnumerableSet for EnumerableSet.Bytes32Set;
+
     /// @notice track all members of the DAO with their roles
-    mapping(address => mapping(bytes4 => bool)) private _members;
+    mapping(address => mapping(bytes32 => bool)) private _members;
 
     /// @notice counter of existing members
     uint256 public override membersCount;
 
     /// @notice list of existing roles in the DAO
-    bytes4[] private _roles;
+    EnumerableSet.Bytes32Set private _roles;
 
     /// @notice track of Extensions and Adapters
     mapping(bytes4 => Entry) private _entries;
@@ -34,8 +38,8 @@ contract DaoCore is Extension, IDaoCore, Constants {
         _entries[Slot.ONBOARDING] = Entry(Slot.ONBOARDING, false, admin);
 
         // push roles
-        _roles.push(ROLE_MEMBER);
-        _roles.push(ROLE_ADMIN);
+        _roles.add(ROLE_MEMBER);
+        _roles.add(ROLE_ADMIN);
     }
 
     /* //////////////////////////
@@ -50,7 +54,7 @@ contract DaoCore is Extension, IDaoCore, Constants {
      */
     function batchChangeMembersStatus(
         address[] memory accounts,
-        bytes4[] memory roles,
+        bytes32[] memory roles,
         bool[] memory values
     ) external onlyAdapter(Slot.ONBOARDING) {
         require(
@@ -90,7 +94,7 @@ contract DaoCore is Extension, IDaoCore, Constants {
      */
     function changeMemberStatus(
         address account,
-        bytes4 role,
+        bytes32 role,
         bool value
     ) external onlyAdapter(Slot.ONBOARDING) {
         _changeMemberStatus(account, role, value);
@@ -103,15 +107,33 @@ contract DaoCore is Extension, IDaoCore, Constants {
         _changeSlotEntry(slot, contractAddr);
     }
 
+    function addNewRole(bytes32 role) external onlyAdapter(Slot.ONBOARDING) {
+        require(!_roles.contains(role), "Core: role already exist");
+        _roles.add(role);
+    }
+
+    function removeRole(bytes32 role) external onlyAdapter(Slot.ONBOARDING) {
+        require(_roles.contains(role), "Core: inexistant role");
+        _roles.remove(role);
+    }
+
     /* //////////////////////////
                 GETTERS
     ////////////////////////// */
-    function hasRole(address account, bytes4 role) external view returns (bool) {
+    function hasRole(address account, bytes32 role) external view returns (bool) {
         return _members[account][role];
     }
 
-    function getRolesList() external view returns (bytes4[] memory) {
-        return _roles;
+    function rolesActive(bytes32 role) external view returns (bool) {
+        return _roles.contains(role);
+    }
+
+    function getNumberOfRoles() external view returns (uint256) {
+        return _roles.length();
+    }
+
+    function getRolesByIndex(uint256 index) external view returns (bytes32) {
+        return _roles.at(index);
     }
 
     function isSlotActive(bytes4 slot) external view returns (bool) {
@@ -142,7 +164,7 @@ contract DaoCore is Extension, IDaoCore, Constants {
      */
     function _changeMemberStatus(
         address account,
-        bytes4 role,
+        bytes32 role,
         bool value
     ) private {
         require(account != address(0), "Core: zero address used");
@@ -166,9 +188,8 @@ contract DaoCore is Extension, IDaoCore, Constants {
      * and decrease the members counter
      */
     function _revokeMember(address account) internal {
-        bytes4[] memory rolesList = _roles;
-        for (uint256 i; i < rolesList.length; ) {
-            delete _members[account][rolesList[i]];
+        for (uint256 i; i < _roles.length(); ) {
+            delete _members[account][_roles.at(i)];
             unchecked {
                 ++i;
             }
