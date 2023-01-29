@@ -39,4 +39,6 @@ abstract contract Extension is SlotEntry {
     }
 
     constructor(address core, bytes4 slot) SlotEntry(core, slot, true) {}
+
+    // add flags?: desactived, new/next states, migrated
 }
