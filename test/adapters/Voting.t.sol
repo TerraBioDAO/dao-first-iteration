@@ -222,6 +222,21 @@ contract Voting_test is BaseDaoTest {
         assertEq(proposal.initiater, USERS[0]);
         assertEq(proposal.minStartTime, minStartTime);
     }
+
+    function testProposeConsultation() public {
+        vm.startPrank(USERS[0]);
+        vm.warp(1641070800);
+
+        voting.proposeConsultation("N-1","First consulation",0);
+
+        assertEq(voting.ongoingProposals(),1);
+
+        emit log_bytes32(bytes32(Slot.AGORA));
+        emit log_bytes32(bytes32(Slot.BANK));
+        emit log_bytes32(bytes32(Slot.VOTING));
+        emit log_bytes32(bytes32(Slot.FINANCING));
+        emit log_bytes32(bytes32(Slot.MANAGING));
+    }
 }
 
 // "addNewVoteParams(string,uint8,uint32,uint32,uint32,uint32)": "bb4fba3b",

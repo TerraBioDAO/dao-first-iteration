@@ -1,0 +1,682 @@
+{
+  "compiler": {
+    "version": "0.8.17+commit.8df45f5f"
+  },
+  "language": "Solidity",
+  "output": {
+    "abi": [
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "core",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "proposalId",
+            "type": "bytes32",
+            "indexed": true
+          },
+          {
+            "internalType": "address",
+            "name": "voter",
+            "type": "address",
+            "indexed": true
+          },
+          {
+            "internalType": "uint256",
+            "name": "value",
+            "type": "uint256",
+            "indexed": true
+          },
+          {
+            "internalType": "uint256",
+            "name": "voteWeight",
+            "type": "uint256",
+            "indexed": false
+          }
+        ],
+        "type": "event",
+        "name": "MemberVoted",
+        "anonymous": false
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "proposalId",
+            "type": "bytes32",
+            "indexed": true
+          },
+          {
+            "internalType": "address",
+            "name": "finalizer",
+            "type": "address",
+            "indexed": true
+          },
+          {
+            "internalType": "bool",
+            "name": "accepted",
+            "type": "bool",
+            "indexed": true
+          }
+        ],
+        "type": "event",
+        "name": "ProposalFinalized",
+        "anonymous": false
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes4",
+            "name": "slot",
+            "type": "bytes4",
+            "indexed": true
+          },
+          {
+            "internalType": "address",
+            "name": "from",
+            "type": "address",
+            "indexed": true
+          },
+          {
+            "internalType": "bytes4",
+            "name": "voteParam",
+            "type": "bytes4",
+            "indexed": true
+          },
+          {
+            "internalType": "bytes32",
+            "name": "proposalId",
+            "type": "bytes32",
+            "indexed": false
+          }
+        ],
+        "type": "event",
+        "name": "ProposalSubmitted",
+        "anonymous": false
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes4",
+            "name": "voteParamId",
+            "type": "bytes4",
+            "indexed": true
+          },
+          {
+            "internalType": "bool",
+            "name": "added",
+            "type": "bool",
+            "indexed": true
+          }
+        ],
+        "type": "event",
+        "name": "VoteParamsChanged",
+        "anonymous": false
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bool",
+            "name": "isToAdd",
+            "type": "bool"
+          },
+          {
+            "internalType": "bytes4",
+            "name": "voteParamId",
+            "type": "bytes4"
+          },
+          {
+            "internalType": "enum IAgora.Consensus",
+            "name": "consensus",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint32",
+            "name": "votingPeriod",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint32",
+            "name": "gracePeriod",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint32",
+            "name": "threshold",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint32",
+            "name": "adminValidationPeriod",
+            "type": "uint32"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function",
+        "name": "changeVoteParam"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "proposalId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function",
+        "name": "deleteArchive"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "proposalId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "finalizer",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "accepted",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function",
+        "name": "finalizeProposal"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "proposalId",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "name": "getProposal",
+        "outputs": [
+          {
+            "internalType": "struct IAgora.Proposal",
+            "name": "",
+            "type": "tuple",
+            "components": [
+              {
+                "internalType": "bool",
+                "name": "active",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "adminApproved",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "suspended",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "proceeded",
+                "type": "bool"
+              },
+              {
+                "internalType": "uint32",
+                "name": "createdAt",
+                "type": "uint32"
+              },
+              {
+                "internalType": "uint32",
+                "name": "minStartTime",
+                "type": "uint32"
+              },
+              {
+                "internalType": "uint32",
+                "name": "shiftedTime",
+                "type": "uint32"
+              },
+              {
+                "internalType": "uint32",
+                "name": "suspendedAt",
+                "type": "uint32"
+              },
+              {
+                "internalType": "bytes4",
+                "name": "voteParamId",
+                "type": "bytes4"
+              },
+              {
+                "internalType": "address",
+                "name": "initiater",
+                "type": "address"
+              },
+              {
+                "internalType": "struct IAgora.Score",
+                "name": "score",
+                "type": "tuple",
+                "components": [
+                  {
+                    "internalType": "uint128",
+                    "name": "nbYes",
+                    "type": "uint128"
+                  },
+                  {
+                    "internalType": "uint128",
+                    "name": "nbNo",
+                    "type": "uint128"
+                  },
+                  {
+                    "internalType": "uint128",
+                    "name": "nbNota",
+                    "type": "uint128"
+                  },
+                  {
+                    "internalType": "uint128",
+                    "name": "memberVoted",
+                    "type": "uint128"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "proposalId",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "name": "getProposalStatus",
+        "outputs": [
+          {
+            "internalType": "enum IAgora.ProposalStatus",
+            "name": "",
+            "type": "uint8"
+          }
+        ]
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes4",
+            "name": "voteParamId",
+            "type": "bytes4"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "name": "getVoteParams",
+        "outputs": [
+          {
+            "internalType": "struct IAgora.VoteParam",
+            "name": "",
+            "type": "tuple",
+            "components": [
+              {
+                "internalType": "enum IAgora.Consensus",
+                "name": "consensus",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint32",
+                "name": "votingPeriod",
+                "type": "uint32"
+              },
+              {
+                "internalType": "uint32",
+                "name": "gracePeriod",
+                "type": "uint32"
+              },
+              {
+                "internalType": "uint32",
+                "name": "threshold",
+                "type": "uint32"
+              },
+              {
+                "internalType": "uint32",
+                "name": "adminValidationPeriod",
+                "type": "uint32"
+              },
+              {
+                "internalType": "uint256",
+                "name": "usesCount",
+                "type": "uint256"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "proposalId",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "name": "getVoteResult",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "accepted",
+            "type": "bool"
+          }
+        ]
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "proposalId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "voter",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "name": "hasVoted",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ]
+      },
+      {
+        "inputs": [],
+        "stateMutability": "view",
+        "type": "function",
+        "name": "isExtension",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ]
+      },
+      {
+        "inputs": [],
+        "stateMutability": "view",
+        "type": "function",
+        "name": "slotId",
+        "outputs": [
+          {
+            "internalType": "bytes4",
+            "name": "",
+            "type": "bytes4"
+          }
+        ]
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes4",
+            "name": "slot",
+            "type": "bytes4"
+          },
+          {
+            "internalType": "bytes28",
+            "name": "adapterProposalId",
+            "type": "bytes28"
+          },
+          {
+            "internalType": "bool",
+            "name": "adminApproved",
+            "type": "bool"
+          },
+          {
+            "internalType": "bytes4",
+            "name": "voteParamId",
+            "type": "bytes4"
+          },
+          {
+            "internalType": "uint32",
+            "name": "minStartTime",
+            "type": "uint32"
+          },
+          {
+            "internalType": "address",
+            "name": "initiater",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function",
+        "name": "submitProposal"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "proposalId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "voter",
+            "type": "address"
+          },
+          {
+            "internalType": "uint128",
+            "name": "voteWeight",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint256",
+            "name": "value",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function",
+        "name": "submitVote"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "proposalId",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function",
+        "name": "suspendProposal"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "proposalId",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function",
+        "name": "unsuspendProposal"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "proposalId",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function",
+        "name": "validateProposal"
+      }
+    ],
+    "devdoc": {
+      "kind": "dev",
+      "methods": {
+        "changeVoteParam(bool,bytes4,uint8,uint32,uint32,uint32,uint32)": {
+          "details": "can be called by Voting adapter only",
+          "params": {
+            "adminValidationPeriod": ": admin validation period Requirements:  - can be called by Voting adapter only",
+            "consensus": ": vote consensus",
+            "gracePeriod": ": grace period",
+            "isToAdd": ": To ADD or REMOVE parameters",
+            "threshold": ": threshold from which the vote is validated(in per ten thousand i.e. percent cents)",
+            "votingPeriod": ": voting period"
+          }
+        },
+        "finalizeProposal(bytes32,address,bool)": {
+          "details": "can be called by any adapter, allowing to implement restriction on it if needed. TODO add logic to delete proposal once the corresponding the maximal locking period is reached (< 1 year)"
+        }
+      },
+      "version": 1
+    },
+    "userdoc": {
+      "kind": "user",
+      "methods": {
+        "changeVoteParam(bool,bytes4,uint8,uint32,uint32,uint32,uint32)": {
+          "notice": "to change vote parameters"
+        },
+        "deleteArchive(bytes32,address)": {
+          "notice": "delete archive (if more than one year of existance) in Agora and then datas in the Adapter NOTE This function could be called by another adapter, like an adapter related to reputation and rewards, the second argument is for a future utilisation of the rewarding users for maintaining the DAO. BTW this function could be in another extensions"
+        },
+        "finalizeProposal(bytes32,address,bool)": {
+          "notice": "function used to flag that a proposal hase been procedeed. Proposal are still in the storage of the contract."
+        }
+      },
+      "version": 1
+    }
+  },
+  "settings": {
+    "remappings": [
+      ":ds-test/=lib/forge-std/lib/ds-test/src/",
+      ":erc4626-tests/=lib/openzeppelin-contracts/lib/erc4626-tests/",
+      ":forge-std/=lib/forge-std/src/",
+      ":openzeppelin-contracts/=lib/openzeppelin-contracts/contracts/"
+    ],
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    },
+    "metadata": {
+      "bytecodeHash": "ipfs"
+    },
+    "compilationTarget": {
+      "src/extensions/Agora.sol": "Agora"
+    },
+    "libraries": {}
+  },
+  "sources": {
+    "lib/openzeppelin-contracts/contracts/utils/Counters.sol": {
+      "keccak256": "0xf0018c2440fbe238dd3a8732fa8e17a0f9dce84d31451dc8a32f6d62b349c9f1",
+      "urls": [
+        "bzz-raw://59e1c62884d55b70f3ae5432b44bb3166ad71ae3acd19c57ab6ddc3c87c325ee",
+        "dweb:/ipfs/QmezuXg5GK5oeA4F91EZhozBFekhq5TD966bHPH18cCqhu"
+      ],
+      "license": "MIT"
+    },
+    "src/abstracts/Extension.sol": {
+      "keccak256": "0xa84493959aa63bdc5a23cca06b4c35715179de2b296b3e4053752c892a3458ac",
+      "urls": [
+        "bzz-raw://db2fe42c63c1c609b9c22a67823dcf124fefc01ac256f2c78cc6d17b49c78623",
+        "dweb:/ipfs/QmUFoG6ooxDZeJi8EDi8NvKiug6SgsAaLuzALDVPsAfrTt"
+      ],
+      "license": "MIT"
+    },
+    "src/abstracts/SlotEntry.sol": {
+      "keccak256": "0x0ef50608de34941e9a50990a30cf02f4776feb098b75620c0571671e5bd88988",
+      "urls": [
+        "bzz-raw://f91f1ec2b7d6420edf013f48a29067a62e633e84060a203ddba64acfe0e2e7c9",
+        "dweb:/ipfs/QmU2tEwxyFXKzLHcT9tJy631Jb2mxKct876PxWEjwqDXrp"
+      ],
+      "license": "MIT"
+    },
+    "src/extensions/Agora.sol": {
+      "keccak256": "0x3ffd55b1c0171447ac69ccd098ed1d9bf7e97a233afa13c17bea56faa75ffb1e",
+      "urls": [
+        "bzz-raw://3d3bbcb21f873547325ee45f224491641ac55667d26aa5522bb513a4c5827dd7",
+        "dweb:/ipfs/QmQHKvjyFDdEG3mj2YUHK3uxMHzUs9Qf1ZPtAb6X7TvsCR"
+      ],
+      "license": "MIT"
+    },
+    "src/helpers/Constants.sol": {
+      "keccak256": "0xd177d31f38ff8c63920d149a895f8ee381f25d37324ab4ad4e6eda17349b4f6a",
+      "urls": [
+        "bzz-raw://ed184287ff4214a6b78606a6e5771b51e8eedf9c6fe8c3eb39cec37747dcf16a",
+        "dweb:/ipfs/QmWmEgWsHU85vj8jQ9H2ZjaLrJgesYnj3HzmxpVudqygar"
+      ],
+      "license": "MIT"
+    },
+    "src/helpers/Slot.sol": {
+      "keccak256": "0x1fbf95ed16a1e329fe14ee8ba9daff8ae903f501879fd621735b48dafd75c004",
+      "urls": [
+        "bzz-raw://517b8acf09f6332adae6c9dcb05d148c2d9075547fed8f3236baf5cc0e6f0a20",
+        "dweb:/ipfs/QmPWyTcyQeRPpe7fjLygRragR1x9ogtzADynjakJrKwzfr"
+      ],
+      "license": "MIT"
+    },
+    "src/interfaces/IAgora.sol": {
+      "keccak256": "0xfc9da572cc471a70211f43369c3a44a022ee0c2e2b2d3f6d51eae827fb65da4c",
+      "urls": [
+        "bzz-raw://9ea520439fca978c51f3d9030d17147f0ff697a6a19e963c6f61bbec9ec77d19",
+        "dweb:/ipfs/QmPd5RrAqVcN7Xmaxn2Kgu7PKFeJuvRh4NfmGdqRYikWo7"
+      ],
+      "license": "MIT"
+    },
+    "src/interfaces/IDaoCore.sol": {
+      "keccak256": "0x44303148dff8e1d95c5bf2001e16c56dc733f1d1dacc62c391bcfc4e41173a95",
+      "urls": [
+        "bzz-raw://f8b7fff3c8a6776d9a53c41f1a9b44da941dd86ed4f5946afc97277613d5a83e",
+        "dweb:/ipfs/QmaxmazKGk1E9MkQUb7MMzbG5f6PvzZymb3Vv5vtGGjoZG"
+      ],
+      "license": "MIT"
+    },
+    "src/interfaces/IProposerAdapter.sol": {
+      "keccak256": "0x69b37d8b7ec953644b5a29893079fc21cae5391bf9e1060ceb9f8d6bc4dea348",
+      "urls": [
+        "bzz-raw://1b31bcbc9560f9dbe56b3dd13e3390bc54e2fcb47370774e39c4738a52c25999",
+        "dweb:/ipfs/QmTmibc3KduaZmuZXDJg4BwGuvWnsw5EVgwX8cyMtnnVmU"
+      ],
+      "license": "MIT"
+    },
+    "src/interfaces/ISlotEntry.sol": {
+      "keccak256": "0x7a87edee7c1b47dba1778dd316d245c89c45b29fb432f11f8b41f90edd0baa9b",
+      "urls": [
+        "bzz-raw://3134174912306076b7f1b8d17c95c5e255af1b61510aae9c2e6b1bc97a6aca0e",
+        "dweb:/ipfs/QmczmVrNauhSTbmB4HCQt8BvG76yoTgv8dB2ZWWqBDN5o2"
+      ],
+      "license": "MIT"
+    }
+  },
+  "version": 1
+}
