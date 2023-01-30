@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.17;
+pragma solidity ^0.8.13;
 
-import "../helpers/Slot.sol";
-import "../interfaces/ISlotEntry.sol";
+import { Slot } from "../helpers/Slot.sol";
+import { ISlotEntry } from "../interfaces/ISlotEntry.sol";
 
 /**
  * @notice abstract contract shared by Adapter, Extensions and

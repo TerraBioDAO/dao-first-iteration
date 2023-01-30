@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.17;
+pragma solidity ^0.8.13;
 
-import "openzeppelin-contracts/token/ERC20/IERC20.sol";
-import "openzeppelin-contracts/security/ReentrancyGuard.sol";
-import "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
+import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
+import { ReentrancyGuard } from "openzeppelin-contracts/security/ReentrancyGuard.sol";
+import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
 
-import "../abstracts/Extension.sol";
-import "../interfaces/IBank.sol";
-import "../interfaces/IProposerAdapter.sol";
-import "../helpers/Constants.sol";
+import { Extension, Slot, IDaoCore } from "../abstracts/Extension.sol";
+import { IBank } from "../interfaces/IBank.sol";
+import { IProposerAdapter } from "../interfaces/IProposerAdapter.sol";
+import { Constants } from "../helpers/Constants.sol";
+import { ISlotEntry } from "../interfaces/ISlotEntry.sol";
 
 /**
  * @notice Should be the only contract to approve to move tokens

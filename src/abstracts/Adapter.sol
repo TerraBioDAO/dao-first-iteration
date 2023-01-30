@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.17;
+pragma solidity ^0.8.13;
 
-import "openzeppelin-contracts/utils/Counters.sol";
+import { Counters } from "openzeppelin-contracts/utils/Counters.sol";
 
-import "./SlotEntry.sol";
-import "../interfaces/IDaoCore.sol";
-import "../helpers/Constants.sol";
+import { SlotEntry } from "./SlotEntry.sol";
+import { IDaoCore } from "../interfaces/IDaoCore.sol";
+import { Constants } from "../helpers/Constants.sol";
 
 /**
  * @notice abstract contract for Adapters, add guard modifier

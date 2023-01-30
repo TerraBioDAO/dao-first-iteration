@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.17;
+pragma solidity ^0.8.13;
 
-import "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
+import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
 
-import "../abstracts/Extension.sol";
-import "../interfaces/IDaoCore.sol";
-import "../helpers/Constants.sol";
+import { Extension } from "../abstracts/Extension.sol";
+import { IDaoCore } from "../interfaces/IDaoCore.sol";
+import { Constants } from "../helpers/Constants.sol";
+import { Slot } from "../helpers/Slot.sol";
+import { ISlotEntry } from "../interfaces/ISlotEntry.sol";
 
 contract DaoCore is Extension, IDaoCore, Constants {
     using EnumerableSet for EnumerableSet.Bytes32Set;

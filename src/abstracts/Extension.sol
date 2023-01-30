@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.17;
+pragma solidity ^0.8.13;
 
-import "openzeppelin-contracts/utils/Counters.sol";
+import { Counters } from "openzeppelin-contracts/utils/Counters.sol";
 
-import "./SlotEntry.sol";
-import "../interfaces/IDaoCore.sol";
+import { SlotEntry, Slot } from "./SlotEntry.sol";
+import { IDaoCore } from "../interfaces/IDaoCore.sol";
 
 /**
  * @notice abstract contract used for Extension and DaoCore,

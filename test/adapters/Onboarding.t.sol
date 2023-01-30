@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.17;
+pragma solidity ^0.8.13;
 
 import "test/base/BaseDaoTest.sol";
 import "src/core/DaoCore.sol";
@@ -19,7 +19,7 @@ contract Onboarding_test is BaseDaoTest {
         _branch(Slot.ONBOARDING, ONBOARDING);
     }
 
-    function testJoinDao(address user) public {
+    function test_joinDao_ChangeState(address user) public {
         vm.assume(user != address(0) && user != ADMIN);
         vm.prank(user);
         onboarding.joinDao();
@@ -28,7 +28,7 @@ contract Onboarding_test is BaseDaoTest {
         assertTrue(dao.hasRole(user, ROLE_MEMBER));
     }
 
-    function testQuitDao(address user) public {
+    function test_quitDao_ChangeState(address user) public {
         vm.assume(user != address(0) && user != ADMIN);
         vm.startPrank(user);
         onboarding.joinDao();
@@ -39,7 +39,7 @@ contract Onboarding_test is BaseDaoTest {
         assertFalse(dao.hasRole(user, ROLE_MEMBER));
     }
 
-    function testAddNewAdminMember(address user) public {
+    function test_setAdminMember_AddNewAdminMember(address user) public {
         vm.assume(user != address(0) && user != ADMIN);
         vm.prank(ADMIN);
         onboarding.setAdminMember(user, true);
@@ -49,7 +49,7 @@ contract Onboarding_test is BaseDaoTest {
         assertTrue(dao.hasRole(user, ROLE_ADMIN));
     }
 
-    function testSetAdminMember(address user) public {
+    function test_setAdminMember_SetAdminMember(address user) public {
         vm.assume(user != address(0) && user != ADMIN);
         vm.prank(user);
         onboarding.joinDao();
@@ -62,13 +62,13 @@ contract Onboarding_test is BaseDaoTest {
         assertTrue(dao.hasRole(user, ROLE_ADMIN));
     }
 
-    function testCannotSetAdminMember(address user) public {
+    function test_setAdminMember_CannotWhenNotAnAdmin(address user) public {
         vm.assume(user != address(0) && user != ADMIN);
         vm.expectRevert("Adapter: not an admin");
         onboarding.setAdminMember(user, true);
     }
 
-    function testRemoveAdminMember(address user) public {
+    function test_setAdminMember_RemoveAdminMember(address user) public {
         vm.assume(user != address(0) && user != ADMIN);
         vm.prank(ADMIN);
         onboarding.setAdminMember(user, true);

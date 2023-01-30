@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.17;
+pragma solidity ^0.8.13;
 
-import "../abstracts/ProposerAdapter.sol";
-import "../interfaces/IAgora.sol";
-import "../interfaces/IDaoCore.sol";
+import { ProposerAdapter, Adapter, Slot } from "../abstracts/ProposerAdapter.sol";
+import { IAgora } from "../interfaces/IAgora.sol";
+import { IDaoCore } from "../interfaces/IDaoCore.sol";
 
 /**
  * @notice contract interacting with the Core to add or remove Entry

@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.17;
+pragma solidity ^0.8.13;
 
-import "../helpers/ProposalState.sol";
-import "../interfaces/IProposerAdapter.sol";
-import "../interfaces/IAgora.sol";
-import "./Adapter.sol";
+import { ProposalState } from "../helpers/ProposalState.sol";
+import { IProposerAdapter } from "../interfaces/IProposerAdapter.sol";
+import { IAgora } from "../interfaces/IAgora.sol";
+import { Adapter } from "./Adapter.sol";
+import { Slot } from "../helpers/Slot.sol";
 
 /**
  * @notice Extensions of abstract contract Adapters which implement

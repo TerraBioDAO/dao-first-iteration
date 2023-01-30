@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.17;
+pragma solidity ^0.8.13;
 
 import "test/base/BaseDaoTest.sol";
 import "src/adapters/Financing.sol";
@@ -48,7 +48,7 @@ contract Financing2_test is BaseDaoTest {
     /* //////////////////////////
                  UTILS
     ////////////////////////// */
-    function _fillVault_TBIO(bytes4 vaultId, uint128 amount) internal {
+    function workaround_fillVault_TBIO(bytes4 vaultId, uint128 amount) internal {
         address filler = address(100);
         _mintTBIO(filler, amount);
         vm.startPrank(filler);
@@ -60,7 +60,7 @@ contract Financing2_test is BaseDaoTest {
     /* //////////////////////////
                 TESTS
     ////////////////////////// */
-    function testCannotCreateVault(bytes4 vaultId) public {
+    function test_createVault_CannotWhenNotAnAdmin(bytes4 vaultId) public {
         vm.assume(vaultId != bytes4(0) && vaultId != VAULT);
         address[] memory tokenList = new address[](4);
         tokenList[1] = TBIO;
@@ -70,7 +70,7 @@ contract Financing2_test is BaseDaoTest {
         financing.createVault(vaultId, tokenList);
     }
 
-    function testVaultDeposit(address user, uint128 amount) public {
+    function test_vaultDeposit_Deposit(address user, uint128 amount) public {
         vm.assume(user != address(0) && user != BANK && amount > 0);
         _mintTBIO(user, amount);
         vm.prank(user);
@@ -83,7 +83,7 @@ contract Financing2_test is BaseDaoTest {
         assertEq(balance, amount);
     }
 
-    function testCannotSubmitTransactionRequest() public {
+    function test_submitTransactionRequest_CannotSomeReasons() public {
         vm.expectRevert("Adapter: not a member");
         financing.submitTransactionRequest(VOTE_STANDARD, 50e18, RECIPIENT, VAULT, TBIO, 0);
 
@@ -100,9 +100,9 @@ contract Financing2_test is BaseDaoTest {
         financing.submitTransactionRequest(VOTE_STANDARD, 50e18, RECIPIENT, VAULT, TBIO, 0);
     }
 
-    function testSubmitTransactionRequest(uint128 amount) public {
+    function test_submitTransactionRequest_SubmitTxRequest(uint128 amount) public {
         vm.assume(amount > 0 && amount <= 1000e18);
-        _fillVault_TBIO(VAULT, 1000e18);
+        workaround_fillVault_TBIO(VAULT, 1000e18);
 
         vm.prank(USERS[0]);
         financing.submitTransactionRequest(VOTE_STANDARD, amount, USERS[1], VAULT, TBIO, 0);
@@ -112,8 +112,8 @@ contract Financing2_test is BaseDaoTest {
         assertEq(committedBalance, amount);
     }
 
-    function testFinalizeProposal(bool accepted) public {
-        _fillVault_TBIO(VAULT, 1000e18);
+    function test_finalizeProposal_FinalizeAnyway(bool accepted) public {
+        workaround_fillVault_TBIO(VAULT, 1000e18);
 
         vm.prank(USERS[0]);
         vm.recordLogs();

@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.17;
+pragma solidity ^0.8.13;
 
-import "../abstracts/Adapter.sol";
+import { Adapter } from "../abstracts/Adapter.sol";
+import { Slot } from "../helpers/Slot.sol";
+import { IDaoCore } from "../interfaces/IDaoCore.sol";
 
 /**
  * @notice simpliest implementation of the Onboarding process

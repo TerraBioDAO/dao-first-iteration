@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.16;
+pragma solidity ^0.8.13;
 
 //import "openzeppelin-contracts/utils/Counters.sol";
 import "test/base/BaseDaoTest.sol";
@@ -43,14 +43,14 @@ contract Voting_test is BaseDaoTest {
     /*////////////////////////////////
                 UTILS
     ////////////////////////////////*/
-    function _beforeTransfer(address user, uint256 amount) internal {
+    function workaround_beforeTransfer(address user, uint256 amount) internal {
         vm.assume(amount > 0 && amount <= 2000e18);
         vm.prank(user);
         tbio.approve(BANK, amount);
     }
 
-    function _advanceDeposit(address user, uint256 amount) internal {
-        _beforeTransfer(user, amount);
+    function workaround_advanceDeposit(address user, uint256 amount) internal {
+        workaround_beforeTransfer(user, amount);
         vm.prank(user);
         voting.advanceDeposit(uint128(amount));
     }
@@ -58,8 +58,8 @@ contract Voting_test is BaseDaoTest {
     /*////////////////////////////////
             advanceDeposit()
     ////////////////////////////////*/
-    function testAdvanceDeposit(uint128 amount) public {
-        _advanceDeposit(USERS[0], amount);
+    function test_advanceDeposit_AddDesposit(uint128 amount) public {
+        workaround_advanceDeposit(USERS[0], amount);
 
         assertEq(tbio.balanceOf(USERS[0]), 2000e18 - amount);
         assertEq(tbio.balanceOf(BANK), amount);
@@ -71,8 +71,8 @@ contract Voting_test is BaseDaoTest {
     /*////////////////////////////////
             withdrawAmount()
     ////////////////////////////////*/
-    function testWithdrawAmount(uint128 amount) public {
-        _advanceDeposit(USERS[0], amount);
+    function test_withdrawAmount_Withdraw(uint128 amount) public {
+        workaround_advanceDeposit(USERS[0], amount);
         assertEq(tbio.balanceOf(USERS[0]), 2000e18 - amount);
         assertEq(tbio.balanceOf(BANK), amount);
         (uint128 availableBalance, ) = bank.getBalances(USERS[0]);
@@ -89,7 +89,7 @@ contract Voting_test is BaseDaoTest {
     /*////////////////////////////////
             addNewVoteParam()
     ////////////////////////////////*/
-    function testAddNewVoteParams(
+    function test_addNewVoteParam_AddNewVoteParams(
         uint8 consensusNb,
         uint32 votingPeriod,
         uint32 gracePeriod,
@@ -127,7 +127,7 @@ contract Voting_test is BaseDaoTest {
         assertEq(storedParam.usesCount, param.usesCount);
     }
 
-    function testRemoveVoteParams() public {
+    function test_removeVoteParams_RemoveVoteParams() public {
         IAgora.VoteParam memory voteStandard = agora.getVoteParams(VOTE_STANDARD);
         assertTrue(voteStandard.votingPeriod > 0);
         assertTrue(voteStandard.gracePeriod > 0);
@@ -149,7 +149,7 @@ contract Voting_test is BaseDaoTest {
     /*////////////////////////////////
             proposeNewVoteParams()
         ////////////////////////////////*/
-    function testProposeNewVoteParamsZeroMinStart() public {
+    function test_proposeNewVoteParams_ZeroMinStart() public {
         vm.startPrank(USERS[0]);
         vm.warp(1641070800);
 
@@ -186,7 +186,7 @@ contract Voting_test is BaseDaoTest {
         assertEq(proposal.minStartTime, 1641070800);
     }
 
-    function testProposeNewVoteParams(uint32 minStartTime) public {
+    function test_proposeNewVoteParams_AnyMinStartTime(uint32 minStartTime) public {
         vm.assume(minStartTime > 0);
         vm.startPrank(USERS[0]);
 

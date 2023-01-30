@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.17;
+pragma solidity ^0.8.13;
 
-import "../abstracts/ProposerAdapter.sol";
-import "../interfaces/IBank.sol";
-import "../interfaces/IAgora.sol";
+import { ProposerAdapter, Slot, Adapter } from "../abstracts/ProposerAdapter.sol";
+import { IBank } from "../interfaces/IBank.sol";
+import { IAgora } from "../interfaces/IAgora.sol";
 
 /**
  * @notice contract which interact with the Bank to manage funds in the DAO
