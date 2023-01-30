@@ -2,23 +2,23 @@
 
 ![](https://img.shields.io/badge/Foundry-0.2.0__b28119b-green)
 
-_Explication du repo_
+## Version 0.1
 
-TODO:
-- [x] Solidity version to .13
-- [x] Imports
-- [x] Naming (variables & tests)
-- [ ] Adapters change to bytes32 mapping (more consistent)
+*Explications des choix techniques*
 
-IMPROVMENTS:
-- [ ] Change Slot & constants
-- [ ] Use Errors (=Opt)
-- [ ] Review roles: using OZ need complex roles managment (set roles hiearchy)
-- [ ] Withoout DAO core? need it + avatar ?
-- [ ] Roles & slots ? Check if adapter's roles have only one members ?
-- [ ] [Storage bucket](https://github.com/dragonfly-xyz/useful-solidity-patterns/tree/main/patterns/explicit-storage-buckets) for extensions ! 
+Le framework [TributeDAO](https://github.com/openlawteam/tribute-contracts) à été choisie pour son architecture hexagonale limitant l'accès au centre de la DAO, à savoir les états de cette dernière (membres, fonds, ...). Le framework à été considérablement simplifier pour qu'il soit adapté à TerrabioDAO. Ainsi dans cette première version nous avons garder :
+- DaoRegistry (appeler `DaoCore`) : sauvegardant les membres et les adresses des contrats autoriser (`slots`)
+- La distinction entre `Adapters` & `Extensions` avec les adaptateurs implémentant la logique et notamment les restrictions pour accèder aux fonctions des `Extensions` modifiant l'état de ceux-ci.
 
-# After git clone
+Nous avons retirer le système d'accès (ACL) basé sur des `flags` au profit d'une simple gestion de rôles pour les membres et d'un accès unique pour les contrats en charge de la modification des états.
+
+Bien que ce framework permet un controle fin des accès aux états de la DAO, les logiques de restrictions sont dédoublées. En effet `roles` et `slots` sont utilisées pour filtrer les accès aux fonctions sensibles, les `roles` filtrent l'accès aux `adapters` et les `slots` filtrent l'accès aux fonctions modifiant les états.
+
+La distinction entre `adapters` & `extensions` reste également floue, un `adapter` implémente la logique visant à accèder aux fonctions modifiant les états de la DAO. Cependant les `extensions` doivent également implémenter les fonctions modifiant l'état de la DAO, ainsi ces dernières stockent des états et implémentent les fonctions associées. Les `extensions` sont ainsi peu évolutives dans le temps et nécessite des migrations des états en cas de modifications de la logiques.
+
+---
+
+# Utilisation
 
 Make sure you have install [Rust](https://www.rust-lang.org/fr/learn/get-started) & [Foundry](https://book.getfoundry.sh/getting-started/installation)
 
