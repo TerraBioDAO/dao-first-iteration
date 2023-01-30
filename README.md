@@ -6,15 +6,15 @@
 
 *Explications des choix techniques*
 
-Le framework [TributeDAO](https://github.com/openlawteam/tribute-contracts) à été choisie pour son architecture hexagonale limitant l'accès au centre de la DAO, à savoir les états de cette dernière (membres, fonds, ...). Le framework à été considérablement simplifier pour qu'il soit adapté à TerrabioDAO. Ainsi dans cette première version nous avons garder :
+Le framework [TributeDAO](https://github.com/openlawteam/tribute-contracts) a été choisie pour son architecture hexagonale limitant l'accès au centre de la DAO, à savoir les états de cette dernière (membres, fonds, ...). Le framework à été considérablement simplifié pour qu'il soit adapté à TerrabioDAO. Ainsi dans cette première version nous avons gardé :
 - DaoRegistry (appeler `DaoCore`) : sauvegardant les membres et les adresses des contrats autoriser (`slots`)
 - La distinction entre `Adapters` & `Extensions` avec les adaptateurs implémentant la logique et notamment les restrictions pour accèder aux fonctions des `Extensions` modifiant l'état de ceux-ci.
 
-Nous avons retirer le système d'accès (ACL) basé sur des `flags` au profit d'une simple gestion de rôles pour les membres et d'un accès unique pour les contrats en charge de la modification des états.
+Nous avons retiré le système d'accès (ACL) basé sur des `flags` au profit d'une simple gestion de rôles pour les membres et d'un accès unique pour les contrats en charge de la modification des états.
 
-Bien que ce framework permet un controle fin des accès aux états de la DAO, les logiques de restrictions sont dédoublées. En effet `roles` et `slots` sont utilisées pour filtrer les accès aux fonctions sensibles, les `roles` filtrent l'accès aux `adapters` et les `slots` filtrent l'accès aux fonctions modifiant les états.
+Bien que ce framework permet un contrôle fin des accès aux états de la DAO, les logiques de restrictions sont dédoublées. En effet `roles` et `slots` sont utilisées pour filtrer les accès aux fonctions sensibles, les `roles` filtrent l'accès aux `adapters` et les `slots` filtrent l'accès aux fonctions modifiant les états.
 
-La distinction entre `adapters` & `extensions` reste également floue, un `adapter` implémente la logique visant à accèder aux fonctions modifiant les états de la DAO. Cependant les `extensions` doivent également implémenter les fonctions modifiant l'état de la DAO, ainsi ces dernières stockent des états et implémentent les fonctions associées. Les `extensions` sont ainsi peu évolutives dans le temps et nécessite des migrations des états en cas de modifications de la logiques.
+La distinction entre `adapters` & `extensions` reste également floue, un `adapter` implémente la logique visant à accéder aux fonctions modifiant les états de la DAO. Cependant les `extensions` doivent également implémenter les fonctions modifiant l'état de la DAO, ainsi ces dernières stockent des états et implémentent les fonctions associées. Les `extensions` sont ainsi peu évolutives dans le temps et nécessitent des migrations des états en cas de modifications de la logique.
 
 ---
 
