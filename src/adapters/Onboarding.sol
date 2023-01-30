@@ -2,6 +2,10 @@
 
 pragma solidity ^0.8.13;
 
+import { IAccessControl } from "openzeppelin-contracts/access/AccessControl.sol";
+
+import { MEMBER } from "src/helpers/Roles.sol";
+
 import { Adapter } from "../abstracts/Adapter.sol";
 import { Slot } from "../helpers/Slot.sol";
 import { IDaoCore } from "../interfaces/IDaoCore.sol";
@@ -16,7 +20,7 @@ contract Onboarding is Adapter {
      * @notice any address can become a member in the DAO
      */
     function joinDao() external {
-        IDaoCore(_core).changeMemberStatus(msg.sender, ROLE_MEMBER, true);
+        IAccessControl(_core).grantRole(MEMBER, msg.sender);
     }
 
     /**
@@ -24,44 +28,44 @@ contract Onboarding is Adapter {
      * tokens deposited in the DAO are not refunded
      */
     function quitDao() external {
-        IDaoCore(_core).changeMemberStatus(msg.sender, ROLE_MEMBER, false);
+        IAccessControl(_core).revokeRole(MEMBER, msg.sender);
     }
 
-    /**
-     * @notice any admin can add or remove an admin in the DAO
-     * An admin can self-remove the role, and thus block the DAO
-     */
-    function setAdminMember(address account, bool setAsAdmin) external onlyAdmin {
-        if (!IDaoCore(_core).hasRole(account, ROLE_MEMBER) && setAsAdmin) {
-            (
-                address[] memory accounts,
-                bytes32[] memory roles,
-                bool[] memory values
-            ) = _getBatchParameter(2);
-            accounts[0] = account;
-            accounts[1] = account;
-            roles[0] = ROLE_MEMBER;
-            roles[1] = ROLE_ADMIN;
-            values[0] = true;
-            values[1] = true;
-            IDaoCore(_core).batchChangeMembersStatus(accounts, roles, values);
-            return;
-        }
+    // /**
+    //  * @notice any admin can add or remove an admin in the DAO
+    //  * An admin can self-remove the role, and thus block the DAO
+    //  */
+    // function setAdminMember(address account, bool setAsAdmin) external onlyAdmin {
+    //     if (!IDaoCore(_core).hasRole(account, ROLE_MEMBER) && setAsAdmin) {
+    //         (
+    //             address[] memory accounts,
+    //             bytes32[] memory roles,
+    //             bool[] memory values
+    //         ) = _getBatchParameter(2);
+    //         accounts[0] = account;
+    //         accounts[1] = account;
+    //         roles[0] = ROLE_MEMBER;
+    //         roles[1] = ROLE_ADMIN;
+    //         values[0] = true;
+    //         values[1] = true;
+    //         IDaoCore(_core).batchChangeMembersStatus(accounts, roles, values);
+    //         return;
+    //     }
 
-        IDaoCore(_core).changeMemberStatus(account, ROLE_ADMIN, setAsAdmin);
-    }
+    //     IDaoCore(_core).changeMemberStatus(account, ROLE_ADMIN, setAsAdmin);
+    // }
 
-    function _getBatchParameter(uint256 length)
-        private
-        pure
-        returns (
-            address[] memory accounts,
-            bytes32[] memory roles,
-            bool[] memory values
-        )
-    {
-        accounts = new address[](length);
-        roles = new bytes32[](length);
-        values = new bool[](length);
-    }
+    // function _getBatchParameter(uint256 length)
+    //     private
+    //     pure
+    //     returns (
+    //         address[] memory accounts,
+    //         bytes32[] memory roles,
+    //         bool[] memory values
+    //     )
+    // {
+    //     accounts = new address[](length);
+    //     roles = new bytes32[](length);
+    //     values = new bool[](length);
+    // }
 }

@@ -3,6 +3,9 @@
 pragma solidity ^0.8.13;
 
 import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
+import { AccessControl } from "openzeppelin-contracts/access/AccessControl.sol";
+
+import { MEMBER, ADMIN, ENTRY_MANAGER, MEMBERSHIP_MANAGER, CORE } from "src/helpers/Roles.sol";
 
 import { Extension } from "../abstracts/Extension.sol";
 import { IDaoCore } from "../interfaces/IDaoCore.sol";
@@ -10,17 +13,9 @@ import { Constants } from "../helpers/Constants.sol";
 import { Slot } from "../helpers/Slot.sol";
 import { ISlotEntry } from "../interfaces/ISlotEntry.sol";
 
-contract DaoCore is Extension, IDaoCore, Constants {
+contract DaoCore is AccessControl, Extension, IDaoCore, Constants {
+    using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.Bytes32Set;
-
-    /// @notice track all members of the DAO with their roles
-    mapping(address => mapping(bytes32 => bool)) private _members;
-
-    /// @notice counter of existing members
-    uint256 public override membersCount;
-
-    /// @notice list of existing roles in the DAO
-    EnumerableSet.Bytes32Set private _roles;
 
     /// @notice track of Extensions and Adapters
     mapping(bytes4 => Entry) private _entries;
@@ -28,25 +23,62 @@ contract DaoCore is Extension, IDaoCore, Constants {
     /// @notice address of the legacy managing adapter
     address private _legacyManaging;
 
+    // --- v0.2 ---
+    EnumerableSet.AddressSet private _membersList;
+    EnumerableSet.AddressSet private _entriesList;
+    EnumerableSet.Bytes32Set private _rolesList;
+
     /**
      * @notice `admin` become grant the role of MANAGING and ONBOARDING to add
      * new member in the DAO and new Entries
      */
     constructor(address admin) Extension(address(this), Slot.CORE) {
-        _changeMemberStatus(admin, ROLE_MEMBER, true);
-        _changeMemberStatus(admin, ROLE_ADMIN, true);
+        _setRoleAdmin(ENTRY_MANAGER, CORE);
+        _setRoleAdmin(MEMBERSHIP_MANAGER, CORE);
+        _setRoleAdmin(MEMBER, MEMBERSHIP_MANAGER);
+        _setRoleAdmin(ADMIN, MEMBERSHIP_MANAGER);
 
-        _entries[Slot.MANAGING] = Entry(Slot.MANAGING, false, admin);
-        _entries[Slot.ONBOARDING] = Entry(Slot.ONBOARDING, false, admin);
+        _rolesList.add(CORE);
+        _rolesList.add(MEMBER);
+        _rolesList.add(ADMIN);
+        _rolesList.add(ENTRY_MANAGER);
+        _rolesList.add(MEMBERSHIP_MANAGER);
 
-        // push roles
-        _roles.add(ROLE_MEMBER);
-        _roles.add(ROLE_ADMIN);
+        _membersList.add(admin);
+        _grantRole(MEMBER, admin);
+        _grantRole(ADMIN, admin);
+        _grantRole(ENTRY_MANAGER, admin);
+        _grantRole(MEMBERSHIP_MANAGER, admin);
     }
 
-    /* //////////////////////////
-            PUBLIC FUNCTIONS
-    ////////////////////////// */
+    /*//////////////////////////////////////////////////////////
+                      PUBLIC FONCTIONS (OVERRIDE)
+    //////////////////////////////////////////////////////////*/
+    function grantRole(bytes32 role, address account) public override {
+        require(_rolesList.contains(role), "Core: inexistant role");
+        super.grantRole(role, account);
+        if (role == MEMBER) {
+            _membersList.add(account);
+        }
+    }
+
+    function revokeRole(bytes32 role, address account) public override {
+        require(_rolesList.contains(role), "Core: inexistant role");
+        super.revokeRole(role, account);
+        if (role == MEMBER) {
+            _membersList.remove(account);
+        }
+    }
+
+    function renounceRole(bytes32 role, address account)
+        public
+        override
+        onlyRole(getRoleAdmin(role))
+    {}
+
+    /*//////////////////////////////////////////////////////////
+                      PUBLIC FONCTIONS (BATCH)
+    //////////////////////////////////////////////////////////*/
 
     /**
      * @notice Change members status by batch
@@ -58,14 +90,18 @@ contract DaoCore is Extension, IDaoCore, Constants {
         address[] memory accounts,
         bytes32[] memory roles,
         bool[] memory values
-    ) external onlyAdapter(Slot.ONBOARDING) {
+    ) external onlyRole(MEMBERSHIP_MANAGER) {
         require(
             accounts.length == roles.length && accounts.length == values.length,
             "Core: list mismatch"
         );
 
         for (uint256 i; i < accounts.length; ) {
-            _changeMemberStatus(accounts[i], roles[i], values[i]);
+            if (values[i]) {
+                grantRole(roles[i], accounts[i]);
+            } else {
+                revokeRole(roles[i], accounts[i]);
+            }
             unchecked {
                 ++i;
             }
@@ -78,66 +114,82 @@ contract DaoCore is Extension, IDaoCore, Constants {
      * TODO check the limit max of list length and check
      * gas saving
      */
-    function batchChangeSlotEntries(bytes4[] memory slots, address[] memory contractsAddr)
-        external
-        onlyManaging
-    {
-        require(slots.length == contractsAddr.length, "Core: list mismatch");
-        for (uint256 i; i < slots.length; ) {
-            _changeSlotEntry(slots[i], contractsAddr[i]);
+    function batchChangeEntriesStatus(
+        address[] memory entriesAddr,
+        bytes32[] memory roles,
+        bool[] memory values
+    ) external onlyRole(ENTRY_MANAGER) {
+        require(
+            entriesAddr.length == roles.length && entriesAddr.length == values.length,
+            "Core: list mismatch"
+        );
+        for (uint256 i; i < entriesAddr.length; ) {
+            if (values[i]) {
+                // add check
+                _entriesList.add(entriesAddr[i]);
+                grantRole(roles[i], entriesAddr[i]);
+            } else {
+                _entriesList.remove(entriesAddr[i]);
+                revokeRole(roles[i], entriesAddr[i]);
+            }
             unchecked {
                 ++i;
             }
         }
     }
 
-    /**
-     * @notice Change one member status
-     */
-    function changeMemberStatus(
-        address account,
-        bytes32 role,
-        bool value
-    ) external onlyAdapter(Slot.ONBOARDING) {
-        _changeMemberStatus(account, role, value);
+    /*//////////////////////////////////////////////////////////
+                        PUBLIC FONCTIONS 
+    //////////////////////////////////////////////////////////*/
+    function addNewEntry(address entry, bytes32 role) external onlyRole(ENTRY_MANAGER) {
+        //
     }
 
-    /**
-     * @notice change slot entry
-     */
-    function changeSlotEntry(bytes4 slot, address contractAddr) external onlyManaging {
-        _changeSlotEntry(slot, contractAddr);
+    function createSubRole(bytes32 subRole, bytes32 role) external onlyRole(role) {
+        require(getRoleAdmin(role) == CORE, "Core: Only top roles");
+        _rolesList.add(subRole);
+        _setRoleAdmin(subRole, role);
     }
 
-    function addNewRole(bytes32 role) external onlyAdapter(Slot.ONBOARDING) {
-        require(!_roles.contains(role), "Core: role already exist");
-        _roles.add(role);
+    function removeSubRole(bytes32 subRole, bytes32 role) external onlyRole(role) {
+        require(getRoleAdmin(subRole) == role, "Core: role isn't subrole");
+        _rolesList.remove(subRole);
     }
 
-    function removeRole(bytes32 role) external onlyAdapter(Slot.ONBOARDING) {
-        require(_roles.contains(role), "Core: inexistant role");
-        _roles.remove(role);
+    /*//////////////////////////////////////////////////////////
+                                GETTERS 
+    //////////////////////////////////////////////////////////*/
+    function numberOfMembers() external view returns (uint256) {
+        return _membersList.length();
+    }
+
+    function membersList() external view returns (address[] memory) {
+        return _membersList.values();
+    }
+
+    function numberOfEntries() external view returns (uint256) {
+        return _entriesList.length();
+    }
+
+    function entriesList() external view returns (address[] memory) {
+        return _entriesList.values();
+    }
+
+    function numberOfRoles() external view returns (uint256) {
+        return _rolesList.length();
+    }
+
+    function rolesList() external view returns (bytes32[] memory) {
+        return _rolesList.values();
+    }
+
+    function roleExist(bytes32 role) external view returns (bool) {
+        return _rolesList.contains(role);
     }
 
     /* //////////////////////////
                 GETTERS
     ////////////////////////// */
-    function hasRole(address account, bytes32 role) external view returns (bool) {
-        return _members[account][role];
-    }
-
-    function rolesActive(bytes32 role) external view returns (bool) {
-        return _roles.contains(role);
-    }
-
-    function getNumberOfRoles() external view returns (uint256) {
-        return _roles.length();
-    }
-
-    function getRolesByIndex(uint256 index) external view returns (bytes32) {
-        return _roles.at(index);
-    }
-
     function isSlotActive(bytes4 slot) external view returns (bool) {
         return _entries[slot].slot != Slot.EMPTY;
     }
@@ -160,80 +212,6 @@ contract DaoCore is Extension, IDaoCore, Constants {
     /* //////////////////////////
         INTERNAL FUNCTIONS
     ////////////////////////// */
-    /**
-     * @notice internal function to change role account
-     * roles existance is not checked
-     */
-    function _changeMemberStatus(
-        address account,
-        bytes32 role,
-        bool value
-    ) private {
-        require(account != address(0), "Core: zero address used");
-        require(_members[account][role] != value, "Core: role not affected");
-        if (role == ROLE_MEMBER) {
-            if (value) {
-                unchecked {
-                    ++membersCount;
-                }
-            } else {
-                _revokeMember(account);
-            }
-        }
-
-        _members[account][role] = value;
-        emit MemberStatusChanged(account, role, value);
-    }
-
-    /**
-     * @notice delete all registered roles in the DAO
-     * and decrease the members counter
-     */
-    function _revokeMember(address account) internal {
-        for (uint256 i; i < _roles.length(); ) {
-            delete _members[account][_roles.at(i)];
-            unchecked {
-                ++i;
-            }
-        }
-        unchecked {
-            --membersCount;
-        }
-    }
-
-    /**
-     * @notice add, replace or remove slot entry
-     *
-     * NOTE At deployment, after the deployer/admin replace Managing
-     * he becomes the `legacyManaging`, assuming this address cannot be
-     * corrupt or cheat
-     */
-    function _changeSlotEntry(bytes4 slot, address contractAddr) private {
-        require(slot != Slot.EMPTY, "Core: empty slot");
-        Entry memory entry = _entries[slot];
-
-        // remove contract
-        if (contractAddr == address(0)) {
-            require(slot != Slot.MANAGING, "Core: cannot remove Managing");
-            emit SlotEntryChanged(slot, entry.isExtension, entry.contractAddr, address(0));
-            delete _entries[slot];
-            return;
-        }
-
-        // check if contract implement `slotId`
-        require(slot == _getSlotFromCandidate(contractAddr), "Core: slot & address not match");
-
-        // check if replacement is valid
-        bool candidateSlotType = ISlotEntry(contractAddr).isExtension();
-        if (entry.slot != Slot.EMPTY) {
-            require(entry.isExtension == candidateSlotType, "Core: slot type mismatch");
-            if (slot == Slot.MANAGING) _legacyManaging = entry.contractAddr;
-        }
-
-        // store new slot
-        _entries[slot] = Entry(slot, candidateSlotType, contractAddr);
-        emit SlotEntryChanged(slot, candidateSlotType, entry.contractAddr, contractAddr);
-    }
 
     /**
      * @notice This function check the validity of the new contract

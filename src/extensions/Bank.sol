@@ -5,6 +5,7 @@ pragma solidity ^0.8.13;
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "openzeppelin-contracts/security/ReentrancyGuard.sol";
 import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
+import { IAccessControl } from "openzeppelin-contracts/access/AccessControl.sol";
 
 import { Extension, Slot, IDaoCore } from "../abstracts/Extension.sol";
 import { IBank } from "../interfaces/IBank.sol";
@@ -224,7 +225,7 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
 
         if (
             tokenAddr == address(terraBioToken) &&
-            IDaoCore(_core).hasRole(destinationAddr, ROLE_MEMBER)
+            IAccessControl(_core).hasRole(ROLE_MEMBER, destinationAddr)
         ) {
             // TBIO case
             // applicant is a member receive proposal amount on his internal account

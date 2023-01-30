@@ -3,6 +3,7 @@
 pragma solidity ^0.8.13;
 
 import { Counters } from "openzeppelin-contracts/utils/Counters.sol";
+import { IAccessControl } from "openzeppelin-contracts/access/AccessControl.sol";
 
 import { SlotEntry } from "./SlotEntry.sol";
 import { IDaoCore } from "../interfaces/IDaoCore.sol";
@@ -35,17 +36,20 @@ abstract contract Adapter is SlotEntry, Constants {
 
     /// NOTE consider using `hasRole(bytes4)` for future role in the DAO => AccessControl.sol
     modifier onlyMember() {
-        require(IDaoCore(_core).hasRole(msg.sender, ROLE_MEMBER), "Adapter: not a member");
+        require(IAccessControl(_core).hasRole(ROLE_MEMBER, msg.sender), "Adapter: not a member");
         _;
     }
 
     modifier onlyProposer() {
-        require(IDaoCore(_core).hasRole(msg.sender, ROLE_PROPOSER), "Adapter: not a proposer");
+        require(
+            IAccessControl(_core).hasRole(ROLE_PROPOSER, msg.sender),
+            "Adapter: not a proposer"
+        );
         _;
     }
 
     modifier onlyAdmin() {
-        require(IDaoCore(_core).hasRole(msg.sender, ROLE_ADMIN), "Adapter: not an admin");
+        require(IAccessControl(_core).hasRole(ROLE_ADMIN, msg.sender), "Adapter: not an admin");
         _;
     }
 

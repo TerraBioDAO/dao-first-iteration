@@ -3,19 +3,6 @@
 pragma solidity ^0.8.13;
 
 interface IDaoCore {
-    event SlotEntryChanged(
-        bytes4 indexed slot,
-        bool indexed isExtension,
-        address oldContractAddr,
-        address newContractAddr
-    );
-
-    event MemberStatusChanged(
-        address indexed member,
-        bytes32 indexed roles,
-        bool indexed actualValue
-    );
-
     struct Entry {
         bytes4 slot;
         bool isExtension;
@@ -28,31 +15,36 @@ interface IDaoCore {
         bool[] memory values
     ) external;
 
-    function batchChangeSlotEntries(bytes4[] memory slots, address[] memory contractsAddr) external;
-
-    function changeSlotEntry(bytes4 slot, address contractAddr) external;
-
-    function changeMemberStatus(
-        address account,
-        bytes32 role,
-        bool value
+    function batchChangeEntriesStatus(
+        address[] memory entriesAddr,
+        bytes32[] memory roles,
+        bool[] memory values
     ) external;
 
-    function membersCount() external returns (uint256);
+    function createSubRole(bytes32 subRole, bytes32 role) external;
 
-    function hasRole(address account, bytes32 role) external returns (bool);
+    function removeSubRole(bytes32 subRole, bytes32 role) external;
 
-    function getNumberOfRoles() external view returns (uint256);
+    function numberOfMembers() external view returns (uint256);
 
-    function rolesActive(bytes32 role) external view returns (bool);
+    function membersList() external view returns (address[] memory);
 
-    function getRolesByIndex(uint256 index) external view returns (bytes32);
+    function numberOfEntries() external view returns (uint256);
+
+    function entriesList() external view returns (address[] memory);
+
+    function numberOfRoles() external view returns (uint256);
+
+    function rolesList() external view returns (bytes32[] memory);
+
+    function roleExist(bytes32 role) external view returns (bool);
+
+    // ---
+    function getSlotContractAddr(bytes4 slot) external view returns (address);
+
+    function legacyManaging() external view returns (address);
 
     function isSlotActive(bytes4 slot) external view returns (bool);
 
     function isSlotExtension(bytes4 slot) external view returns (bool);
-
-    function getSlotContractAddr(bytes4 slot) external view returns (address);
-
-    function legacyManaging() external view returns (address);
 }

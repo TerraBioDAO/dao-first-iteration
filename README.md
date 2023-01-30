@@ -4,6 +4,21 @@
 
 ⚠️ Branch `dev`
 
+## Version 0.2
+IMPROVMENTS for v0.2:
+- [x] Merge `roles` & `slots` for access control
+- [?] Define `roles` by either members status or entries?
+- [ ] Adapters change to bytes32 mapping (more consistent)
+- [x] Change Slot & constants
+- [ ] Use Errors (=Opt)
+- [ ] Review roles: using OZ need complex roles managment (set roles hiearchy)
+- [ ] Roles & slots ? Check if adapter's roles have only one members ?
+- [ ] [Storage bucket](https://github.com/dragonfly-xyz/useful-solidity-patterns/tree/main/patterns/explicit-storage-buckets) for extensions ! 
+- [ ] Scripts with /cache artifact
+
+OPEN QUESTIONS:
+- [ ] `DaoCore` should be upgradeable?
+
 ## Version 0.1
 
 *Explications des choix techniques*
@@ -17,16 +32,6 @@ Nous avons retiré le système d'accès (ACL) basé sur des `flags` au profit d'
 Bien que ce framework permet un contrôle fin des accès aux états de la DAO, les logiques de restrictions sont dédoublées. En effet `roles` et `slots` sont utilisées pour filtrer les accès aux fonctions sensibles, les `roles` filtrent l'accès aux `adapters` et les `slots` filtrent l'accès aux fonctions modifiant les états.
 
 La distinction entre `adapters` & `extensions` reste également floue, un `adapter` implémente la logique visant à accéder aux fonctions modifiant les états de la DAO. Cependant les `extensions` doivent également implémenter les fonctions modifiant l'état de la DAO, ainsi ces dernières stockent des états et implémentent les fonctions associées. Les `extensions` sont ainsi peu évolutives dans le temps et nécessitent des migrations des états en cas de modifications de la logique.
-
-## Version 0.2
-IMPROVMENTS for v0.2:
-- [ ] Adapters change to bytes32 mapping (more consistent)
-- [ ] Change Slot & constants
-- [ ] Use Errors (=Opt)
-- [ ] Review roles: using OZ need complex roles managment (set roles hiearchy)
-- [ ] Roles & slots ? Check if adapter's roles have only one members ?
-- [ ] [Storage bucket](https://github.com/dragonfly-xyz/useful-solidity-patterns/tree/main/patterns/explicit-storage-buckets) for extensions ! 
-- [ ] Scripts with /cache artifact
 
 ---
 
