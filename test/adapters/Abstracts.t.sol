@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.17;
+pragma solidity ^0.8.13;
 
 import "test/base/BaseDaoTest.sol";
 import "src/extensions/Agora.sol";
@@ -100,7 +100,7 @@ contract Abstracts_test is BaseDaoTest {
     /* //////////////////////////
             ADAPTERS
     ////////////////////////// */
-    function testPassModifiers(address user) public {
+    function test_modifier_PassModifiers(address user) public {
         vm.assume(user != ZERO && user != AGORA && user != ADMIN);
         vm.prank(DAO);
         assertTrue(adapterImpl.onlyCoreMock());
@@ -117,7 +117,7 @@ contract Abstracts_test is BaseDaoTest {
         assertTrue(adapterImpl.onlyAdminMock());
     }
 
-    function testCannotPassModifiers() public {
+    function test_modifier_CannotPassModifiers() public {
         vm.startPrank(address(777));
         vm.expectRevert("Adapter: not the core");
         adapterImpl.onlyCoreMock();
@@ -135,7 +135,7 @@ contract Abstracts_test is BaseDaoTest {
     /* //////////////////////////
            PROPOSER ADAPTERS
     ////////////////////////// */
-    function testPassPaused(bool isPaused) public {
+    function test_pauseToggle_PassPaused(bool isPaused) public {
         if (isPaused) {
             vm.prank(ADMIN);
             proposerImpl.pauseToggleAdapter();
@@ -146,7 +146,7 @@ contract Abstracts_test is BaseDaoTest {
         }
     }
 
-    function testCannotNewProposal() public {
+    function test_newProposal_CannotWhenDesactived() public {
         _branch(proposerImpl.slot(), PROPOSER_IMPL);
         vm.prank(ADMIN);
         proposerImpl.desactive();
@@ -155,7 +155,7 @@ contract Abstracts_test is BaseDaoTest {
         proposerImpl.newProposal();
     }
 
-    function testFinalizeProposal(bool isAccepted) public {
+    function test_finalizeProposal_FinalizeProposal(bool isAccepted) public {
         _branch(proposerImpl.slot(), PROPOSER_IMPL);
         bytes32 proposalId = proposerImpl.newProposal();
 
@@ -180,14 +180,14 @@ contract Abstracts_test is BaseDaoTest {
         assertEq(proposerImpl.ongoingProposals(), 0);
     }
 
-    function testDesactive() public {
+    function test_desactive_ChangeState() public {
         vm.prank(ADMIN);
         proposerImpl.desactive();
 
         assertTrue(proposerImpl.isDesactived());
     }
 
-    function testCannotDesactive() public {
+    function test_desactive_CannotWhenOngoingProposal() public {
         _branch(proposerImpl.slot(), PROPOSER_IMPL);
         proposerImpl.newProposal();
         vm.warp(100);
@@ -197,7 +197,7 @@ contract Abstracts_test is BaseDaoTest {
         proposerImpl.desactive();
     }
 
-    function testDeleteArchive() public {
+    function test_deleteArchive_DeleteArchive() public {
         _branch(proposerImpl.slot(), PROPOSER_IMPL);
         bytes32 proposalId = proposerImpl.newProposal();
         vm.warp(100);

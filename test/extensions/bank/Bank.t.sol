@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.17;
+pragma solidity ^0.8.13;
 
 import "test/base/BaseDaoTest.sol";
 import "src/extensions/Bank.sol";
@@ -40,7 +40,7 @@ contract Bank_test is BaseDaoTest {
         P365
     }
 
-    function _lpToUint(LockPeriod lp) internal pure returns (uint32) {
+    function workaround_lpToUint(LockPeriod lp) internal pure returns (uint32) {
         if (lp == LockPeriod.P1) {
             return 1 days;
         } else if (lp == LockPeriod.P7) {
@@ -58,7 +58,11 @@ contract Bank_test is BaseDaoTest {
         }
     }
 
-    function _lpMultiplier(LockPeriod lp, uint96 tokenAmount) internal pure returns (uint96) {
+    function workaround_lpMultiplier(LockPeriod lp, uint96 tokenAmount)
+        internal
+        pure
+        returns (uint96)
+    {
         if (lp == LockPeriod.P1) {
             return tokenAmount / 10;
         } else if (lp == LockPeriod.P7) {
@@ -76,7 +80,7 @@ contract Bank_test is BaseDaoTest {
         }
     }
 
-    function testNewCommitment(uint256 tokenAmount, uint8 enumLP) public {
+    function test_newCommitment_NewCommitment(uint256 tokenAmount, uint8 enumLP) public {
         vm.assume(tokenAmount > 0 && tokenAmount <= 50_000e18 && enumLP < 6);
         LockPeriod lp = LockPeriod(enumLP);
         vm.warp(1000);
@@ -86,16 +90,16 @@ contract Bank_test is BaseDaoTest {
         tbio.approve(BANK, tokenAmount);
 
         vm.prank(VOTING);
-        bank.newCommitment(USER, bytes32("0x01"), uint96(tokenAmount), _lpToUint(lp), 0);
+        bank.newCommitment(USER, bytes32("0x01"), uint96(tokenAmount), workaround_lpToUint(lp), 0);
 
         assertEq(tbio.balanceOf(BANK), tokenAmount);
 
         (uint96 lockedAmount, uint96 voteWeight, uint32 lockPeriod, uint32 retrievalDate) = bank
             .getCommitment(USER, bytes32("0x01"));
         assertEq(lockedAmount, tokenAmount, "lock amount");
-        assertEq(voteWeight, _lpMultiplier(lp, uint96(tokenAmount)), "vote weight");
-        assertEq(lockPeriod, _lpToUint(lp), "lock period");
-        assertEq(retrievalDate, 1000 + _lpToUint(lp), "retrieval date");
+        assertEq(voteWeight, workaround_lpMultiplier(lp, uint96(tokenAmount)), "vote weight");
+        assertEq(lockPeriod, workaround_lpToUint(lp), "lock period");
+        assertEq(retrievalDate, 1000 + workaround_lpToUint(lp), "retrieval date");
 
         assertEq(bank.getCommitmentsList(USER).length, 1);
         assertEq(bank.getCommitmentsList(USER)[0], bytes32("0x01"));
@@ -104,10 +108,10 @@ contract Bank_test is BaseDaoTest {
         assertEq(availableBalance, 0);
         assertEq(lockedBalance, tokenAmount);
 
-        assertEq(bank.getNextRetrievalDate(USER), 1000 + _lpToUint(lp));
+        assertEq(bank.getNextRetrievalDate(USER), 1000 + workaround_lpToUint(lp));
     }
 
-    function testCannotNewCommitment() public {
+    function test_newCommitment_CannotSomeReasons() public {
         vm.warp(1000);
 
         vm.prank(VOTING);
@@ -133,39 +137,39 @@ contract Bank_test is BaseDaoTest {
         bank.newCommitment(USER, bytes32("0x01"), uint96(50e18), 7 days, 0);
     }
 
-    function testMultipleNewCommitment() public {
-        //
-    }
+    // function testMultipleNewCommitment() public {
+    //     //
+    // }
 
-    function testEndOfCommitment() public {
-        //
-    }
+    // function testEndOfCommitment() public {
+    //     //
+    // }
 
-    function testUseAvailableBalanceWhenCommitment() public {
-        //
-    }
+    // function testUseAvailableBalanceWhenCommitment() public {
+    //     //
+    // }
 
-    function testGetFuturesBalance() public {
-        // try to get the real available balance and match it with a newCommitment to confirm
-        //
-    }
+    // function testGetFuturesBalance() public {
+    //     // try to get the real available balance and match it with a newCommitment to confirm
+    //     //
+    // }
 
-    function testGetFutureNextRetrieval() public {
-        // same as above
-        //
-    }
+    // function testGetFutureNextRetrieval() public {
+    //     // same as above
+    //     //
+    // }
 
-    // withdrawAmount()
-    function testWithdrawAmount() public {
-        //
-    }
+    // // withdrawAmount()
+    // function testWithdrawAmount() public {
+    //     //
+    // }
 
-    function testCannotWithdrawAmount() public {
-        //
-    }
+    // function testCannotWithdrawAmount() public {
+    //     //
+    // }
 
     // adancedDeposit()
-    function testAdancedDeposit() public {
+    function test_advancedDeposit_Deposit() public {
         _mintTBIO(USER, 50e18);
         vm.prank(USER);
         tbio.approve(BANK, 50e18);
@@ -177,7 +181,7 @@ contract Bank_test is BaseDaoTest {
         assertEq(availableBalance, uint128(50e18));
     }
 
-    function testCannotAdancedDeposit() public {
+    function test_advancedDeposit_CannotWhenNotAuthorized() public {
         vm.expectRevert(); // without message (wrong call)
         bank.advancedDeposit(USER, uint128(50e18));
 
@@ -189,16 +193,16 @@ contract Bank_test is BaseDaoTest {
     }
 
     // createVault()
-    function _createVault(address[] memory a) internal {
+    function workaround_createVault(address[] memory a) internal {
         vm.prank(FINANCING);
         bank.createVault(VAULT_TREASURY, a);
     }
 
-    function testCreateVault() public {
+    function test_createVault_NewVault() public {
         address[] memory a = new address[](2);
         a[0] = address(0);
         a[1] = address(tbio);
-        _createVault(a);
+        workaround_createVault(a);
 
         assertTrue(bank.isVaultExist(VAULT_TREASURY));
         address[] memory addr = bank.getVaultTokenList(VAULT_TREASURY);
@@ -207,11 +211,11 @@ contract Bank_test is BaseDaoTest {
         assertEq(addr[1], address(tbio));
     }
 
-    function testCannotCreateVault() public {
+    function test_createVault_CannotWhenAlreadyExist() public {
         address[] memory a = new address[](4);
         a[0] = address(0);
         a[1] = address(tbio);
-        _createVault(a);
+        workaround_createVault(a);
 
         a[0] = address(0);
         a[1] = address(1);
@@ -223,7 +227,7 @@ contract Bank_test is BaseDaoTest {
         bank.createVault(VAULT_TREASURY, a);
     }
 
-    function testDepositVault(uint256 tokenAmount) public {
+    function test_vaultDeposit_Deposit(uint256 tokenAmount) public {
         vm.assume(tokenAmount > 0 && tokenAmount < type(uint128).max);
         _mintTBIO(USER, tokenAmount);
         vm.prank(USER);
@@ -232,7 +236,7 @@ contract Bank_test is BaseDaoTest {
         address[] memory a = new address[](2);
         a[0] = address(0);
         a[1] = address(tbio);
-        _createVault(a);
+        workaround_createVault(a);
 
         vm.prank(FINANCING);
         bank.vaultDeposit(VAULT_TREASURY, address(tbio), USER, uint128(tokenAmount));
@@ -243,7 +247,7 @@ contract Bank_test is BaseDaoTest {
         assertEq(uint256(availableBalance), tokenAmount);
     }
 
-    function testCannotDepositVault() public {
+    function test_vaultDeposit_CannotWrongTokenAndVault() public {
         uint128 tokenAmount = uint128(50e18);
         _mintTBIO(USER, tokenAmount);
         vm.prank(USER);
@@ -256,7 +260,7 @@ contract Bank_test is BaseDaoTest {
         address[] memory a = new address[](2);
         a[0] = address(0);
         a[1] = address(5);
-        _createVault(a);
+        workaround_createVault(a);
 
         vm.prank(FINANCING);
         vm.expectRevert("Bank: unregistred token");
@@ -273,7 +277,7 @@ contract Bank_test is BaseDaoTest {
         address[] memory a = new address[](2);
         a[0] = address(0);
         a[1] = address(tbio);
-        _createVault(a);
+        workaround_createVault(a);
 
         vm.prank(FINANCING);
         bank.vaultDeposit(VAULT_TREASURY, address(tbio), USER, amount);
@@ -299,7 +303,7 @@ contract Bank_test is BaseDaoTest {
         address[] memory a = new address[](2);
         a[0] = address(0);
         a[1] = address(tbio);
-        _createVault(a);
+        workaround_createVault(a);
 
         vm.startPrank(FINANCING);
         vm.expectRevert("Bank: inexistant vaultId");
@@ -318,7 +322,7 @@ contract Bank_test is BaseDaoTest {
         address[] memory a = new address[](2);
         a[0] = address(0);
         a[1] = address(tbio);
-        _createVault(a);
+        workaround_createVault(a);
 
         vm.startPrank(FINANCING);
         bank.vaultDeposit(VAULT_TREASURY, address(tbio), USER, amount);

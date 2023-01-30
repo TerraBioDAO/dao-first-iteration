@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.17;
+pragma solidity ^0.8.13;
 
 import "test/base/BaseDaoTest.sol";
 import "src/core/DaoCore.sol";
@@ -19,7 +19,7 @@ contract Managing_test is BaseDaoTest {
         _branch(Slot.MANAGING, MANAGING);
     }
 
-    function testManageSlotEntry(bytes4 slot) public {
+    function test_manageSlotEntry_AddEntry(bytes4 slot) public {
         vm.assume(slot != Slot.EMPTY);
         ENTRY = _newEntry(slot, false);
 
@@ -31,7 +31,7 @@ contract Managing_test is BaseDaoTest {
         assertFalse(dao.isSlotExtension(slot));
     }
 
-    function testCannotManageSlotEntry(bytes4 slot) public {
+    function test_manageSlotEntry_CannotWhenNotAnAdmin(bytes4 slot) public {
         vm.assume(slot != Slot.EMPTY);
 
         ENTRY = _newEntry(slot, false);

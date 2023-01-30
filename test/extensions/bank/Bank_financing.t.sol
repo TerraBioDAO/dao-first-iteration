@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.17;
+pragma solidity ^0.8.13;
 
 import "test/base/BaseTest.sol";
 import "src/extensions/Bank.sol";
@@ -14,7 +14,7 @@ contract Bank_financing_test is BaseTest {
     address public constant TOKEN_ADDRESS = address(0xee);
     address public constant CORE = address(0xff);
 
-    address public constant FINANCING = address(uint160(uint32(Slot.FINANCING)));
+    address public constant FINANCING = address(0x45);
     address public constant APPLICANT = address(0x0f);
     address public constant NOT_RIGHT_ADAPTER = address(0x0e);
 

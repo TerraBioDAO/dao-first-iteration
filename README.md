@@ -4,6 +4,20 @@
 
 _Explication du repo_
 
+TODO:
+- [x] Solidity version to .13
+- [x] Imports
+- [x] Naming (variables & tests)
+- [ ] Adapters change to bytes32 mapping (more consistent)
+
+IMPROVMENTS:
+- [ ] Change Slot & constants
+- [ ] Use Errors (=Opt)
+- [ ] Review roles: using OZ need complex roles managment (set roles hiearchy)
+- [ ] Withoout DAO core? need it + avatar ?
+- [ ] Roles & slots ? Check if adapter's roles have only one members ?
+- [ ] [Storage bucket](https://github.com/dragonfly-xyz/useful-solidity-patterns/tree/main/patterns/explicit-storage-buckets) for extensions ! 
+
 # After git clone
 
 Make sure you have install [Rust](https://www.rust-lang.org/fr/learn/get-started) & [Foundry](https://book.getfoundry.sh/getting-started/installation)

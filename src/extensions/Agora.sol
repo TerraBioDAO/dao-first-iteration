@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.17;
+pragma solidity ^0.8.13;
 
-import "../abstracts/Extension.sol";
-import "../helpers/Constants.sol";
-import "../interfaces/IAgora.sol";
-import "../interfaces/IProposerAdapter.sol";
+import { Extension, Slot } from "../abstracts/Extension.sol";
+import { Constants } from "../helpers/Constants.sol";
+import { IAgora } from "../interfaces/IAgora.sol";
+import { IProposerAdapter } from "../interfaces/IProposerAdapter.sol";
 
 /**
  * @notice contract which store votes parameters, vote result,

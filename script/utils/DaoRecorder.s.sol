@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.13;
 
-import "openzeppelin-contracts/utils/Strings.sol";
+import { Strings } from "openzeppelin-contracts/utils/Strings.sol";
 import "forge-std/StdJson.sol";
 
 import "./BaseDao.s.sol";

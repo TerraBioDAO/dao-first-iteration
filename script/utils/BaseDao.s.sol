@@ -1,22 +1,23 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.13;
 
-import "openzeppelin-contracts/token/ERC20/IERC20.sol";
-import "openzeppelin-contracts/utils/Strings.sol";
+import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
+import { Strings } from "openzeppelin-contracts/utils/Strings.sol";
 
 import "forge-std/Script.sol";
 import "forge-std/Test.sol";
 
-import "src/core/DaoCore.sol";
-import "src/extensions/Agora.sol";
-import "src/extensions/Bank.sol";
-import "src/adapters/Financing.sol";
-import "src/adapters/Onboarding.sol";
-import "src/adapters/Managing.sol";
-import "src/adapters/Voting.sol";
+import { DaoCore } from "src/core/DaoCore.sol";
+import { Agora } from "src/extensions/Agora.sol";
+import { Bank } from "src/extensions/Bank.sol";
+import { Financing } from "src/adapters/Financing.sol";
+import { Onboarding } from "src/adapters/Onboarding.sol";
+import { Managing } from "src/adapters/Managing.sol";
+import { Voting } from "src/adapters/Voting.sol";
+import { Slot } from "src/helpers/Slot.sol";
 
-import "test/MockERC20.sol";
+import { MockERC20 } from "test/MockERC20.sol";
 
 abstract contract BaseDao is Script {
     // internal contracts

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.17;
+pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import "src/core/DaoCore.sol";
@@ -41,7 +41,7 @@ contract DaoCore_test is BaseDaoTest {
             - batch new members
             - batch new slots
     ///////////////////////////////*/
-    function _createBatchMemberArgs(uint256 addrOffset, uint256 length)
+    function workaround_createBatchMemberArgs(uint256 addrOffset, uint256 length)
         private
         pure
         returns (
@@ -60,7 +60,7 @@ contract DaoCore_test is BaseDaoTest {
         }
     }
 
-    function _createBatchSlotArgs(uint256 length)
+    function workaround_createBatchSlotArgs(uint256 length)
         private
         returns (bytes4[] memory slots, address[] memory contractsAddr)
     {
@@ -75,7 +75,7 @@ contract DaoCore_test is BaseDaoTest {
     /*///////////////////////////////
         batchChangeMembersStatus()
     ///////////////////////////////*/
-    function testBatchChangeMembersStatus(uint256 listLength) public {
+    function test_batchChangeMembersStatus_VariousLenght(uint256 listLength) public {
         listLength = bound(listLength, 3, 100);
 
         for (uint256 i = 1; i < 10; i++) {
@@ -83,14 +83,14 @@ contract DaoCore_test is BaseDaoTest {
                 address[] memory accounts,
                 bytes32[] memory roles,
                 bool[] memory values
-            ) = _createBatchMemberArgs(i * 10000, listLength);
+            ) = workaround_createBatchMemberArgs(i * 10000, listLength);
             vm.prank(DEPLOYER);
             dao.batchChangeMembersStatus(accounts, roles, values);
             assertEq(dao.membersCount(), (listLength * i) + 1);
         }
     }
 
-    function testCannotBatchChangeMembersStatus() public {
+    function test_batchChangeMembersStatus_CannotWithWrongList() public {
         address[] memory accounts = new address[](10);
         bytes32[] memory roles = new bytes32[](10);
         bool[] memory values = new bool[](9);
@@ -103,8 +103,10 @@ contract DaoCore_test is BaseDaoTest {
     /*///////////////////////////////
         batchChangeSlotEntries()
     ///////////////////////////////*/
-    function testBatchChangeSlotEntries() public {
-        (bytes4[] memory slots, address[] memory contractsAddr) = _createBatchSlotArgs(10);
+    function test_batchChangeSlotEntries_AddSeveralEntries() public {
+        (bytes4[] memory slots, address[] memory contractsAddr) = workaround_createBatchSlotArgs(
+            10
+        );
         vm.prank(DEPLOYER);
         dao.batchChangeSlotEntries(slots, contractsAddr);
 
@@ -113,7 +115,7 @@ contract DaoCore_test is BaseDaoTest {
         }
     }
 
-    function testCannotBatchChangeSlotEntries() public {
+    function test_batchChangeSlotEntries_CannotWithWrongList() public {
         bytes4[] memory slots = new bytes4[](5);
         address[] memory contractsAddr = new address[](6);
 
@@ -126,7 +128,7 @@ contract DaoCore_test is BaseDaoTest {
         changeSlotEntry(MANAGING)
         to finalize deployment
     ///////////////////////////////*/
-    function testDeployerChangeManagingSlot() public {
+    function test_changeSlotEntry_DeployerChangeManagingSlot() public {
         MANAGING = _newEntry(Slot.MANAGING, false);
         ONBOARDING = _newEntry(Slot.ONBOARDING, false);
         vm.startPrank(DEPLOYER);
@@ -141,7 +143,7 @@ contract DaoCore_test is BaseDaoTest {
     /*///////////////////////////////
             CHANGE MEMBER STATUS
     ///////////////////////////////*/
-    function testChangeMemberStatus(bytes4 role) public {
+    function test_changeMemberStatus_ChangeSeveralStatus(bytes4 role) public {
         vm.assume(role != ROLE_MEMBER && role != ROLE_ADMIN);
         vm.startPrank(DEPLOYER);
         dao.changeMemberStatus(USER, role, true);
@@ -157,7 +159,7 @@ contract DaoCore_test is BaseDaoTest {
         assertEq(dao.membersCount(), 2);
     }
 
-    function testCannotChangeMemberStatus() public {
+    function test_changeMemberStatus_CannotWithZerAndWrongRole() public {
         vm.startPrank(DEPLOYER);
         vm.expectRevert("Core: zero address used");
         dao.changeMemberStatus(address(0), ROLE_MEMBER, true);
@@ -169,7 +171,7 @@ contract DaoCore_test is BaseDaoTest {
         dao.changeMemberStatus(USER, ROLE_MEMBER, true);
     }
 
-    function testEmitOnChangeMemberStatus(bytes32 role, address user) public {
+    function test_changeMemberStatus_EmitEvent(bytes32 role, address user) public {
         vm.assume(user != address(0) && user != DEPLOYER);
         vm.startPrank(DEPLOYER);
         vm.expectEmit(true, true, true, false, DAO);
@@ -177,7 +179,7 @@ contract DaoCore_test is BaseDaoTest {
         dao.changeMemberStatus(user, role, true);
     }
 
-    function testRevokeMember() public {
+    function test_changeMemberStatus_RevokeMember() public {
         vm.startPrank(DEPLOYER);
         dao.changeMemberStatus(USER, ROLE_MEMBER, true);
         dao.changeMemberStatus(USER, ROLE_ADMIN, true);
@@ -196,7 +198,7 @@ contract DaoCore_test is BaseDaoTest {
     /*///////////////////////////////
             CHANGE SLOT ENTRY
     ///////////////////////////////*/
-    function testAddSlotEntry(bytes4 slot, bool isExt) public {
+    function test_changeSlotEntry_AddSlotEntry(bytes4 slot, bool isExt) public {
         vm.assume(slot != Slot.EMPTY && slot != Slot.ONBOARDING && slot != Slot.MANAGING);
         address entry = _newEntry(slot, isExt);
 
@@ -208,7 +210,7 @@ contract DaoCore_test is BaseDaoTest {
         assertEq(dao.isSlotExtension(slot), isExt);
     }
 
-    function testCannotAddSlotEntry() public {
+    function test_changeSlotEntry_CannotAddSlotEntry() public {
         ONBOARDING = address(600);
         vm.startPrank(DEPLOYER);
 
@@ -223,7 +225,7 @@ contract DaoCore_test is BaseDaoTest {
         dao.changeSlotEntry(Slot.ONBOARDING, ONBOARDING);
     }
 
-    function testReplaceSlotEntry(bytes4 slot, bool isExt) public {
+    function test_changeSlotEntry_ReplaceSlotEntry(bytes4 slot, bool isExt) public {
         vm.assume(slot != Slot.EMPTY && slot != Slot.ONBOARDING && slot != Slot.MANAGING);
         address replacedEntry = _newEntry(slot, isExt);
 
@@ -239,7 +241,7 @@ contract DaoCore_test is BaseDaoTest {
         assertEq(dao.isSlotExtension(slot), isExt);
     }
 
-    function testCannotReplaceSlotEntry(bytes4 slot, bool isExt) public {
+    function test_changeSlotEntry_CannotReplaceSlotEntry(bytes4 slot, bool isExt) public {
         vm.assume(slot != Slot.EMPTY && slot != Slot.ONBOARDING && slot != Slot.MANAGING);
         address replacedEntry = _newEntry(slot, isExt);
 
@@ -251,7 +253,7 @@ contract DaoCore_test is BaseDaoTest {
         dao.changeSlotEntry(slot, entry);
     }
 
-    function testRemoveSlotEntry(bytes4 slot, bool isExt) public {
+    function test_changeSlotEntry_RemoveSlotEntry(bytes4 slot, bool isExt) public {
         vm.assume(slot != Slot.EMPTY && slot != Slot.ONBOARDING && slot != Slot.MANAGING);
         address entry = _newEntry(slot, isExt);
 
@@ -264,7 +266,7 @@ contract DaoCore_test is BaseDaoTest {
         assertFalse(dao.isSlotExtension(slot));
     }
 
-    function testChangeManagingEntry() public {
+    function test_changeSlotEntry_ChangeManagingEntry() public {
         address firstManaging = _newEntry(Slot.MANAGING, false);
         vm.startPrank(DEPLOYER);
         dao.changeSlotEntry(Slot.MANAGING, firstManaging);
@@ -277,7 +279,7 @@ contract DaoCore_test is BaseDaoTest {
         assertEq(dao.getSlotContractAddr(Slot.MANAGING), secondManaging);
     }
 
-    function testCannotRemoveManaging() public {
+    function test_changeSlotEntry_CannotRemoveManaging() public {
         MANAGING = _newEntry(Slot.MANAGING, false);
         vm.startPrank(DEPLOYER);
         dao.changeSlotEntry(Slot.MANAGING, MANAGING);
@@ -287,7 +289,7 @@ contract DaoCore_test is BaseDaoTest {
         dao.changeSlotEntry(Slot.MANAGING, address(0));
     }
 
-    function testEmitOnChangeSlotEntry(bytes4 slot, bool isExt) public {
+    function test_changeSlotEntry_EmitEvent(bytes4 slot, bool isExt) public {
         vm.assume(slot != Slot.EMPTY && slot != Slot.ONBOARDING && slot != Slot.MANAGING);
         address firstEntry = _newEntry(slot, isExt);
         vm.startPrank(DEPLOYER);
@@ -309,7 +311,7 @@ contract DaoCore_test is BaseDaoTest {
     /*///////////////////////////////
                     ROLES
     ///////////////////////////////*/
-    function testRolesAtDeployment() public {
+    function test_constructor_RolesAtDeployment() public {
         assertTrue(dao.rolesActive(ROLE_MEMBER));
         assertTrue(dao.rolesActive(ROLE_ADMIN));
         assertEq(dao.getNumberOfRoles(), 2);
@@ -317,7 +319,7 @@ contract DaoCore_test is BaseDaoTest {
         assertEq(dao.getRolesByIndex(1), ROLE_ADMIN);
     }
 
-    function testAddRole(bytes32 role) public {
+    function test_addNewRole_AddRole(bytes32 role) public {
         vm.assume(role != ROLE_ADMIN && role != ROLE_MEMBER);
         vm.prank(DEPLOYER);
         dao.addNewRole(role);
@@ -326,7 +328,7 @@ contract DaoCore_test is BaseDaoTest {
         assertEq(dao.getRolesByIndex(2), role);
     }
 
-    function testRemoveRole() public {
+    function test_addNewRole_RemoveRole() public {
         vm.prank(DEPLOYER);
         dao.removeRole(ROLE_MEMBER);
         assertFalse(dao.rolesActive(ROLE_MEMBER));
