@@ -8,10 +8,15 @@ import { IAgora } from "../interfaces/IAgora.sol";
 import { IProposerAdapter } from "../interfaces/IProposerAdapter.sol";
 
 /**
- * @notice contract which store votes parameters, vote result,
- * proposals and their status
+ * @title Extension contract for the voting process
+ * @notice End users do not interact directly with this contract (read-only)
+ *
+ * @dev The contract stores:
+ *      - ongoing proposals
+ *      - archived proposals
+ *      - vote progress and result
+ *      - vote parameters
  */
-
 contract Agora is Extension, IAgora, Constants {
     using Slot for bytes28;
 
@@ -20,18 +25,40 @@ contract Agora is Extension, IAgora, Constants {
         address dataAddr;
     }
 
+    /// @dev track proposals by their hash
     mapping(bytes32 => Proposal) private _proposals;
+
+    /// @dev track vote parameters by their voteID
     mapping(bytes4 => VoteParam) private _voteParams;
+
+    /// @dev track users vote contribution by proposals
     mapping(bytes32 => mapping(address => bool)) private _haveVoted;
+
+    /// @dev track archived proposals by their hash
     mapping(bytes32 => Archive) private _archives;
 
+    /**
+     * @dev A default vote parameters is added a contract deployment
+     *
+     * @param core address of DaoCore
+     */
     constructor(address core) Extension(core, Slot.AGORA) {
         _addVoteParam(VOTE_STANDARD, Consensus.TOKEN, 7 days, 3 days, 8000, 7 days);
     }
 
-    /* //////////////////////////
-            PUBLIC FUNCTIONS
-    ////////////////////////// */
+    /*//////////////////////////////////////////////////////////
+                            PUBLIC FONCTIONS 
+    //////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Called by the VOTING adapter to commit an user's vote
+     * @dev see {_submitVote}
+     *
+     * @param proposalId hash of the proposal to vote on
+     * @param voter address of the user who vote
+     * @param voteWeight weight of the vote to commit
+     * @param value user's descision
+     */
     function submitVote(
         bytes32 proposalId,
         address voter,
@@ -41,6 +68,21 @@ contract Agora is Extension, IAgora, Constants {
         _submitVote(proposalId, voter, voteWeight, value);
     }
 
+    /**
+     * @notice Called by any `adapter` which can submit proposals
+     * to register a new proposal.
+     * @dev The proposalId is a concatenation of the `adapter`
+     * slotId (bytes4) and the hash of the adapter's proposal (bytes28).
+     * A counter for vote parameter is incremented to avoid the removal
+     * of vote parameter while used in a proposal.
+     *
+     * @param slot slotId of the adapter which send the proposal
+     * @param adapterProposalId hash of the `adapter` proposal
+     * @param adminApproved inform if an admin need to approve the proposal
+     * @param voteParamId vote parameter to use for this proposal
+     * @param minStartTime timestamp for the start of the voting period
+     * @param initiater address of user who initiated this proposal
+     */
     function submitProposal(
         bytes4 slot,
         bytes28 adapterProposalId,
@@ -74,13 +116,15 @@ contract Agora is Extension, IAgora, Constants {
     }
 
     /**
-     * @notice function used to flag that a proposal hase been
-     * procedeed. Proposal are still in the storage of the contract.
-     * @dev can be called by any adapter, allowing to implement restriction
-     * on it if needed.
+     * @notice Called by the `adapter` which has sent the proposal, the
+     * function flag the proposal as proceeded and archive it.
      *
-     * TODO add logic to delete proposal once the corresponding the
-     * maximal locking period is reached (< 1 year)
+     * @dev The result of the proposal is already check before calling
+     * this function and the result is reported here with {accepted}.
+     *
+     * @param proposalId proposal to finalize
+     * @param finalizer address of user who called {finalizeProposal}
+     * @param accepted result of the vote, reported by the adapter
      */
     function finalizeProposal(
         bytes32 proposalId,
@@ -93,13 +137,21 @@ contract Agora is Extension, IAgora, Constants {
     }
 
     /**
-     * @notice delete archive (if more than one year of existance)
-     * in Agora and then datas in the Adapter
+     * @notice Called by VOTING adapter to delete an archived
+     * proposal.
      *
-     * NOTE This function could be called by another adapter, like
-     * an adapter related to reputation and rewards, the second argument
-     * is for a future utilisation of the rewarding users for maintaining
-     * the DAO. BTW this function could be in another extensions
+     * @dev This function is not fully implemented, the second
+     * parameter is set to reward the user who send a transaction
+     * to delete the archive.
+     * The archive is deleted in the Agora contract, from {_archives},
+     * and in the corresponding contract address, where the proposal
+     * datas are stored.
+     *
+     * NOTE In the future this function should be in interaction with a
+     * "reward/reputation" module.
+     *
+     * @param proposalId proposal to delete
+     * @param (address) user who initiated the call
      */
     function deleteArchive(bytes32 proposalId, address) external onlyAdapter(Slot.VOTING) {
         Archive memory archive_ = _archives[proposalId];
@@ -112,16 +164,15 @@ contract Agora is Extension, IAgora, Constants {
     }
 
     /**
-     * @notice to change vote parameters
-     * @dev can be called by Voting adapter only
-     * @param isToAdd : To ADD or REMOVE parameters
-     * @param consensus : vote consensus
-     * @param votingPeriod : voting period
-     * @param gracePeriod : grace period
-     * @param threshold : threshold from which the vote is validated(in per ten thousand i.e. percent cents)
-     * @param adminValidationPeriod : admin validation period
-     * Requirements:
-     *  - can be called by Voting adapter only
+     * @notice Called by VOTING adapter to add or replace a vote parameters
+     *
+     * @param isToAdd flag for adding or removing the parameter
+     * @param voteParamId id of the vote
+     * @param consensus vote consensus type
+     * @param votingPeriod voting period
+     * @param gracePeriod grace period
+     * @param threshold threshold of the vote acceptance (in basis point)
+     * @param adminValidationPeriod admin grace period before the voting period
      */
     function changeVoteParam(
         bool isToAdd,
@@ -147,6 +198,15 @@ contract Agora is Extension, IAgora, Constants {
         _removeVoteParam(voteParamId);
     }
 
+    /**
+     * @notice Called by VOTING adapter to approve a proposal before the
+     * voting period
+     * @dev The check for admin-only is done in the VOTING adapter.
+     * The function postpone the starting time to not reduce the voting period
+     * of the proposal.
+     *
+     * @param proposalId proposal to approve
+     */
     function validateProposal(bytes32 proposalId) external onlyAdapter(Slot.VOTING) {
         require(
             _evaluateProposalStatus(proposalId) == ProposalStatus.VALIDATION,
@@ -162,6 +222,15 @@ contract Agora is Extension, IAgora, Constants {
         }
     }
 
+    /**
+     * @notice Called by VOTING adapter to suspend a proposal.
+     * @dev The check for admin-only is done in the VOTING adapter.
+     * The function pay attention when the proposal is suspended to
+     * postpone and so not reduce the voting period if the proposal is
+     * resumed.
+     *
+     * @param proposalId proposal to suspend
+     */
     function suspendProposal(bytes32 proposalId) external onlyAdapter(Slot.VOTING) {
         ProposalStatus status = _evaluateProposalStatus(proposalId);
         require(
@@ -181,6 +250,13 @@ contract Agora is Extension, IAgora, Constants {
         _proposals[proposalId].suspended = true;
     }
 
+    /**
+     * @notice Called by VOTING adapter to unsuspend a proposal.
+     * @dev The check for admin-only is done in the VOTING adapter.
+     * Unsuspend and increase the voting period if needed.
+     *
+     * @param proposalId proposal to unsuspend
+     */
     function unsuspendProposal(bytes32 proposalId) external onlyAdapter(Slot.VOTING) {
         Proposal memory proposal_ = _proposals[proposalId];
         require(proposal_.suspended, "Agora: proposal not suspended");
@@ -199,35 +275,73 @@ contract Agora is Extension, IAgora, Constants {
         _proposals[proposalId] = proposal_;
     }
 
-    /* //////////////////////////
-                GETTERS
-    ////////////////////////// */
+    /*//////////////////////////////////////////////////////////
+                            PUBLIC FONCTIONS 
+    //////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Get the current status of a proposal.
+     * @dev see {_evaluateProposalStatus}
+     * @param proposalId proposal to check
+     * @return proposal status ({ProposalStatus} enum)
+     */
     function getProposalStatus(bytes32 proposalId) external view returns (ProposalStatus) {
         return _evaluateProposalStatus(proposalId);
     }
 
+    /**
+     * @notice Get the current vote result.
+     * @dev see {_calculateVoteResult}
+     * @param proposalId proposal to check
+     * @return accepted true if the proposal is accepted
+     */
     function getVoteResult(bytes32 proposalId) external view returns (bool accepted) {
         return _calculateVoteResult(proposalId);
     }
 
+    /**
+     * @notice Get proposal details
+     * @param proposalId proposal to check
+     * @return struct {Proposal}
+     */
     function getProposal(bytes32 proposalId) external view returns (Proposal memory) {
         return _proposals[proposalId];
     }
 
+    /**
+     * @notice Get vote parameters details
+     * @param voteParamId voteId to check (bytes4)
+     * @return struct {VoteParam}
+     */
     function getVoteParams(bytes4 voteParamId) external view returns (VoteParam memory) {
         return _voteParams[voteParamId];
     }
 
+    /**
+     * @notice Check if an user has voted for a proposal
+     * @param proposalId proposal to check
+     * @param voter user address
+     * @return true if user has voted for this proposal
+     * */
     function hasVoted(bytes32 proposalId, address voter) external view returns (bool) {
         return _haveVoted[proposalId][voter];
     }
 
-    /* //////////////////////////
-        INTERNAL FUNCTIONS
-    ////////////////////////// */
+    /*//////////////////////////////////////////////////////////
+                        INTERNAL FUNCTIONS
+    //////////////////////////////////////////////////////////*/
+
     /**
-     * @dev internal
-     * @param threshold : threshold from which the vote is validated(in per ten thousand i.e. percent cents)
+     * @dev Internal function to add a vote parameter.
+     * {threshold} use basis point (10000 = 100%)
+     * A vote parameter cannot be replaced
+     *
+     * @param voteParamId id of the vote
+     * @param consensus vote consensus type
+     * @param votingPeriod voting period
+     * @param gracePeriod grace period
+     * @param threshold threshold of the vote acceptance (in basis point)
+     * @param adminValidationPeriod admin grace period before the voting period
      */
     function _addVoteParam(
         bytes4 voteParamId,
@@ -256,9 +370,11 @@ contract Agora is Extension, IAgora, Constants {
     }
 
     /**
-     * @dev internal
-     * requirements :
-     *  - vote parameters must not be in use.
+     * @dev Internal function to remove a vote parameter.
+     * The vote parameter cannot be removed if it used in an
+     * ongoing proposal
+     *
+     * @param voteParamId id of the vote
      */
     function _removeVoteParam(bytes4 voteParamId) internal {
         uint256 usesCount = _voteParams[voteParamId].usesCount;
@@ -268,6 +384,16 @@ contract Agora is Extension, IAgora, Constants {
         emit VoteParamsChanged(voteParamId, false);
     }
 
+    /**
+     * @dev Check is the voting period is live, if the user
+     * has not vote already, and increment the score on the
+     * corresponding proposal.
+     *
+     * @param proposalId proposal to vote on
+     * @param voter user who vote
+     * @param voteWeight weight of the user vote
+     * @param value user descision
+     */
     function _submitVote(
         bytes32 proposalId,
         address voter,
@@ -302,6 +428,16 @@ contract Agora is Extension, IAgora, Constants {
         emit MemberVoted(proposalId, voter, value, voteWeight);
     }
 
+    /**
+     * @dev Internal checker to calculate the vote result
+     *
+     * NOTE NOTA votes are not integrated in the calculation,
+     * this vote is only used to inform user committments to
+     * the DAO descisions.
+     *
+     * @param proposalId proposal to check
+     * @return accepted true if the proposal is accepted
+     */
     function _calculateVoteResult(bytes32 proposalId) internal view returns (bool accepted) {
         Proposal memory proposal_ = _proposals[proposalId];
         Score memory score_ = proposal_.score;
@@ -313,6 +449,14 @@ contract Agora is Extension, IAgora, Constants {
             (score_.nbYes * 10000) / totalVote >= _voteParams[proposal_.voteParamId].threshold;
     }
 
+    /**
+     * @dev Internal function to evaluate the status of the proposal.
+     * The current timestamp is compared to different period registered in
+     * the vote parameter and the proposal to determine the status.
+     *
+     * @param proposalId proposal to check
+     * @return proposal status ({ProposalStatus} enum)
+     */
     function _evaluateProposalStatus(bytes32 proposalId) internal view returns (ProposalStatus) {
         Proposal memory proposal_ = _proposals[proposalId];
         VoteParam memory voteParam_ = _voteParams[proposal_.voteParamId];

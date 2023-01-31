@@ -6,7 +6,7 @@ import "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import "forge-std/Test.sol";
 import "src/helpers/Slot.sol";
 import "src/helpers/Constants.sol";
-import "src/core/DaoCore.sol";
+import "src/DaoCore.sol";
 import "test/base/BaseTest.sol";
 
 contract FakeEntry {
