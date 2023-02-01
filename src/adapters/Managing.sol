@@ -7,12 +7,14 @@ import { IAgora } from "../interfaces/IAgora.sol";
 import { IDaoCore } from "../interfaces/IDaoCore.sol";
 
 /**
- * @notice contract interacting with the Core to add or remove Entry
- * to the DAO.
- * CAUTION: this contract must always have the possibility to add and remove Slots
- * in the DAO, otherwise the DAO can be blocked
+ * @title Contract in charge of adding, replacing and removing entries to the
+ * DaoCore.
+ * @notice Users can submit proposals for managing entries in DaoCore
+ *
+ * TODO Implementation for batching entry managment
+ *
+ * @dev Admins can manage entries without requesting a proposal submission
  */
-
 contract Managing is ProposerAdapter {
     struct EntryProposal {
         bytes4 slot;
@@ -20,16 +22,25 @@ contract Managing is ProposerAdapter {
         address contractAddr;
     }
 
+    /// @dev track proposals by their hash
     mapping(bytes28 => EntryProposal) private _proposals;
 
+    /// @param core address of DaoCore
     constructor(address core) Adapter(core, Slot.MANAGING) {}
 
-    /* //////////////////////////
-            PUBLIC FUNCTIONS
-    ////////////////////////// */
+    /*//////////////////////////////////////////////////////////
+                            PUBLIC FONCTIONS 
+    //////////////////////////////////////////////////////////*/
+
     /**
-     * @notice allow member to propose a new entry to the DAO
-     * Propositions need an approval from the admin
+     * @notice Allow members to propose an entry managment, address(0) is
+     * chosen to removing entry. Proposal need admin approval.
+     *
+     * @param entrySlot slotID to manage
+     * @param isExt flag to distinct adapters and extensions
+     * @param contractAddr address of the new entry (zero in case in removal)
+     * @param voteParamId vote parameter for this proposal
+     * @param minStartTime timestamp when the voting peiod should start (zero for now)
      */
     function proposeEntry(
         bytes4 entrySlot,
@@ -60,23 +71,30 @@ contract Managing is ProposerAdapter {
     }
 
     /**
-     * @notice change a slot entry without vote, useful for
-     * quick add of Slot
+     * @notice Allow admin to manage entries without submitting a
+     * proposal.
+     * @dev Checks by others admins should be implemented here
      *
-     * NOTE consider disable this function when the DAO reach a certain
-     * size to let only member decide as admin can abuse of it. But can
-     * be useful in ermergency situation
-     *
-     * NOTE a commitment logic can be implemented to let another admin check
-     * the new contract
+     * @param entrySlot slotID to manage
+     * @param contractAddr address of the new entry (zero in case in removal)
      */
     function manageSlotEntry(bytes4 entrySlot, address contractAddr) external onlyAdmin {
         IDaoCore(_core).changeSlotEntry(entrySlot, contractAddr);
     }
 
-    /* //////////////////////////
-        INTERNAL FUNCTIONS
-    ////////////////////////// */
+    /*//////////////////////////////////////////////////////////
+                            GETTERS
+    //////////////////////////////////////////////////////////*/
+
+    /*//////////////////////////////////////////////////////////
+                        INTERNAL FONCTIONS 
+    //////////////////////////////////////////////////////////*/
+
+    /**
+     * @dev Implementation of {_executeProposal}
+     *
+     * @param proposalId transaction request to execute
+     */
     function _executeProposal(bytes32 proposalId) internal override {
         EntryProposal memory entryProposal_ = _proposals[_readProposalId(proposalId)];
         IDaoCore(_core).changeSlotEntry(entryProposal_.slot, entryProposal_.contractAddr);

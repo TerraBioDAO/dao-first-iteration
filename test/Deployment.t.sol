@@ -5,7 +5,7 @@ pragma solidity ^0.8.13;
 import "forge-std/Test.sol";
 import "forge-std/StdJson.sol";
 
-import "src/core/DaoCore.sol";
+import "src/DaoCore.sol";
 import "src/extensions/Agora.sol";
 import "src/extensions/Bank.sol";
 import "src/adapters/Financing.sol";

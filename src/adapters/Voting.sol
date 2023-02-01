@@ -6,6 +6,11 @@ import { ProposerAdapter, Adapter, Slot } from "../abstracts/ProposerAdapter.sol
 import { IBank } from "../interfaces/IBank.sol";
 import { IAgora } from "../interfaces/IAgora.sol";
 
+/**
+ * @title Contract managing votes, namely submissions, parameters and token commitments
+ * @notice Users can submit votes, vote parameters proposals, consultation and
+ * also deposit and withdraw from the Bank
+ */
 contract Voting is ProposerAdapter {
     enum ProposalType {
         CONSULTATION,
@@ -33,13 +38,27 @@ contract Voting is ProposerAdapter {
         ProposedVoteParam voteParam;
     }
 
+    /// @dev track proposals by their hash
     mapping(bytes28 => VotingProposal) private _votingProposals;
 
+    /// @param core address of DaoCore
     constructor(address core) Adapter(core, Slot.VOTING) {}
 
-    /* //////////////////////////
-            PUBLIC FUNCTIONS
-    ////////////////////////// */
+    /*//////////////////////////////////////////////////////////
+                            PUBLIC FONCTIONS 
+    //////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Users can submit vote to any existing proposals
+     * @dev When vote is submitted the vote weight is calculated with
+     * the deposit of token and locking period in the Bank.
+     *
+     * @param proposalId proposal to vote
+     * @param value descision for the vote
+     * @param deposit amount of token deposited for this proposal
+     * @param lockPeriod token locking period duration
+     * @param advancedDeposit amount of token to fill user's account
+     */
     function submitVote(
         bytes32 proposalId,
         uint256 value,
@@ -65,6 +84,19 @@ contract Voting is ProposerAdapter {
         );
     }
 
+    /**
+     * @notice Users can submit a proposal for adding new vote parameters
+     * @dev `name` is hash to create a voteID (bytes4), checking vote parameters
+     * is done in Agora
+     *
+     * @param name name of the vote parameter (then hashed)
+     * @param consensus consensus type
+     * @param votingPeriod voting period
+     * @param gracePeriod grace period after the vote
+     * @param threshold acceptation threshold
+     * @param minStartTime timestamp when the proposal should start
+     * @param adminValidationPeriod period of grace before the vote
+     */
     function proposeNewVoteParams(
         string calldata name,
         IAgora.Consensus consensus,
@@ -104,6 +136,15 @@ contract Voting is ProposerAdapter {
         agora.submitProposal(slotId, proposalId, false, VOTE_STANDARD, minStartTime, msg.sender);
     }
 
+    /**
+     * @notice Users can submit consultation (proposal without on-chain execution)
+     * @dev Consultation should then be implemented off-chain
+     * NOTE Only a string or an hash of IPFS shoudl be stored on-chain
+     *
+     * @param title name of the consultation
+     * @param description description of the consultation
+     * @param minStartTime timestamp when the proposal should start
+     */
     function proposeConsultation(
         string calldata title,
         string calldata description,
@@ -132,18 +173,44 @@ contract Voting is ProposerAdapter {
         );
     }
 
+    /**
+     * @notice Allow member to withdraw available $TBIO balance in the Bank
+     *
+     * @param amount amount of token to withdraw
+     */
     function withdrawAmount(uint128 amount) external onlyMember {
         IBank(_slotAddress(Slot.BANK)).withdrawAmount(msg.sender, amount);
     }
 
+    /**
+     * @notice Allow member to deposit $TBIO into their account in Bank
+     *
+     * @param amount amount of token to deposit
+     */
     function advanceDeposit(uint128 amount) external onlyMember {
         IBank(_slotAddress(Slot.BANK)).advancedDeposit(msg.sender, amount);
     }
 
+    /**
+     * @notice Allow member to request an archive removal
+     * @dev The archive should be enough old to be deleted
+     *
+     * @param proposalId archive to delete
+     */
     function requestDeleteArchive(bytes32 proposalId) external onlyMember {
         IAgora(_slotAddress(Slot.AGORA)).deleteArchive(proposalId, msg.sender);
     }
 
+    /**
+     * @notice Allow admin to add a new vote parameter
+     *
+     * @param name name of the vote parameter (then hashed)
+     * @param consensus consensus type
+     * @param votingPeriod voting period
+     * @param gracePeriod grace period after the vote
+     * @param threshold acceptation threshold
+     * @param adminValidationPeriod period of grace before the vote
+     */
     function addNewVoteParams(
         string memory name,
         IAgora.Consensus consensus,
@@ -165,6 +232,11 @@ contract Voting is ProposerAdapter {
         );
     }
 
+    /**
+     * @notice Allow admin to remove a vote parameter
+     *
+     * @param voteParamId voteID to remove
+     */
     function removeVoteParams(bytes4 voteParamId) external onlyAdmin {
         IAgora(_slotAddress(Slot.AGORA)).changeVoteParam(
             false,
@@ -177,14 +249,25 @@ contract Voting is ProposerAdapter {
         );
     }
 
+    /**
+     * @notice Validation of a proposal, admin-only
+     * @dev Not implemented
+     *
+     * @param proposalId proposal to validate
+     */
     function validateProposal(bytes32 proposalId) external onlyAdmin {
         //
     }
 
-    /* //////////////////////////
-                GETTERS
-    ////////////////////////// */
+    /*//////////////////////////////////////////////////////////
+                            GETTERS
+    //////////////////////////////////////////////////////////*/
 
+    /**
+     * @notice Get consultation details
+     * @param proposalId proposal to check
+     * @return consultation {Consultation} struct
+     */
     function getConsultation(bytes28 proposalId)
         external
         view
@@ -194,6 +277,11 @@ contract Voting is ProposerAdapter {
         require(consultation.initiater != address(0), "Voting: no consultation");
     }
 
+    /**
+     * @notice Get details of a proposed vote parameters
+     * @param proposalId proposal to check
+     * @return _voteParam {ProposedVoteParam} struct
+     */
     function getProposedVoteParam(bytes28 proposalId)
         external
         view
@@ -203,9 +291,14 @@ contract Voting is ProposerAdapter {
         require(_voteParam.voteParamId != Slot.EMPTY, "Voting: no vote params");
     }
 
-    /* //////////////////////////
-        INTERNAL FUNCTIONS
-    ////////////////////////// */
+    /*//////////////////////////////////////////////////////////
+                        INTERNAL FUNCTIONS
+    //////////////////////////////////////////////////////////*/
+
+    /**
+     * @dev Internal function to add parameter
+     * @param votingProposal {VotingProposal} struct
+     */
     function _addVoteParam(VotingProposal memory votingProposal) internal {
         ProposedVoteParam memory _proposedVoteParam = votingProposal.voteParam;
         IAgora(_slotAddress(Slot.AGORA)).changeVoteParam(
@@ -219,6 +312,11 @@ contract Voting is ProposerAdapter {
         );
     }
 
+    /**
+     * @dev Implementation of {_executeProposal}
+     *
+     * @param proposalId transaction request to execute
+     */
     function _executeProposal(bytes32 proposalId) internal override {
         VotingProposal memory votingProposal = _votingProposals[_readProposalId(proposalId)];
         if (ProposalType.VOTE_PARAMS == votingProposal.proposalType) {

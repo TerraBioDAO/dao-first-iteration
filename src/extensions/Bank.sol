@@ -13,11 +13,17 @@ import { Constants } from "../helpers/Constants.sol";
 import { ISlotEntry } from "../interfaces/ISlotEntry.sol";
 
 /**
- * @notice Should be the only contract to approve to move tokens
+ * @title Extension contract for funding and commitment process
+ * @notice End users do not interact directly with this contract (read-only)
  *
- * Manage only the TBIO token
+ * @dev The contract stores:
+ *      - users commitment for voting
+ *      - DAO's vaults
+ * When user vote they commit an amount of $TBIO into this contract on
+ * different amount of time to calculate their vote weight. Thus users
+ * express their level of commitment through the amount of token and time
+ * period they lock tokens in this contract.
  */
-
 contract Bank is Extension, ReentrancyGuard, IBank, Constants {
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -34,27 +40,49 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         mapping(address => Balance) balance;
     }
 
+    /**
+     * @notice Address of the Terrabio token
+     * @return token contract address
+     */
     address public immutable terraBioToken;
     uint32 internal immutable MAX_TIMESTAMP;
 
+    /// @dev track users account by their address
     mapping(address => User) private _users;
+
+    /// @dev track DAO's vault by their ID
     mapping(bytes4 => Vault) private _vaults;
 
+    /**
+     * @dev The Terrabio token is set as an `immutable` variable
+     *
+     * @param core address of DaoCore
+     * @param terraBioTokenAddr address of the Terrabio token
+     */
     constructor(address core, address terraBioTokenAddr) Extension(core, Slot.BANK) {
         terraBioToken = terraBioTokenAddr;
         MAX_TIMESTAMP = type(uint32).max;
     }
 
-    /* //////////////////////////
-            PUBLIC FUNCTIONS
-    ////////////////////////// */
+    /*//////////////////////////////////////////////////////////
+                            PUBLIC FONCTIONS 
+    //////////////////////////////////////////////////////////*/
+
     /**
-     * @notice allow users to lock TBIO in several period of time in the contract,
-     * and receive a vote weight for a specific proposal
-     *
-     * User can commit only once, without cancelation, the contract check if the
+     * @notice Called by VOTING adapter to commit an user's vote, then
+     * a vote weight for a specific proposal is received.
+     * @dev Users can commit only once, without cancelation, the contract check if the
      * user have already TBIO in his account, otherwise the contract take from
      * owner's balance (Bank must be approved).
+     * {lockPeriod} is chosen among a set of period and cannot be custom
+     * User's balance is updated before checking his account, see {_updateUserAccount}
+     *
+     * @param user user's address
+     * @param proposalId proposal to commit on
+     * @param lockedAmount amount of token to lock
+     * @param lockPeriod period of time to lock tokens
+     * @param advanceDeposit amount of token user want to deposit into his account
+     * @return voteWeight weight of the vote for this proposal
      */
     function newCommitment(
         address user,
@@ -107,8 +135,11 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
     }
 
     /**
-     * @notice allow member to withdraw available balance of TBIO, only from
-     * owner's account.
+     * @notice Called by VOTING adapter to initiate a withdrawal from
+     * an user's account. User can only withdraw unlocked token.
+     *
+     * @param user user's address
+     * @param amount amount of token to withdraw
      */
     function withdrawAmount(address user, uint128 amount) external onlyAdapter(Slot.VOTING) {
         Account memory account_ = _users[user].account;
@@ -125,10 +156,11 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
     }
 
     /**
-     * @notice allows member to deposit TBIO in their account, enable
-     * deposit for several vote.
+     * @notice Called by any adapter which implement this function, used
+     * to fill user's account in prevision of future votes.
      *
-     * NOTE users can also do an `advancedDeposit` when they call `newCommitment`
+     * @param user user's address
+     * @param amount amount of token to deposit
      */
     function advancedDeposit(address user, uint128 amount)
         external
@@ -139,12 +171,16 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
     }
 
     /**
-     * @notice used to deposit funds in a specific vault, funds are
-     * stored on the Bank contract, from a specific address (which has
-     * approved Bank)
+     * @notice Called by FINANCING adapter to deposit an amount of
+     * token into the vault. Tokens address should be registered into
+     * the vault.
+     * @dev WARNING: This function should restricted in the FINANCING adapter,
+     * to prevent any user to abuse of other user's Bank approval.
      *
-     * SECURITY! any member who has approved the Bank can be attacked
-     * a security check should be implemented here or in `Financing`
+     * @param vaultId vaultID to depose on
+     * @param tokenAddr token contract address to deposit
+     * @param tokenOwner token amount provenance
+     * @param amount amount of token to deposit
      */
     function vaultDeposit(
         bytes4 vaultId,
@@ -161,11 +197,12 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
     }
 
     /**
-     * @notice allow admin to create a vault in the Bank,
-     * with an associated tokenList.
+     * @notice Called by FINANCING adapter to create a vault in the DAO
+     * @dev `address(0)` is used to manage blockchain native token. Checking
+     * if tokenAddr is an ERC20 is not 100% useful and can be bypassed.
      *
-     * address(0) is used to manage blockchain native token, checking
-     * if tokenAddr is an ERC20 is not 100% useful, only prevent mistake
+     * @param vaultId vaultID to create
+     * @param tokenList list of token address the vault can manage
      */
     function createVault(bytes4 vaultId, address[] memory tokenList)
         external
@@ -185,12 +222,17 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
     }
 
     /**
-     * @notice called when a transaction request on a vault is done.
-     * Funds are commited to prevent an overcommitment for member and thus
-     * block the transaction request
-     *
-     * TODO funds committed must return available when the transaction request
+     * @notice Called by FINANCING adapter when a transaction request is
+     * created, allow to block an amount of token during the request acceptation
+     * period.
+     * @dev Funds are commited to prevent transaction request on inexistant funds
+     * MISSING IMPL: funds committed must return available when the transaction request
      * is rejected
+     *
+     * @param vaultId vaultID to commit
+     * @param tokenAddr token address the vault will commit funds
+     * @param destinationAddr future address of transferred funds
+     * @param amount amount of token to commit
      */
     function vaultCommit(
         bytes4 vaultId,
@@ -211,8 +253,15 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
     }
 
     /**
-     * @notice called when a transaction request is accepted,
-     * funds are transferred to the destination address
+     * @notice Called by FINANCING adapter when a transaction request
+     * is accepted. Funds are transferred to the destination address.
+     * @dev For $TBIO, ff the the destination address is a member of the DAO, funds
+     * are internally transferred into his account (without calling transfer)
+     *
+     * @param vaultId vaultID from where funds are transferred
+     * @param tokenAddr token address of funds sended
+     * @param destinationAddr address who will receive funds
+     * @param amount amount of token to send
      */
     function vaultTransfer(
         bytes4 vaultId,
@@ -243,9 +292,16 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         return true;
     }
 
-    /* //////////////////////////
-                GETTERS
-    ////////////////////////// */
+    /*//////////////////////////////////////////////////////////
+                                GETTERS
+    //////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Get user's balance details
+     * @param user user's address to check
+     * @return availableBalance user's available balance
+     * @return lockedBalance user's commited balance for votes
+     */
     function getBalances(address user)
         external
         view
@@ -271,6 +327,11 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         }
     }
 
+    /**
+     * @notice Get the list of proposals user have commited token on
+     * @param user user's address to check
+     * @return list of proposalId
+     */
     function getCommitmentsList(address user) external view returns (bytes32[] memory) {
         uint256 length = _users[user].commitmentsList.length();
         bytes32[] memory commitmentsList = new bytes32[](length);
@@ -285,6 +346,15 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         return commitmentsList;
     }
 
+    /**
+     * @notice Get an user's commitment details
+     * @param user user's address to check
+     * @param proposalId proposal to check
+     * @return amount of token locked
+     * @return received vote weight
+     * @return period of lock
+     * @return timestamp when user can withdraw tokens
+     */
     function getCommitment(address user, bytes32 proposalId)
         external
         view
@@ -305,6 +375,13 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         );
     }
 
+    /**
+     * @notice Get the next timestamp when an user can withdraw tokens
+     *
+     * @param user user's address to check
+     * @return nextRetrievalDate timestamp when an user can withdraw tokens, return 0 if no more
+     * commitment
+     */
     function getNextRetrievalDate(address user) external view returns (uint32 nextRetrievalDate) {
         nextRetrievalDate = _users[user].account.nextRetrieval;
 
@@ -334,6 +411,14 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         }
     }
 
+    /**
+     * @notice Get balance details of a vault
+     *
+     * @param vaultId vaultID to to check
+     * @param tokenAddr address to check balance
+     * @return available balance
+     * @return commited balance
+     */
     function getVaultBalances(bytes4 vaultId, address tokenAddr)
         external
         view
@@ -345,6 +430,12 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         return (balance_.availableBalance, balance_.commitedBalance);
     }
 
+    /**
+     * @notice Get list of registered token of a vault
+     *
+     * @param vaultId vaultID to to check
+     * @return list of token address
+     */
     function getVaultTokenList(bytes4 vaultId) external view returns (address[] memory) {
         uint256 length = _vaults[vaultId].tokenList.length();
         address[] memory tokenList = new address[](length);
@@ -357,6 +448,13 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         return tokenList;
     }
 
+    /**
+     * @notice Check if a specifi token address is registered in a vault
+     *
+     * @param vaultId vaultID to to check
+     * @param tokenAddr address to check
+     * @return true if token address is registered
+     */
     function isTokenInVaultTokenList(bytes4 vaultId, address tokenAddr)
         external
         view
@@ -365,13 +463,27 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         return _vaults[vaultId].tokenList.contains(tokenAddr);
     }
 
+    /**
+     * @notice Check if a vault exist
+     *
+     * @param vaultId vaultID to to check
+     * @return true if the vault exist
+     */
     function isVaultExist(bytes4 vaultId) external view returns (bool) {
         return _vaults[vaultId].isExist;
     }
 
-    /* //////////////////////////
-        INTERNAL FUNCTIONS
-    ////////////////////////// */
+    /*//////////////////////////////////////////////////////////
+                        INTERNAL FUNCTIONS
+    //////////////////////////////////////////////////////////*/
+
+    /**
+     * @dev Deposit only if amount is greater than 0, used for deposit
+     * $TBIO into user's account.
+     *
+     * @param account user address who deposit
+     * @param amount amount user deposit
+     */
     function _depositTransfer(address account, uint256 amount) internal {
         if (amount > 0) {
             IERC20(terraBioToken).transferFrom(account, address(this), amount);
@@ -379,11 +491,26 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         }
     }
 
+    /**
+     * @dev Used to withdraw an amount from user's account to
+     * his address. Check are done before calling this function.
+     *
+     * @param account user address who withdraw
+     * @param amount amount user withdraw
+     */
     function _withdrawTransfer(address account, uint256 amount) internal {
         IERC20(terraBioToken).transfer(account, amount);
         emit Withdrawn(account, amount);
     }
 
+    /**
+     * @dev Update user's balance regarding unlocking of tokens.
+     * The function take and return the {Account} struct in memory.
+     *
+     * @param account user {Account}
+     * @param user user's address
+     * @return Updated {Account} struct
+     */
     function _updateUserAccount(Account memory account, address user)
         internal
         returns (Account memory)
@@ -422,6 +549,12 @@ contract Bank is Extension, ReentrancyGuard, IBank, Constants {
         return account;
     }
 
+    /**
+     * @dev Check the lock period and calculate the vote weight
+     * @param lockPeriod time period the amount of token
+     * @param lockAmount amount of token to lock
+     * @return calculated vote weight
+     */
     function _calculVoteWeight(uint32 lockPeriod, uint96 lockAmount)
         internal
         pure

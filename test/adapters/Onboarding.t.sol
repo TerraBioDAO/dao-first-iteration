@@ -3,7 +3,7 @@
 pragma solidity ^0.8.13;
 
 import "test/base/BaseDaoTest.sol";
-import "src/core/DaoCore.sol";
+import "src/DaoCore.sol";
 import "src/adapters/Onboarding.sol";
 
 contract Onboarding_test is BaseDaoTest {

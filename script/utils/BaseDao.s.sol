@@ -8,7 +8,7 @@ import { Strings } from "openzeppelin-contracts/utils/Strings.sol";
 import "forge-std/Script.sol";
 import "forge-std/Test.sol";
 
-import { DaoCore } from "src/core/DaoCore.sol";
+import { DaoCore } from "src/DaoCore.sol";
 import { Agora } from "src/extensions/Agora.sol";
 import { Bank } from "src/extensions/Bank.sol";
 import { Financing } from "src/adapters/Financing.sol";

@@ -9,21 +9,20 @@ import { IDaoCore } from "../interfaces/IDaoCore.sol";
 import { Constants } from "../helpers/Constants.sol";
 
 /**
- * @notice abstract contract for Adapters, add guard modifier
- * to restrict access for only DAO members or contracts.
- *
- * NOTE This contract has no state, there is no need to reset it
- * when the contract is desactived
+ * @title Abstract contract to implement restriction access of Adatpers
+ * @dev Only implement modifiers and internal functions, not states is implemented
  */
 abstract contract Adapter is SlotEntry, Constants {
-    /* //////////////////////////
-            MODIFIER
-    ////////////////////////// */
+    /// @dev Allow only DaoCore
     modifier onlyCore() {
         require(msg.sender == _core, "Adapter: not the core");
         _;
     }
 
+    /**
+     * @dev Allow only a specific Extensions
+     * @param slot slotID of the extensions
+     */
     modifier onlyExtension(bytes4 slot) {
         IDaoCore core = IDaoCore(_core);
         require(
@@ -33,22 +32,28 @@ abstract contract Adapter is SlotEntry, Constants {
         _;
     }
 
-    /// NOTE consider using `hasRole(bytes4)` for future role in the DAO => AccessControl.sol
+    /// @dev Allow only Members
     modifier onlyMember() {
         require(IDaoCore(_core).hasRole(msg.sender, ROLE_MEMBER), "Adapter: not a member");
         _;
     }
 
+    /// @dev Allow only Proposer (not implemented)
     modifier onlyProposer() {
         require(IDaoCore(_core).hasRole(msg.sender, ROLE_PROPOSER), "Adapter: not a proposer");
         _;
     }
 
+    /// @dev Allow only Admin
     modifier onlyAdmin() {
         require(IDaoCore(_core).hasRole(msg.sender, ROLE_ADMIN), "Adapter: not an admin");
         _;
     }
 
+    /**
+     * @param core address of DaoCore
+     * @param slot slotID of the adapter
+     */
     constructor(address core, bytes4 slot) SlotEntry(core, slot, false) {}
 
     receive() external payable {
@@ -56,8 +61,9 @@ abstract contract Adapter is SlotEntry, Constants {
     }
 
     /**
-     * @notice internal getter
-     * @return actual contract address associated with `slot`, return
+     * @dev Internal getter to read slotID
+     * @param slot slotID to read
+     * @return Actual contract address associated with `slot`, return
      * address(0) if there is no contract address
      */
     function _slotAddress(bytes4 slot) internal view returns (address) {

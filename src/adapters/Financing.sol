@@ -7,12 +7,13 @@ import { IBank } from "../interfaces/IBank.sol";
 import { IAgora } from "../interfaces/IAgora.sol";
 
 /**
- * @notice contract which interact with the Bank to manage funds in the DAO
+ * @title Adapter for interacting with Bank for funding and commitment process
+ * @notice Members can create transactions request and deposit into DAO's vaults
+ *
+ * @dev Implementation for executing transaction request is not implemented
  */
 contract Financing is ProposerAdapter {
     using Slot for bytes28;
-
-    // MAY BE: Create an `event` as a receipt?
 
     /**
      * @notice Financing proposals are request for transaction
@@ -25,24 +26,25 @@ contract Financing is ProposerAdapter {
         address tokenAddr; // the address of the token related to amount
     }
 
+    /// @dev track transaction requests by their hash
     mapping(bytes28 => TransactionRequest) private _requests;
 
+    /// @param core address of DaoCore
     constructor(address core) Adapter(core, Slot.FINANCING) {}
 
-    /* //////////////////////////
-            PUBLIC FUNCTIONS
-    ////////////////////////// */
+    /*//////////////////////////////////////////////////////////
+                            PUBLIC FONCTIONS 
+    //////////////////////////////////////////////////////////*/
+
     /**
-     * @notice Creates financing proposal, proposal must be validated by
+     * @notice Create a transaction request, requests must be validated by
      * an admin
+     *
      * @param voteId vote parameters id
-     * @param amount of the proposal
-     * @param applicant of the proposal
-     * @param vaultId vault id
+     * @param amount amount to transfer
+     * @param applicant desitination address of the transaction
+     * @param vaultId vaultID from which funds are moved
      * @param tokenAddr token address
-     * requirements :
-     * - Only MEMBER role can create a financing proposal.
-     * - Requested amount must be greater than zero.
      */
     function submitTransactionRequest(
         bytes4 voteId,
@@ -76,23 +78,23 @@ contract Financing is ProposerAdapter {
     }
 
     /**
-     * @notice Create a vault
-     * @param vaultId vault id
-     * @param tokenList array of token addresses
-     * requirements :
-     * - Only Admin can create a vault.
+     * @notice Allow admins to create a new vault in the DAO
      *
-     * SECURITY: Agora do not check if this is an ERC20, a check can be done there,
-     * reminder that checking an ERC20 do not prevent an attacker contract to mock it.
+     * @param vaultId vaultID from which funds are moved
+     * @param tokenList tokens address list
      */
     function createVault(bytes4 vaultId, address[] memory tokenList) external onlyAdmin {
         IBank(_slotAddress(Slot.BANK)).createVault(vaultId, tokenList);
     }
 
     /**
-     * @notice allow anyone to deposit in a specific vault in the DAO
-     * @dev users cannot deposit for another address because it open a
+     * @notice Allow users to deposit token from their account
+     * @dev Users cannot deposit for another address because it open a
      * risk of a misuse of the Bank approval
+     *
+     * @param vaultId vaultID to deposit token
+     * @param tokenAddr address of the token to deposit
+     * @param amount amount of token
      */
     function vaultDeposit(
         bytes4 vaultId,
@@ -102,12 +104,19 @@ contract Financing is ProposerAdapter {
         IBank(_slotAddress(Slot.BANK)).vaultDeposit(vaultId, tokenAddr, msg.sender, amount);
     }
 
-    /* //////////////////////////
-        INTERNAL FUNCTIONS
-    ////////////////////////// */
+    /*//////////////////////////////////////////////////////////
+                            GETTERS
+    //////////////////////////////////////////////////////////*/
+
+    /*//////////////////////////////////////////////////////////
+                        INTERNAL FONCTIONS 
+    //////////////////////////////////////////////////////////*/
+
     /**
-     * @notice Execute a financing proposal.
-     * @param proposalId The proposal id.
+     * @dev Implementation of {_executeProposal}, function not implemented
+     * yet
+     *
+     * @param proposalId transaction request to execute
      */
     function _executeProposal(bytes32 proposalId) internal override {
         TransactionRequest memory proposal_ = _requests[_readProposalId(proposalId)];
