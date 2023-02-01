@@ -6,18 +6,24 @@ import { Slot } from "../helpers/Slot.sol";
 import { ISlotEntry } from "../interfaces/ISlotEntry.sol";
 
 /**
- * @notice abstract contract shared by Adapter, Extensions and
- * DaoCore, contains informations related to slots.
- *
- * @dev states of this contract are called to perform some checks,
- * especially when a new adapter or extensions is plugged to the
- * DAO
+ * @title Abstract contract to add general informations into the bytecode
+ * @dev Every componants of the DAO implement this code
  */
 abstract contract SlotEntry is ISlotEntry {
+    /// @dev address of DaoCore
     address internal immutable _core;
+
+    /// @return slotId of this contract
     bytes4 public immutable override slotId;
+
+    /// @return true is this contract is an extension
     bool public immutable override isExtension;
 
+    /**
+     * @param core address of DaoCore
+     * @param slot slotID of this contract
+     * @param isExt flag for adapters or extensions
+     */
     constructor(
         address core,
         bytes4 slot,

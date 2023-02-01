@@ -7,37 +7,44 @@ import { Slot } from "../helpers/Slot.sol";
 import { IDaoCore } from "../interfaces/IDaoCore.sol";
 
 /**
- * @notice simpliest implementation of the Onboarding process
+ * @title Contract in charge of register or remove member into the DAO
+ * @notice Users can join and quit the DAO whenever they want
+ *
+ * @dev It is the simplier implementation of an onboarding feature, designed
+ * for testing purpose.
  */
 contract Onboarding is Adapter {
+    /// @param core address of DaoCore
     constructor(address core) Adapter(core, Slot.ONBOARDING) {}
 
     /**
-     * @notice any address can become a member in the DAO
+     * @notice Allow users (or any contract) to become a member of the DAO
      */
     function joinDao() external {
         IDaoCore(_core).changeMemberStatus(msg.sender, ROLE_MEMBER, true);
     }
 
     /**
-     * @notice any address can quit the DAO
-     * tokens deposited in the DAO are not refunded
+     * @notice Allow members to quit the DAO, users should withdraw funds
+     * from the DAO before quiting the DAO.
      */
     function quitDao() external {
         IDaoCore(_core).changeMemberStatus(msg.sender, ROLE_MEMBER, false);
     }
 
     /**
-     * @notice any admin can add or remove an admin in the DAO
-     * An admin can self-remove the role, and thus block the DAO
+     * @notice Allow admins to register or revoke admins from the DAO
+     * @dev Admin are able to self-revoke the admin role, pay attention
+     * to not leave the DAO without admin before necessary implementation are done
+     *
+     * @param account address to grant or revoke the admin role
+     * @param setAsAdmin boolean to grant or revoke the admin
      */
     function setAdminMember(address account, bool setAsAdmin) external onlyAdmin {
         if (!IDaoCore(_core).hasRole(account, ROLE_MEMBER) && setAsAdmin) {
-            (
-                address[] memory accounts,
-                bytes32[] memory roles,
-                bool[] memory values
-            ) = _getBatchParameter(2);
+            address[] memory accounts = new address[](2);
+            bytes32[] memory roles = new bytes32[](2);
+            bool[] memory values = new bool[](2);
             accounts[0] = account;
             accounts[1] = account;
             roles[0] = ROLE_MEMBER;
@@ -49,19 +56,5 @@ contract Onboarding is Adapter {
         }
 
         IDaoCore(_core).changeMemberStatus(account, ROLE_ADMIN, setAsAdmin);
-    }
-
-    function _getBatchParameter(uint256 length)
-        private
-        pure
-        returns (
-            address[] memory accounts,
-            bytes32[] memory roles,
-            bool[] memory values
-        )
-    {
-        accounts = new address[](length);
-        roles = new bytes32[](length);
-        values = new bool[](length);
     }
 }

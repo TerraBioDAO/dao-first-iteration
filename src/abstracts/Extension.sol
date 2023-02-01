@@ -8,13 +8,13 @@ import { SlotEntry, Slot } from "./SlotEntry.sol";
 import { IDaoCore } from "../interfaces/IDaoCore.sol";
 
 /**
- * @notice abstract contract used for Extension and DaoCore,
- * add a guard which accept only call from Adapters
+ * @title Abstract contract to implement restriction access of Extensions
+ * @dev Only implement modifiers, not states is implemented
  */
 abstract contract Extension is SlotEntry {
     /**
-     * @notice Check on DaoCore if the msg.sender is
-     * registered in the Dao at the right slot
+     * @dev Allow only a specific adapter
+     * @param slot_ slotID of the adapter
      */
     modifier onlyAdapter(bytes4 slot_) {
         require(
@@ -25,8 +25,7 @@ abstract contract Extension is SlotEntry {
     }
 
     /**
-     * @notice Specific check for the slot Managing to keep the
-     * legacy contract functional in case the new is not working
+     * @dev Allow only the managing adapter, and its legacy one
      */
     modifier onlyManaging() {
         address expectedAddr = IDaoCore(_core).getSlotContractAddr(Slot.MANAGING);
@@ -38,7 +37,9 @@ abstract contract Extension is SlotEntry {
         _;
     }
 
+    /**
+     * @param core address of DaoCore
+     * @param slot slotID of the extension
+     */
     constructor(address core, bytes4 slot) SlotEntry(core, slot, true) {}
-
-    // add flags?: desactived, new/next states, migrated
 }
